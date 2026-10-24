@@ -1,14 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!--
+      No permissions are needed yet: courses, students and scores live in the
+      app's own database, and files are picked and shared through the system
+      sheets. The camera permission is added with scanning.
+    -->
 
     <application
-        android:name=".CrashHandlerApplication"
-        android:label="SubGuard"
-        android:icon="@drawable/ic_launcher">
+        android:label="UniMarkLy"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
 
         <activity
             android:name=".MainActivity"
@@ -30,27 +31,18 @@
 
         </activity>
 
-        <receiver
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
-            android:exported="false" />
-
-        <receiver
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
-            android:exported="false">
-
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
-            </intent-filter>
-
-        </receiver>
-
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
 
     </application>
+
+    <!-- Lets the share sheet and file picker see the apps that can open results. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
 
 </manifest>
