@@ -1,0 +1,73 @@
+{
+ "id": "unimarkly-digits",
+ "version": "1.0.0",
+ "file": "digits_v1.bin",
+ "format": "float32 little-endian: conv1.w conv1.b conv2.w conv2.b fc1.w fc1.b fc2.w fc2.b",
+ "bytes": 131564,
+ "sha256": "05bb539c040c91bbdcb7abcc85d664faee5e0bdc98a9f0d6dda2194cd66519f5",
+ "architecture": "conv5x5(1->12) relu pool2, conv5x5(12->24) relu pool2, fc 384->64 relu, fc 64->11",
+ "classes": "0-9 and 10 = not a digit",
+ "input": "28x28, ink=1 paper=0, digit scaled into 20x20 and centred by centre of mass (as MNIST)",
+ "licence": "Weights trained by UniMarkLy on MNIST (CC BY-SA 3.0 data, from NIST public-domain originals); the network design is generic. Redistribution: weights may be shipped with the app; attribute MNIST.",
+ "training": {
+  "script": "tool/train/train_digits.py",
+  "data": "MNIST train 55,000 (+5,000 validation)",
+  "epochs": 14,
+  "seed": 20261024,
+  "torch": "2.14.1+cu130"
+ },
+ "measured": {
+  "mnist_test_clean_accuracy": 0.9722,
+  "mnist_test_augmented_accuracy": 0.8925,
+  "augmented_answered_at_p>=0.9": {
+   "coverage": 0.6629,
+   "accuracy_when_answered": 0.9949
+  },
+  "junk_rejected_as_not_a_digit": 0.9904,
+  "junk_accepted_as_digit_at_p>=0.9": 0.0012,
+  "most_confused_under_augmentation": [
+   {
+    "true": 9,
+    "read_as": 4,
+    "count": 42
+   },
+   {
+    "true": 4,
+    "read_as": 9,
+    "count": 40
+   },
+   {
+    "true": 7,
+    "read_as": 9,
+    "count": 33
+   },
+   {
+    "true": 5,
+    "read_as": 3,
+    "count": 30
+   },
+   {
+    "true": 7,
+    "read_as": 2,
+    "count": 28
+   },
+   {
+    "true": 3,
+    "read_as": 5,
+    "count": 28
+   },
+   {
+    "true": 7,
+    "read_as": 1,
+    "count": 27
+   },
+   {
+    "true": 9,
+    "read_as": 7,
+    "count": 25
+   }
+  ],
+  "test_set": "MNIST test, 10,000 digits (same writers' population as training; not exam handwriting)",
+  "augmentation_seed": 20261024
+ }
+}

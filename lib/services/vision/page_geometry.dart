@@ -35,11 +35,17 @@ class PageDetection {
 /// It does not need a table of any particular colour, but it does need the
 /// paper to look different from what is under it. A white page on a white desk
 /// is reported as "no page found", never guessed.
-class PageDetector {
+/// Finds the page in a photograph.
+abstract interface class DocumentBoundaryDetector {
+  PageDetection detect(ColorRaster photo);
+}
+
+class PageDetector implements DocumentBoundaryDetector {
   const PageDetector({this.analysisSide = 320});
 
   final int analysisSide;
 
+  @override
   PageDetection detect(ColorRaster photo) {
     final k = analysisSide / math.max(photo.width, photo.height);
     final w = math.max(8, (photo.width * k).round()), h = math.max(8, (photo.height * k).round());

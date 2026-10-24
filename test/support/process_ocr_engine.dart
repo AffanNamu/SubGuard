@@ -4,11 +4,12 @@ import 'dart:io';
 
 import 'package:unimarkly/domain/ocr.dart';
 import 'package:unimarkly/services/reader/ocr_engine.dart';
+import 'package:unimarkly/services/reader/region_crop.dart';
 
 /// Runs the real PP-OCR model (through ONNX Runtime in Python) for tests, so
 /// pipeline tests exercise an actual recogniser and not a canned answer. It
 /// stands in for paddle_ocr_native, which only exists on a phone.
-class ProcessOcrEngine implements OcrEngine {
+class ProcessOcrEngine implements RegionOcrEngine {
   ProcessOcrEngine._(this._process) {
     _lines = _process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_onLine);
   }
@@ -67,6 +68,20 @@ class ProcessOcrEngine implements OcrEngine {
     });
     _queue = next.then((_) {}, onError: (_) {});
     return next;
+  }
+
+  @override
+  Future<OcrDocument> recognizeRegion(File image, Region region) async {
+    // The same close-up the phone makes before reading a region.
+    final crop = await cropForReading(image, region, boostContrast: false, maxWidth: 1280);
+    if (crop == null) return OcrDocument(engine: name, lines: const []);
+    try {
+      return await recognize(crop.file, width: crop.width, height: crop.height);
+    } finally {
+      try {
+        await crop.file.parent.delete(recursive: true);
+      } catch (_) {}
+    }
   }
 
   Future<void> stop() async {

@@ -1,7 +1,6 @@
-import 'dart:math' as math;
-
 import '../../domain/ocr.dart';
 import '../../domain/reg_no.dart';
+import 'exam_number.dart';
 
 /// What was found on a booklet cover.
 ///
@@ -112,6 +111,15 @@ class BookletReading {
       };
 }
 
+/// Finds where each field is on the photo, from the printed labels, and reads
+/// what can be read from print.
+abstract interface class LayoutAnalyzer {
+  /// [printed] is the printed text of the whole photo; [examNumberCrop] a close-up
+  /// reading of the exam-number area; [classList] the course's registration
+  /// numbers, used only to suggest.
+  BookletReading extract(OcrDocument printed, {OcrDocument? examNumberCrop, List<String> classList});
+}
+
 /// Finds the printed labels on a booklet cover (the Modibbo Adama layout) and
 /// works out where the handwritten parts are relative to them. Because every
 /// region is placed relative to a label, tilt and zoom matter less.
@@ -121,16 +129,17 @@ class BookletReading {
 /// to the class list; the marks need a trained handwriting model, which is a
 /// later step, so they are entered by the examiner with the right part of the
 /// photo beside the field.
-class BookletExtractor {
+class BookletExtractor implements LayoutAnalyzer {
   const BookletExtractor();
 
   /// Below this, a handwriting suggestion is not offered at all.
-  static const double suggestionThreshold = 0.8;
+  static const double suggestionThreshold = ExamNumberResolver.suggestionThreshold;
 
   /// [examNumberCrop] is a second reading of just the exam-number area, made
   /// at higher magnification (handwriting is read far better close up).
   /// [classList] is the course's registration numbers; a reading that is close
   /// to exactly one of them is taken to be that one.
+  @override
   BookletReading extract(
     OcrDocument doc, {
     OcrDocument? examNumberCrop,
@@ -289,70 +298,16 @@ class BookletExtractor {
     );
   }
 
-  /// Chooses the exam number from what was read in its area.
-  ///
-  /// A reading that is close to exactly one class-list number, or whose last
-  /// digits match exactly one, is that number:
-  /// handwriting is rarely read perfectly, but "FWM/24U/O538" next to a class
-  /// list holding FWM/24U/0538 and no other near match is not in doubt. With no
-  /// class-list match, only a clear reading in the right pattern is offered.
+  /// Chooses the exam number to suggest from what was read in its area, by the
+  /// rule in [ExamNumberResolver]. It is only ever a suggestion.
   static ({String regNo, double confidence, bool onClassList})? _pickExamNumber(
     List<OcrLine> candidates,
     List<String> classList,
-  ) {
-    final roster = {for (final r in classList) RegNo.key(r): r}..remove('');
-    ({String regNo, double confidence, bool onClassList})? best;
-
-    void offer(String regNo, double confidence, bool onClassList) {
-      if (best == null || confidence > best!.confidence) {
-        best = (regNo: regNo, confidence: confidence, onClassList: onClassList);
-      }
-    }
-
-    for (final line in candidates) {
-      final reg = RegNo.normalise(line.text);
-      if (reg.canonical.isEmpty) continue;
-      final conf = line.confidence;
-
-      final near = RegNo.nearest(reg.canonical, roster.keys, maxDistance: 2, limit: 2);
-      final unique = near.isNotEmpty && (near.length == 1 || near[0].distance < near[1].distance);
-      if (unique) {
-        final d = near[0].distance;
-        final base = conf ?? 0.6;
-        final accept = switch (d) {
-          0 => true,
-          1 => conf == null || conf >= 0.4,
-          _ => conf != null && conf >= 0.7,
-        };
-        if (accept) {
-          offer(roster[near[0].regNo]!, d == 0 ? math.max(base, 0.9) : base * (1 - 0.15 * d), true);
-          continue;
-        }
-      }
-      // The prefix (department, year) is the hard part to read in handwriting;
-      // the sequence number is mostly digits and is read far better. If its
-      // digits match exactly one class-list number, that is the student.
-      final seq = RegExp(r'(\d{3,5})\D*$').firstMatch(line.text.trim())?.group(1);
-      if (seq != null && roster.isNotEmpty) {
-        final hits = [
-          for (final k in roster.keys)
-            if (RegExp(r'(\d{3,5})$').firstMatch(k)?.group(1) == seq) k,
-        ];
-        if (hits.length == 1 && (conf == null || conf >= 0.4)) {
-          offer(roster[hits.single]!, (conf ?? 0.5) * 0.85, true);
-          continue;
-        }
-      }
-
-      // Close to two class-list numbers equally: the writing is ambiguous, so
-      // nothing is offered rather than a number that may belong to nobody.
-      final ambiguous = near.length > 1 && near[0].distance == near[1].distance;
-      if (!ambiguous && reg.isValid && conf != null && conf >= suggestionThreshold) {
-        offer(reg.canonical, conf, false);
-      }
-    }
-    return best;
-  }
+  ) =>
+      ExamNumberResolver.resolve(
+        [for (final l in candidates) ExamNumberReading(reader: 'ocr', readerVersion: '', variant: 'any', line: l)],
+        classList,
+      ).suggestion;
 
   static bool _inside(Region box, Region area) =>
       box.centerX >= area.left && box.centerX <= area.right && box.centerY >= area.top && box.centerY <= area.bottom;

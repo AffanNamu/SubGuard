@@ -237,7 +237,13 @@ class QualityThresholds {
 /// Every measurement is made on the page itself when it can be found (not on
 /// the table around it), at a fixed analysis size so a 12-megapixel photo and a
 /// small one are judged on the same footing.
-class QualityAnalyzer {
+/// Judges how readable a photograph is. An interface so a different analyser
+/// (for instance one trained on a department's own photos) can replace this one.
+abstract interface class DocumentQualityAnalyzer {
+  QualityReport analyze(ColorRaster photo, {required int originalWidth, required int originalHeight, PageDetection? page});
+}
+
+class QualityAnalyzer implements DocumentQualityAnalyzer {
   const QualityAnalyzer({this.thresholds = const QualityThresholds(), this.analysisSide = 1200});
 
   final QualityThresholds thresholds;
@@ -245,6 +251,7 @@ class QualityAnalyzer {
 
   /// [photo] is the working-size picture; [originalWidth] x [originalHeight] is
   /// the stored photograph. [page] is the detection result when there is one.
+  @override
   QualityReport analyze(ColorRaster photo, {required int originalWidth, required int originalHeight, PageDetection? page}) {
     final m = measure(photo, originalWidth: originalWidth, originalHeight: originalHeight, page: page);
     return judge(m);

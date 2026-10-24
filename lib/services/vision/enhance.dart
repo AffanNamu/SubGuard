@@ -65,10 +65,25 @@ class Enhancer {
     return out;
   }
 
-  /// How much redder each pixel is than the paper around it, 0..255. Red and
-  /// orange pen strokes light up; the blue-green form, printed text and ruled
-  /// lines (which are less red than paper) are zero.
-  static Raster redInk(ColorRaster c, {double sigmaFraction = 0.25}) {
+  /// The redness of the paper around each pixel: a blurred copy of the redness
+  /// picture with every pixel held within a few levels of the typical (median)
+  /// redness first. Pen strokes, dark print and the table under the page are
+  /// far from the median, so clamping keeps them from dragging the paper level
+  /// towards themselves (a blue pen would otherwise make the paper look red).
+  static Raster _paperRedness(Raster redness, double sigmaFraction) {
+    final median = redness.percentile(0.5);
+    final held = Raster(redness.width, redness.height);
+    for (var i = 0; i < held.data.length; i++) {
+      held.data[i] = redness.data[i].clamp(median - 12, median + 12);
+    }
+    return held.gaussian(math.max(3, math.max(redness.width, redness.height) * sigmaFraction));
+  }
+
+  /// How much redder each pixel is than the paper around it, 0..255, by colour
+  /// alone. Phone JPEGs store colour at half the resolution of brightness
+  /// (and in blocks), so this map is coarse and blocky; use it to decide
+  /// *where* red ink is, and [redInk] for its shape.
+  static Raster redChroma(ColorRaster c, {double sigmaFraction = 0.25}) {
     final w = c.width, h = c.height;
     final redness = Raster(w, h);
     // Offset so negative values (blue-green) survive in 8 bits.
@@ -76,10 +91,47 @@ class Enhancer {
       final r = c.rgba[p] - (c.rgba[p + 1] + c.rgba[p + 2]) / 2;
       redness.data[i] = (r + 128).round().clamp(0, 255);
     }
-    final bg = redness.gaussian(math.max(3, math.max(w, h) * sigmaFraction));
+    final bg = _paperRedness(redness, sigmaFraction);
     final out = Raster(w, h);
     for (var i = 0; i < w * h; i++) {
       out.data[i] = ((redness.data[i] - bg.data[i]) * 4).round().clamp(0, 255);
+    }
+    return out;
+  }
+
+  /// The strokes of a red pen: brightness gives their crisp shape and colour
+  /// says which strokes are red.
+  ///
+  /// Dark strokes (the pen's shadow in the brightness picture) are kept only
+  /// where the colour is redder than the paper around it, with the colour
+  /// picture softened because its resolution is lower. That removes the
+  /// printed form (ruled lines and text are dark but not red) while keeping
+  /// the pen's real outline. On the one real booklet photo this was the
+  /// difference between unreadable blocks and clean digits; see
+  /// docs/recognition/AUDIT.md.
+  static Raster redInk(ColorRaster c, {double sigmaFraction = 0.25}) {
+    final w = c.width, h = c.height;
+    final dark = darkInk(c.toGray(), sigmaFraction: sigmaFraction);
+    final red = Raster(w, h);
+    for (var i = 0, p = 0; i < w * h; i++, p += 4) {
+      final r = c.rgba[p] - (c.rgba[p + 1] + c.rgba[p + 2]) / 2;
+      red.data[i] = (r + 128).round().clamp(0, 255);
+    }
+    final bg = _paperRedness(red, sigmaFraction);
+    // Redder than the paper by at least ~9 levels (the paper's own level is not
+    // quite zero, because the pen pulls the local average towards red).
+    final isRed = Raster(w, h);
+    for (var i = 0; i < isRed.data.length; i++) {
+      isRed.data[i] = (red.data[i] - bg.data[i]) >= 9 ? 255 : 0;
+    }
+    // A pixel counts as red ink when red is common around it (within about one
+    // chroma block); the picture's brightness, not its colour, then gives the
+    // stroke its shape.
+    final near = isRed.boxBlur(3);
+    final out = Raster(w, h);
+    for (var i = 0; i < out.data.length; i++) {
+      final k = (near.data[i] / 255 * 2).clamp(0.0, 1.0);
+      out.data[i] = (dark.data[i] * k).round();
     }
     return out;
   }
@@ -112,7 +164,8 @@ class Enhancer {
       EnhancedVariant('gray', 'Grey, unchanged', gray),
       EnhancedVariant('flat', 'Shadows and paper tint removed', flatten(gray)),
       EnhancedVariant('sauvola', 'Black and white, adaptive threshold', sauvola(gray)),
-      EnhancedVariant('red_ink', 'Red pen only', asDarkOnLight(redInk(color))),
+      EnhancedVariant('red_ink', 'Red pen only, shaped by brightness', asDarkOnLight(redInk(color))),
+      EnhancedVariant('red_chroma', 'Red pen only, by colour alone', asDarkOnLight(redChroma(color))),
       EnhancedVariant('dark_ink', 'Dark ink only', asDarkOnLight(darkInk(gray))),
     ];
   }

@@ -112,12 +112,21 @@ def blur(x):
 
 
 def faint_and_noise(x):
+    """Faint ink, grain and a paper-tone offset, each applied to only some pictures.
+
+    A first version applied all three to every picture, so the network never saw
+    a clean digit on a perfectly black background and read 27% of clean MNIST as
+    "not a digit". The ink maps the app produces do have exactly that clean
+    background, so the clean case must be well represented: the test below fails
+    the run if clean accuracy drops.
+    """
     n = x.shape[0]
-    gain = torch.empty(n, 1, 1, 1).uniform_(0.45, 1.0)
+    faint = (torch.rand(n, 1, 1, 1) < 0.7).float()
+    gain = 1 - faint * torch.empty(n, 1, 1, 1).uniform_(0, 0.55)  # 1.0 down to 0.45
     x = x * gain
-    sigma = torch.empty(n, 1, 1, 1).uniform_(0, 0.12) * (torch.rand(n, 1, 1, 1) < 0.6)
+    sigma = torch.empty(n, 1, 1, 1).uniform_(0, 0.12) * (torch.rand(n, 1, 1, 1) < 0.5)
     x = x + torch.randn_like(x) * sigma
-    base = torch.empty(n, 1, 1, 1).uniform_(0, 0.08)
+    base = torch.empty(n, 1, 1, 1).uniform_(0, 0.08) * (torch.rand(n, 1, 1, 1) < 0.5)
     return (x + base).clamp(0, 1)
 
 
@@ -147,7 +156,10 @@ def broken_strokes(x):
 
 
 def augment(x):
-    x = affine(x)
+    n = x.shape[0]
+    moved = affine(x)
+    use = (torch.rand(n) < 0.85).view(n, 1, 1, 1)
+    x = torch.where(use, moved, x)
     x = thickness(x)
     x = blur(x)
     x = broken_strokes(x)
@@ -252,7 +264,8 @@ def main():
         with torch.no_grad():
             torch.manual_seed(SEED + 1)
             va = (net(augment(xval)).argmax(1) == yval).float().mean().item()
-        print(f"epoch {ep + 1:2d}  loss {tot / len(xtr):.4f}  augmented-val acc {va:.4f}")
+            vc = (net(xval).argmax(1) == yval).float().mean().item()
+        print(f"epoch {ep + 1:2d}  loss {tot / len(xtr):.4f}  augmented-val acc {va:.4f}  clean-val acc {vc:.4f}")
 
     # ------------------------------------------------------- evaluation ----
     net.eval()
@@ -290,6 +303,8 @@ def main():
         "augmentation_seed": SEED,
     }
     print(json.dumps(results, indent=1))
+    if clean < 0.97:
+        sys.exit(f"clean MNIST accuracy {clean:.4f} is below 0.97: not exporting this model")
 
     # ----------------------------------------------------------- export ----
     w = []

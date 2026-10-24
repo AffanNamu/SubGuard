@@ -44,6 +44,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/logo.png
+    - assets/models/
 
 # App icon. The artwork is built by tool/make_icons.py from design/icon/source.png.
 # Regenerate the platform icons with:  dart run flutter_launcher_icons

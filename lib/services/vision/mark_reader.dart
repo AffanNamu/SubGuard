@@ -55,6 +55,10 @@ class MarkReading {
 
   String? get text => candidates.isEmpty ? null : candidates.first.text;
 
+  /// Every character as read, with "?" where one could not be read: "1?0".
+  /// A partial reading, for showing the examiner what was and was not seen.
+  String get displayText => chars.map((c) => c.text).join();
+
   /// Product of the best reading's characters' top probabilities, or 0.
   double get rawConfidence => candidates.isEmpty ? 0 : candidates.first.score;
 
@@ -69,13 +73,19 @@ class MarkReading {
 /// alternative it considered and never fills a gap: a missing decimal point is
 /// not added, a character that does not look like a digit is a "?", and a
 /// reading is only as good as its weakest character.
-class MarkReader {
+/// Reads one handwritten cell from its ink picture.
+abstract interface class HandwritingRecognizer {
+  MarkReading read(Raster ink);
+}
+
+class MarkReader implements HandwritingRecognizer {
   const MarkReader(this.predict, {this.maxDigitsPerCell = 5});
 
   final DigitPrediction Function(Float32List input) predict;
   final int maxDigitsPerCell;
 
   /// [ink] is the cell's ink strength, 0..255 (see `Enhancer.redInk` / `darkInk`).
+  @override
   MarkReading read(Raster ink) {
     final warnings = <String>[];
     final strong = ink.percentile(0.995);
