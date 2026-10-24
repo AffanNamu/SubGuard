@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	App-level privacy manifest. UniMarkLy keeps courses, students and scores on
+	the phone and has no accounts, analytics, advertising or network calls yet,
+	so it collects no data and does no tracking.
+
+	Libraries it bundles ship their own manifests, which Xcode merges. The
+	required-reason APIs below are the ones the app's own plugins use:
+	  - UserDefaults: shared_preferences (theme and header settings).
+	  - File timestamp: file_picker and share_plus read file dates.
+	After the first archive on a Mac, check Xcode's Privacy Report and add any
+	category it flags. When accounts and sync are added, declare email address
+	and user content here.
+	-->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

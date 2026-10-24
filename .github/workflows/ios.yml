@@ -1,0 +1,223 @@
+name: iOS release
+
+# Builds the iOS app on every push to main that can affect it. With the Apple
+# secrets set (see docs/RELEASE.md) it signs an IPA and uploads it to
+# TestFlight. Without them it still compiles the app unsigned, so a green run
+# always means "the iOS app builds".
+on:
+  push:
+    branches: [main]
+    # Only what can change the iOS build. Without this, every docs or Android
+    # change would start an iOS run, and the concurrency group below would
+    # cancel an iOS run already in progress.
+    paths:
+      - 'lib/**'
+      - 'ios/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Keep in step with build.yml.
+  FLUTTER_VERSION: '3.32.0'
+
+jobs:
+  build:
+    # App Store Connect now rejects uploads built with an SDK older than
+    # iOS 26 ("must be built with the iOS 26 SDK or later, included in
+    # Xcode 26"). macos-26 runners ship Xcode 26.
+    runs-on: macos-26
+    timeout-minutes: 90
+
+    env:
+      BUNDLE_ID: com.nassaracoretech.unimarkly
+      # Routed through env because the `secrets` context cannot be used
+      # directly in a step's `if:`.
+      IOS_DIST_CERT_P12_B64: ${{ secrets.IOS_DIST_CERT_P12_B64 }}
+      ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+      ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+      ASC_API_KEY_P8_B64: ${{ secrets.ASC_API_KEY_P8_B64 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Flutter version
+        run: |
+          flutter --version
+          xcodebuild -version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # ───────────────────────────────────────────────
+      # No signing secrets: prove the app compiles, then stop.
+      # ───────────────────────────────────────────────
+      - name: Build iOS (no signing)
+        if: ${{ env.IOS_DIST_CERT_P12_B64 == '' }}
+        run: |
+          echo "::notice::IOS_DIST_CERT_P12_B64 is not set, so this run builds without signing and uploads nothing."
+          flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+
+      # ───────────────────────────────────────────────
+      # Signing secrets present: sign, build the IPA, upload.
+      # ───────────────────────────────────────────────
+      - name: Install signing certificate and provisioning profile
+        if: ${{ env.IOS_DIST_CERT_P12_B64 != '' }}
+        env:
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISION_PROFILE_B64: ${{ secrets.IOS_PROVISION_PROFILE_B64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          for v in IOS_DIST_CERT_PASSWORD IOS_PROVISION_PROFILE_B64 KEYCHAIN_PASSWORD; do
+            if [ -z "${!v:-}" ]; then
+              echo "::error::${v} secret is missing, so the build cannot be signed."
+              exit 1
+            fi
+          done
+
+          CERT_PATH="$RUNNER_TEMP/dist_cert.p12"
+          PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/ci-signing.keychain-db"
+
+          echo -n "$IOS_DIST_CERT_P12_B64" | base64 --decode -o "$CERT_PATH"
+          echo -n "$IOS_PROVISION_PROFILE_B64" | base64 --decode -o "$PROFILE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$IOS_DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychain -d user | sed 's/"//g')
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
+
+          # What xcodebuild will see. A missing identity shows up here first.
+          echo "── Signing identities in the CI keychain ──"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+          echo "── Provisioning profile identifiers ──"
+          security cms -D -i "$PROFILE_PATH" | grep -A2 "TeamIdentifier\|application-identifier\|<key>Name</key>" || true
+
+      - name: Build signed IPA
+        if: ${{ env.IOS_DIST_CERT_P12_B64 != '' }}
+        env:
+          IOS_EXPORT_TEAM_ID: ${{ secrets.IOS_EXPORT_TEAM_ID }}
+          IOS_PROVISION_PROFILE_NAME: ${{ secrets.IOS_PROVISION_PROFILE_NAME }}
+        run: |
+          set -euo pipefail
+
+          [ -n "${IOS_EXPORT_TEAM_ID:-}" ] || \
+            { echo "::error::IOS_EXPORT_TEAM_ID secret is not set (your Apple Developer Team ID)"; exit 1; }
+          [ -n "${IOS_PROVISION_PROFILE_NAME:-}" ] || \
+            { echo "::error::IOS_PROVISION_PROFILE_NAME secret is not set (the profile's name, not the file name)"; exit 1; }
+
+          cat > ios/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>${IOS_EXPORT_TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${BUNDLE_ID}</key>
+              <string>${IOS_PROVISION_PROFILE_NAME}</string>
+            </dict>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # The committed Xcode project signs with "iPhone Developer" (a
+          # development identity), but the CI keychain holds an Apple
+          # Distribution identity. Without these overrides xcodebuild looks
+          # for a development identity and fails with "No valid code signing
+          # certificates were found". FLUTTER_XCODE_* are Flutter's supported
+          # way to override build settings for the archive.
+          export FLUTTER_XCODE_CODE_SIGN_STYLE="Manual"
+          export FLUTTER_XCODE_CODE_SIGN_IDENTITY="Apple Distribution"
+          export FLUTTER_XCODE_DEVELOPMENT_TEAM="$IOS_EXPORT_TEAM_ID"
+
+          # Manual signing needs an explicit profile, but a global
+          # FLUTTER_XCODE_PROVISIONING_PROFILE_SPECIFIER would also be forced
+          # onto every CocoaPods library target, which rejects it. So patch it
+          # into the Runner target only: right after Runner's own bundle ID
+          # (the ".RunnerTests" ones end differently and are not matched).
+          perl -pi -e 's/(PRODUCT_BUNDLE_IDENTIFIER = com\.nassaracoretech\.unimarkly;)/$1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "'"${IOS_PROVISION_PROFILE_NAME}"'";/' \
+            ios/Runner.xcodeproj/project.pbxproj
+          echo "── PROVISIONING_PROFILE_SPECIFIER after patch (expect 3 lines) ──"
+          grep "PROVISIONING_PROFILE_SPECIFIER" ios/Runner.xcodeproj/project.pbxproj
+
+          # The run number only ever goes up, so every upload has a build
+          # number App Store Connect has not seen before.
+          flutter build ipa \
+            --release \
+            --build-number=${{ github.run_number }} \
+            --export-options-plist=ios/ExportOptions.plist
+
+      - name: Verify IPA
+        if: ${{ env.IOS_DIST_CERT_P12_B64 != '' }}
+        run: |
+          set -euo pipefail
+          IPA_FILE=$(find build/ios/ipa -name "*.ipa" | head -n 1)
+          [ -n "$IPA_FILE" ] || { echo "::error::No IPA was produced"; exit 1; }
+          echo "IPA: $IPA_FILE ($(du -h "$IPA_FILE" | cut -f1))"
+
+      - name: Upload IPA artifact
+        if: ${{ env.IOS_DIST_CERT_P12_B64 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unimarkly-ipa
+          path: build/ios/ipa/*.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      # TestFlight, when all three App Store Connect API secrets are present.
+      - name: Upload to App Store Connect
+        if: ${{ env.IOS_DIST_CERT_P12_B64 != '' && env.ASC_API_KEY_ID != '' && env.ASC_API_ISSUER_ID != '' && env.ASC_API_KEY_P8_B64 != '' }}
+        run: |
+          set -euo pipefail
+
+          # A stray newline from pasting a secret is a common cause of the
+          # generic "Failure to authenticate" error, so trim whitespace.
+          KEY_ID="$(printf '%s' "$ASC_API_KEY_ID" | tr -d '[:space:]')"
+          ISSUER_ID="$(printf '%s' "$ASC_API_ISSUER_ID" | tr -d '[:space:]')"
+
+          mkdir -p ~/private_keys
+          printf '%s' "$ASC_API_KEY_P8_B64" | tr -d '[:space:]' | base64 --decode -o ~/private_keys/AuthKey_${KEY_ID}.p8
+
+          # Structure only, never the values: tells a mis-pasted secret from
+          # a wrong or revoked key.
+          echo "Key ID length: ${#KEY_ID} (expect 10). Issuer ID length: ${#ISSUER_ID} (expect 36)."
+          echo ".p8 first line: $(head -n1 ~/private_keys/AuthKey_${KEY_ID}.p8)"
+
+          IPA_FILE=$(find build/ios/ipa -name "*.ipa" | head -n 1)
+          xcrun altool --upload-app --type ios --file "$IPA_FILE" \
+            --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" --verbose
+
+      - name: Upload skipped
+        if: ${{ env.IOS_DIST_CERT_P12_B64 != '' && (env.ASC_API_KEY_ID == '' || env.ASC_API_ISSUER_ID == '' || env.ASC_API_KEY_P8_B64 == '') }}
+        run: |
+          echo "::notice::The App Store Connect API secrets are not all set. The IPA is a workflow artifact only and was not sent to TestFlight."
