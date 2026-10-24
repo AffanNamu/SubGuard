@@ -1,0 +1,254 @@
+name: Android release
+
+# Builds the Android app on every push to main that can affect it. With the
+# signing secrets (see docs/RELEASE.md) the app bundle and APK are signed with
+# the upload key and, if a Play service account is set, uploaded to Google Play
+# internal testing. Without them the build still runs with the debug key, so a
+# green run always means "the Android app builds".
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Keep in step with ios.yml.
+  FLUTTER_VERSION: '3.32.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
+      # Routed through env because the `secrets` context cannot be used
+      # directly in a step's `if:`, and a step's own `env` is not visible to
+      # its own `if:`.
+      KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties', '**/*.gradle*', '**/settings.gradle*') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      # gradle-wrapper.jar is not committed.
+      - name: Fetch Gradle wrapper jar
+        run: |
+          mkdir -p android/gradle/wrapper
+          curl -sSL -o android/gradle/wrapper/gradle-wrapper.jar \
+            https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar
+          chmod +x android/gradlew
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # `flutter pub get` writes android/local.properties. Make sure it also
+      # knows where the Android SDK is, as Gradle fails with an unhelpful
+      # message otherwise.
+      - name: Check android/local.properties
+        run: |
+          set -euo pipefail
+          SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          [ -n "${SDK_DIR}" ] || { echo "::error::No Android SDK found on the runner"; exit 1; }
+          grep -q '^sdk.dir=' android/local.properties || echo "sdk.dir=${SDK_DIR}" >> android/local.properties
+          cat android/local.properties | sed 's/=.*/=…/'
+
+      # ───────────────────────────────────────────────
+      # Release signing, only when the keystore secret is set.
+      # ───────────────────────────────────────────────
+      - name: Restore release keystore
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          for v in STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!v:-}" ]; then
+              echo "::error::${v} secret is missing, so the build cannot be signed."
+              exit 1
+            fi
+          done
+
+          mkdir -p android/app/keystore
+
+          # Tolerates line breaks and missing padding from how the secret was pasted.
+          python3 - <<'PY'
+          import os, base64, pathlib
+          b64 = os.environ["KEYSTORE_B64"].strip().replace("\n", "").replace("\r", "")
+          b64 += "=" * ((4 - len(b64) % 4) % 4)
+          data = base64.b64decode(b64, validate=False)
+          out = pathlib.Path("android/app/keystore/release.keystore")
+          out.write_bytes(data)
+          print(f"Wrote {len(data)} bytes to {out}")
+          PY
+
+          KEYSTORE_PATH="$(pwd)/android/app/keystore/release.keystore"
+
+          # Fails here, with a clear message, if the password or alias is wrong.
+          keytool -list -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" -storepass "$STORE_PASSWORD" \
+            | grep -E "fingerprint|Entry type" || { echo "::error::The keystore, alias or password is wrong."; exit 1; }
+
+          # app/build.gradle reads this file. The path is absolute because
+          # Gradle resolves a relative one against android/app/.
+          {
+            echo "storeFile=$KEYSTORE_PATH"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+          echo "Release signing configured."
+
+      - name: Note unsigned build
+        if: ${{ env.KEYSTORE_B64 == '' }}
+        run: echo "::notice::KEYSTORE_B64 is not set, so this build uses the debug key. It proves the app builds but cannot be uploaded to Google Play."
+
+      # The run number only goes up, so every build has a higher version code
+      # than the last, which Google Play requires.
+      - name: Build APK
+        run: flutter build apk --release --build-number=${{ github.run_number }}
+
+      - name: Build app bundle
+        run: flutter build appbundle --release --build-number=${{ github.run_number }}
+
+      - name: Verify APK signature
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          [ -f "$APK" ] || { echo "::error::APK not found"; exit 1; }
+          echo "APK size: $(du -h "$APK" | cut -f1)"
+
+          SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          BUILD_TOOLS_VER="$(ls "${SDK_DIR}/build-tools" | sort -V | tail -1)"
+          APKSIGNER="${SDK_DIR}/build-tools/${BUILD_TOOLS_VER}/apksigner"
+          [ -f "$APKSIGNER" ] || { echo "::warning::apksigner not found, skipping the signature check"; exit 0; }
+
+          CERTS="$("$APKSIGNER" verify --print-certs "$APK")"
+          echo "$CERTS"
+
+          # With a keystore configured, a debug-signed APK means the signing
+          # setup silently fell back. Fail instead of shipping it.
+          if [ -n "${KEYSTORE_B64:-}" ] && echo "$CERTS" | grep -qi "Android Debug"; then
+            echo "::error::A keystore was configured but the APK is signed with the debug key."
+            exit 1
+          fi
+
+      - name: Verify app bundle
+        run: |
+          set -euo pipefail
+          AAB="build/app/outputs/bundle/release/app-release.aab"
+          [ -f "$AAB" ] || { echo "::error::AAB not found"; exit 1; }
+          echo "AAB size: $(du -h "$AAB" | cut -f1)"
+
+      # Google Play requires 64-bit native libraries to support 16 KB memory
+      # pages for apps targeting Android 15 and later (this app targets 36).
+      # Only arm64-v8a and x86_64 are checked; 32-bit libraries are listed for
+      # information. A failure is a warning, not an error: trace it to the
+      # plugin that ships the library and look for a newer version.
+      - name: Check 16 KB page-size alignment
+        run: |
+          set -euo pipefail
+          AAB="build/app/outputs/bundle/release/app-release.aab"
+          EXTRACT_DIR="$RUNNER_TEMP/aab_extract"
+          rm -rf "$EXTRACT_DIR" && mkdir -p "$EXTRACT_DIR"
+          unzip -oq "$AAB" -d "$EXTRACT_DIR"
+
+          # Assigned with =() so `set -u` does not treat it as unset.
+          declare -a NON_COMPLIANT=()
+          SO_FILES=$(find "$EXTRACT_DIR" -name "*.so" | sort)
+
+          if [ -z "$SO_FILES" ]; then
+            echo "No .so files in the bundle, nothing to check."
+          else
+            printf "%-50s %-12s %-10s %s\n" LIBRARY ABI ALIGN STATUS
+            while IFS= read -r so; do
+              REL_PATH="${so#$EXTRACT_DIR/}"
+              ABI=$(echo "$REL_PATH" | grep -oE "arm64-v8a|armeabi-v7a|x86_64|x86" | head -n1 || true)
+              MAX_ALIGN_DEC=0
+              MAX_ALIGN_HEX="0x0"
+              while IFS= read -r align_hex; do
+                clean=$(echo "$align_hex" | tr -d '[:space:]')
+                [ -n "$clean" ] || continue
+                dec=$((16#${clean#0x}))
+                if [ "$dec" -gt "$MAX_ALIGN_DEC" ]; then MAX_ALIGN_DEC=$dec; MAX_ALIGN_HEX=$clean; fi
+              done < <(readelf -lW "$so" 2>/dev/null | awk '/LOAD/{print $NF}')
+
+              if [ "$ABI" = "arm64-v8a" ] || [ "$ABI" = "x86_64" ]; then
+                if [ "$MAX_ALIGN_DEC" -ge 16384 ]; then STATUS=OK; else STATUS=FAIL; NON_COMPLIANT+=("$REL_PATH (align=$MAX_ALIGN_HEX)"); fi
+              else
+                STATUS="n/a (32-bit)"
+              fi
+              printf "%-50s %-12s %-10s %s\n" "$(basename "$so")" "${ABI:-?}" "$MAX_ALIGN_HEX" "$STATUS"
+            done <<< "$SO_FILES"
+          fi
+
+          if [ "${#NON_COMPLIANT[@]}" -eq 0 ]; then
+            echo "All 64-bit native libraries are 16 KB aligned."
+          else
+            for entry in "${NON_COMPLIANT[@]}"; do echo "  not aligned: $entry"; done
+            echo "::warning::${#NON_COMPLIANT[@]} 64-bit native libraries are not 16 KB aligned. See the job log."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unimarkly-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unimarkly-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      # Needs a signed bundle, a Play service account, and the app to exist in
+      # Play Console with a first bundle uploaded by hand.
+      - name: Upload to Google Play (internal testing)
+        if: ${{ env.KEYSTORE_B64 != '' && env.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.nassaracoretech.unimarkly
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed

@@ -1,11 +1,11 @@
 # Releasing UniMarkLy
 
-Two GitHub Actions workflows build the app.
+Three GitHub Actions workflows check and build the app.
 
 | Workflow | Runs on | What it does |
 |---|---|---|
-| `build.yml` / Analyze and test | every push and pull request | `flutter analyze`, `flutter test`, and a check that the generated drift code is current |
-| `build.yml` / Android release | pushes to `main` | builds an app bundle and an APK; signs them and uploads to Play internal testing when the Android secrets exist |
+| `build.yml` (Check) | every push and pull request | `flutter analyze`, `flutter test`, and a check that the generated drift code is current |
+| `android.yml` | pushes to `main` that touch `lib/`, `android/`, `assets/` or the pubspec files | builds an APK and an app bundle, checks the signature and 16 KB alignment; with the Android secrets it signs them and uploads to Play internal testing |
 | `ios.yml` | pushes to `main` that touch `lib/`, `ios/`, `assets/` or the pubspec files | builds the iOS app; with the Apple secrets it signs an IPA and uploads it to TestFlight, without them it builds unsigned |
 
 Without any secrets the workflow still builds both apps. They are just not signed for the stores.
@@ -24,22 +24,38 @@ Store IDs cannot be changed after the first upload. Decide before the first rele
 
 ### Android (Play internal testing)
 
-Create an upload key once and keep a copy somewhere safe:
+The secret names match the ones used in the eSportlyic repository, so they can be copied across.
+Signing is skipped when `KEYSTORE_B64` is empty; the build then uses the debug key and cannot go to Play.
+
+Create an upload key once and keep a copy somewhere safe. Do not reuse the eSportlyic key: Google
+Play ties an upload key to one app.
 
 ```
-keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
-base64 -w0 upload-keystore.jks     # paste the output into ANDROID_KEYSTORE_BASE64
+keytool -genkey -v -keystore release.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+base64 -w0 release.keystore     # paste the output into KEYSTORE_B64
 ```
 
 | Secret | Value |
 |---|---|
-| `ANDROID_KEYSTORE_BASE64` | the keystore, base64 encoded |
-| `ANDROID_KEYSTORE_PASSWORD` | keystore password |
-| `ANDROID_KEY_ALIAS` | `upload` (or the alias you chose) |
-| `ANDROID_KEY_PASSWORD` | key password |
-| `PLAY_SERVICE_ACCOUNT_JSON` | Google Play service account JSON, with release permission on the app |
+| `KEYSTORE_B64` | the keystore, base64 encoded |
+| `STORE_PASSWORD` | keystore password |
+| `KEY_ALIAS` | `upload` (or the alias you chose) |
+| `KEY_PASSWORD` | key password |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Google Play service account JSON with release permission on the app. Optional: without it the bundle is kept as an artifact and not uploaded |
 
 The app must already exist in Play Console, and the first bundle must be uploaded by hand once.
+
+What the workflow checks, learned from the eSportlyic workflow:
+
+- The keystore is decoded tolerantly (line breaks, missing padding) and opened with `keytool`, so a wrong
+  password or alias fails at once with a clear message instead of deep inside Gradle.
+- With a keystore configured, an APK signed with the debug key fails the run, rather than shipping.
+- Every 64-bit native library in the bundle is checked for 16 KB page alignment, which Google Play requires
+  for apps targeting Android 15 and later (this app targets 36). A failure is a warning that names the library.
+- The Android SDK location is confirmed in `android/local.properties`.
+- Version codes come from the GitHub run number, which only goes up, as Google Play requires.
+
+The signing and upload steps have not been run against a real Play account.
 
 ### iOS (TestFlight)
 
@@ -70,9 +86,9 @@ Lessons carried over from the eSportlyic workflow, which hit each of these:
 The signing and upload steps have not been run against a real Apple account. Run the workflow once
 with the secrets set and read the log, which prints the signing identities and profile identifiers.
 
-**Flutter version.** Both workflows pin Flutter 3.32.0. The eSportlyic workflow pins 3.47.1 and
+**Flutter version.** Both store workflows pin Flutter 3.32.0 (`FLUTTER_VERSION`, in all three files). The eSportlyic workflow pins 3.47.1 and
 builds with Xcode 26. Whether 3.32.0 builds cleanly with Xcode 26 is not yet known. If the iOS run
-fails while compiling, raising `FLUTTER_VERSION` in both workflows is the first thing to try.
+fails while compiling, raising `FLUTTER_VERSION` in all three workflows is the first thing to try.
 Android must be rebuilt and checked at the same time.
 
 ### Privacy manifest
