@@ -52,9 +52,13 @@ on the photograph. `RecognitionRepository.labelledExamples()` returns those with
 region as (photo, region, confirmed text) triples: the raw material for measuring
 the reader and, later, fine-tuning it.
 
-Not done, on purpose: nothing retrains on its own; nothing leaves the phone. To use
-these examples an administrator would export them deliberately with the examiners'
-consent (no export screen exists yet: see `MODEL_SELECTION.md`, phase B).
+Not done, on purpose: nothing retrains on its own; nothing leaves the phone by
+itself. **Settings → Training examples** shows how many confirmed values are kept and
+makes a zip (a cropped picture of each piece of handwriting, `labels.json` with the
+confirmed text, what the machine had read and what the examiner decided, and a
+README) only when the examiner ticks that the people concerned agree and presses
+Export; the examiner then shares the file. The crops are pictures of real handwriting
+and, for exam numbers, real registration numbers.
 
 ## Asking for data
 

@@ -10,6 +10,7 @@ import 'bin_screen.dart';
 import 'defaults_screen.dart';
 import 'header_settings_screen.dart';
 import 'templates_screen.dart';
+import 'training_examples_screen.dart';
 
 /// Settings as one calm column: a few groups, each row with a plain-words
 /// description, each opening its own full-width page. No side panels and no
@@ -186,6 +187,18 @@ class SettingsScreen extends ConsumerWidget {
                     title: 'Saved documents',
                     subtitle: 'Files other apps opened with UniMarkLy and you kept',
                     onTap: () => open(const SavedDocumentsScreen()),
+                  ),
+                  const Divider(indent: 76),
+                  NavTile(
+                    icon: Icons.school_rounded,
+                    color: c.tileAmber,
+                    title: 'Training examples',
+                    subtitle: switch (ref.watch(labelledExamplesProvider)) {
+                      AsyncData(:final value) =>
+                        value.isEmpty ? 'Values you confirm are kept here to improve the reader' : '${value.length} confirmed values, kept on this phone',
+                      _ => 'Values you confirm are kept here to improve the reader',
+                    },
+                    onTap: () => open(const TrainingExamplesScreen()),
                   ),
                   const Divider(indent: 76),
                   NavTile(

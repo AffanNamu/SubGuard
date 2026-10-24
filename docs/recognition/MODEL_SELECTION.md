@@ -36,13 +36,14 @@ architecture problems.
 
 ## Plan, in phases
 
-**A. Done:** conservative engine; quality gate; layout and row finding; MNIST
-digit suggester; human review with evidence; labelled examples captured on every
-confirmation.
+**A. Done:** conservative engine; quality gate; page straightening; layout and row
+finding; MNIST digit suggester; human review with evidence; labelled examples
+captured on every confirmation and exportable on request.
 
 **B. Needs data and a decision from the product owner:**
 1. Collect authorised full-resolution booklet photographs with confirmed values
-   (see `DATASET.md`); build an export of consenting examiners' labelled examples.
+   (see `DATASET.md`). The export of consenting examiners' labelled examples exists
+   (Settings → Training examples); what is missing is the data.
 2. Re-run `tool/bench/run_benchmark.sh` on the larger set; report with denominators.
 3. Evaluate TrOCR-small (ONNX, int8) and a fine-tuned digit network on that set,
    on a real low-end Android phone, for accuracy, latency and memory.

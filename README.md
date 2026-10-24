@@ -53,7 +53,8 @@ lands in the grid and the exports. Handwriting is **not** read automatically yet
   kept, never "corrected"), and an exam number that is not on the class list are all shown. The
   waiting list says why each booklet is waiting. Confirmed records show what the machine read
   beside what you confirmed, are never overwritten by a later re-read, and every decision is
-  stored with its time as a labelled example.
+  stored with its time as a labelled example. **Settings → Training examples** counts them
+  and, only when you say the people concerned agree, packs them into a file to share.
 - Light and dark themes, with a switch in Settings.
 - Undo for deletes, and a bin for deleted courses.
 
