@@ -147,12 +147,30 @@ jobs:
         working-directory: android
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
+      # A test task with nothing to run also "passes", so count what ran.
+      - name: Count unit tests that ran
+        run: |
+          set -euo pipefail
+          DIR="build/app/test-results/testDebugUnitTest"
+          [ -d "$DIR" ] || { echo "::error::No unit test results were written, so no tests ran."; exit 1; }
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          tests = failures = errors = skipped = 0
+          for f in glob.glob("build/app/test-results/testDebugUnitTest/*.xml"):
+              r = ET.parse(f).getroot()
+              tests += int(r.get("tests", 0)); failures += int(r.get("failures", 0))
+              errors += int(r.get("errors", 0)); skipped += int(r.get("skipped", 0))
+          print(f"Android unit tests: {tests} ran, {failures} failed, {errors} errors, {skipped} skipped")
+          assert tests >= 10, "expected the document-receiving tests to run"
+          assert failures == 0 and errors == 0
+          PY
+
       - name: Upload unit test report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: android-unit-test-report
-          path: android/app/build/reports/tests/testDebugUnitTest
+          path: build/app/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
 
       # The run number only goes up, so every build has a higher version code
