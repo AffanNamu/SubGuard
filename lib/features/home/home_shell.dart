@@ -6,6 +6,7 @@ import '../../providers/providers.dart';
 import '../courses/courses_screen.dart';
 import '../export/exports_screen.dart';
 import '../settings/settings_screen.dart';
+import '../incoming/incoming_controller.dart';
 import 'home_actions.dart';
 import 'home_screen.dart';
 
@@ -26,7 +27,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     super.initState();
     // Photos left unread when the app was closed carry on being read.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(processingProvider.notifier).resumeAll();
+      if (!mounted) return;
+      ref.read(processingProvider.notifier).resumeAll();
+      // From here, documents other apps open with UniMarkLy can be shown.
+      ref.read(incomingProvider.notifier).start();
     });
   }
 

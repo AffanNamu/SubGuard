@@ -29,6 +29,8 @@ dependencies:
   image_picker: ^1.2.1
   google_mlkit_text_recognition: ^0.16.0
   paddle_ocr_native: ^0.1.1
+  pdfx: ^2.11.0
+  xml: ^6.6.1
 
 dev_dependencies:
   flutter_test:
@@ -37,7 +39,6 @@ dev_dependencies:
   build_runner: ^2.4.0
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.0
-  xml: ^6.6.1
 
 flutter:
   uses-material-design: true

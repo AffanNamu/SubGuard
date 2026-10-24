@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -18,7 +19,12 @@ import 'package:unimarkly/domain/defaults.dart';
 import 'package:unimarkly/domain/ids.dart';
 import 'package:unimarkly/domain/models.dart';
 import 'package:unimarkly/domain/scan.dart';
+import 'package:unimarkly/features/incoming/incoming_controller.dart';
 import 'package:unimarkly/providers/providers.dart';
+import 'package:unimarkly/services/incoming/incoming_file.dart';
+import 'package:unimarkly/services/incoming/incoming_source.dart';
+import 'package:unimarkly/services/incoming/pdf_backend.dart';
+import 'package:unimarkly/services/incoming/saved_documents.dart';
 import 'package:unimarkly/services/reader/ocr_engine.dart';
 import 'package:unimarkly/services/scan/image_source.dart';
 import 'package:unimarkly/services/scan/intake_service.dart';
@@ -51,6 +57,61 @@ class FakeImageSource implements ImageSource {
   Future<List<PickedImage>> chooseFiles() => _pick('files');
 }
 
+/// Stands in for the operating system handing documents to the app.
+class FakeIncomingSource implements IncomingSource {
+  final _controller = StreamController<IncomingEvent>.broadcast();
+
+  /// What had arrived before the app could show anything (a cold start).
+  final List<IncomingEvent> beforeReady = [];
+
+  @override
+  Stream<IncomingEvent> get events => _controller.stream;
+
+  @override
+  Future<List<IncomingEvent>> ready() async => [...beforeReady];
+
+  /// A document arriving while the app is open.
+  void deliver(IncomingEvent event) => _controller.add(event);
+}
+
+/// The phone's PDF engine does not exist in widget tests. This draws a marker
+/// instead, and "renders" pages as small image files.
+class FakePdfBackend extends PdfBackend {
+  FakePdfBackend();
+
+  int pages = 3;
+  bool failToOpen = false;
+  final viewed = <String>[];
+
+  @override
+  Widget view(String path, {required void Function(String message) onError}) {
+    viewed.add(path);
+    if (failToOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => onError('This PDF could not be drawn.'));
+    }
+    return Center(child: Text('PDF PAGES: $pages'));
+  }
+
+  @override
+  Future<List<File>> renderPages(
+    String path,
+    Directory outDir, {
+    int maxPages = 40,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    if (failToOpen) throw StateError('cannot open');
+    await outDir.create(recursive: true);
+    final out = <File>[];
+    for (var i = 1; i <= pages; i++) {
+      final f = File(p.join(outDir.path, 'page_$i.jpg'));
+      await f.writeAsBytes(await makePng(300 + i, 400, ui.Color(0xFF105070 + i * 0x070503)));
+      out.add(f);
+      onProgress?.call(i, pages);
+    }
+    return out;
+  }
+}
+
 /// Runs the real app on an in-memory database.
 ///
 /// Data a test needs up front goes in through `seed`, which runs before the
@@ -62,6 +123,9 @@ class AppHarness {
   late SharedPreferences prefs;
   late Directory work;
   late ScanFiles scanFiles;
+  late SavedDocuments savedDocuments;
+  FakeIncomingSource incoming = FakeIncomingSource();
+  FakePdfBackend pdf = FakePdfBackend();
 
   /// What the Take photo / Choose images buttons return in a test.
   final FakeImageSource imageSource = FakeImageSource();
@@ -78,6 +142,10 @@ class AppHarness {
     Map<String, Object> prefsValues = const {},
     Future<void> Function()? seed,
 
+    /// Runs after the app's folders exist and before it starts (for files a
+    /// test needs on disk first).
+    void Function()? beforeStart,
+
     /// The bottom-bar tab to open first. Most tests are about courses.
     String? tab = 'Courses',
   }) async {
@@ -87,6 +155,9 @@ class AppHarness {
     db = AppDatabase(NativeDatabase.memory());
     work = Directory.systemTemp.createTempSync('unimarkly_ui_');
     scanFiles = ScanFiles(Directory(p.join(work.path, 'scans')));
+    incoming = FakeIncomingSource();
+    pdf = FakePdfBackend();
+    savedDocuments = SavedDocuments(Directory(p.join(work.path, 'saved_documents')));
 
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
@@ -98,12 +169,16 @@ class AppHarness {
     });
 
     if (seed != null) await tester.runAsync(seed);
+    beforeStart?.call();
 
     await tester.pumpWidget(ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(db),
         sharedPreferencesProvider.overrideWithValue(prefs),
         scanFilesProvider.overrideWithValue(scanFiles),
+        savedDocumentsProvider.overrideWithValue(savedDocuments),
+        incomingSourceProvider.overrideWithValue(incoming),
+        pdfBackendProvider.overrideWithValue(pdf),
         // No real reader in widget tests: photos wait for the examiner.
         ocrEngineProvider.overrideWithValue(const UnavailableOcrEngine()),
         imageSourceProvider.overrideWithValue(imageSource),

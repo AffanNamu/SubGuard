@@ -50,6 +50,40 @@ lands in the grid and the exports. Handwriting is **not** read automatically yet
 - Light and dark themes, with a switch in Settings.
 - Undo for deletes, and a bin for deleted courses.
 
+## Opening documents from other apps
+
+UniMarkLy is offered in the phone's "Open with" and share lists for PDF, Word (`.docx`, `.doc`),
+Excel (`.xlsx`, `.xls`), CSV, and JPEG, PNG, WebP and HEIC photos. It never claims to be the default
+for any of them; the phone's own chooser decides.
+
+- **Android** (`AndroidManifest.xml`, `MainActivity.kt`, `IncomingFiles.kt`): `VIEW`, `SEND` and
+  `SEND_MULTIPLE` filters for those MIME types only. A document arrives as a `content://` address;
+  it is streamed into a private copy in the app cache (never a shared folder, never a file path),
+  the name is made safe, over 200 MB is refused, and `file://` addresses are refused. The
+  activity is `singleTask` so a running app receives the document instead of starting a second one.
+- **iOS** (`Info.plist`, `AppDelegate.swift`): document types with rank *Alternate* and
+  "open in place". The file's security-scoped URL is read with file coordination (so a file in iCloud
+  Drive downloads first) and copied to a private temporary folder. Photos shared from the Photos app
+  do not appear (that needs a Share Extension, which is not built); photos from Files do.
+- **In the app** (`lib/features/incoming`, `lib/services/incoming`): the file is checked from its bytes,
+  not just its name. Then it is shown: PDF with zoom and page controls (the phone's own PDF engine);
+  Word as text (headings, bold and italic, bullets, tables; pictures and layout are not drawn); Excel and
+  CSV as a scrollable grid with sheet tabs (first 5,000 rows shown). Old `.doc` and `.xls`, locked, damaged,
+  empty, unsupported and oversized files each say what is wrong and offer "Open in another app" and
+  "Save a copy". A held-up document shows "Opening…"; a document that started the app is opened once
+  the app is up; the same document delivered twice opens once.
+- **Next steps depend on the file, and viewing never changes data.** A table can be used as a class list
+  or as scores, which opens the existing import screen, where columns are matched and nothing is written
+  until you press its button. A photo, or the pages of a PDF, can start the scan workflow. "Save a copy"
+  keeps a file in Settings, Saved documents (the same bytes are never stored twice and a different file is
+  never replaced). The original is only ever read.
+
+Checked in tests: the file checks, all three readers on files UniMarkLy itself writes, every screen above
+at six phone sizes, and the Android copying code on a plain JVM (Robolectric, run by the Android workflow).
+**Not yet checked on a real phone:** that Android and iOS actually offer UniMarkLy, that the system PDF
+engine draws pages, and the iOS copying code (it is only compiled). The list of device checks is in
+`docs/DEVICE_TESTS.md`.
+
 ## What it does not do (yet)
 
 - Handwriting is read only partly. The reader is PaddleOCR (PP-OCR) running on the phone with

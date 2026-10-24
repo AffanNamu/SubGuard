@@ -9,7 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'data/database/app_database.dart';
+import 'features/incoming/incoming_controller.dart';
 import 'providers/providers.dart';
+import 'services/incoming/saved_documents.dart';
 import 'services/scan/scan_files.dart';
 
 Future<void> main() async {
@@ -27,6 +29,7 @@ Future<void> main() async {
       databaseProvider.overrideWithValue(db),
       sharedPreferencesProvider.overrideWithValue(prefs),
       scanFilesProvider.overrideWithValue(scanFiles),
+      savedDocumentsProvider.overrideWithValue(SavedDocuments(Directory(p.join(documents.path, 'saved_documents')))),
     ],
     child: const UniMarkLyApp(),
   ));

@@ -95,20 +95,22 @@ class TableReader {
     return n;
   }
 
-  /// The first sheet that has any data.
-  static RawTable fromExcel(Uint8List bytes) {
+  /// The first sheet that has any data, or the sheet called [sheet].
+  static RawTable fromExcel(Uint8List bytes, {String? sheet}) {
     final book = Excel.decodeBytes(bytes);
-    for (final sheet in book.tables.values) {
+    for (final entry in book.tables.entries) {
+      if (sheet != null && entry.key != sheet) continue;
       final rows = <List<String>>[
-        for (final row in sheet.rows) [for (final c in row) _excelText(c?.value)],
+        for (final row in entry.value.rows) [for (final c in row) excelText(c?.value)],
       ];
       final table = RawTable(rows);
-      if (!table.isEmpty) return table;
+      if (!table.isEmpty || sheet != null) return table;
     }
     return RawTable(const []);
   }
 
-  static String _excelText(CellValue? v) {
+  /// A cell's value as the text a person would read.
+  static String excelText(CellValue? v) {
     if (v == null) return '';
     if (v is DoubleCellValue) {
       final d = v.value;

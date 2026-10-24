@@ -44,6 +44,12 @@ android {
         versionName = flutter.versionName
     }
 
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
     packaging {
         jniLibs {
             excludes += ["lib/armeabi-v7a/**", "lib/x86/**", "lib/x86_64/**"]
@@ -72,6 +78,11 @@ android {
 
 dependencies {
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
+
+    // JVM tests for the code that receives documents from other apps.
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation "androidx.test:core:1.6.1"
 }
 
 flutter {

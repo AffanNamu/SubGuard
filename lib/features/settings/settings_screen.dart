@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../../providers/providers.dart';
 import '../../services/scan/image_source.dart';
+import '../incoming/saved_documents_screen.dart';
 import 'bin_screen.dart';
 import 'defaults_screen.dart';
 import 'header_settings_screen.dart';
@@ -179,6 +180,14 @@ class SettingsScreen extends ConsumerWidget {
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
+                  NavTile(
+                    icon: Icons.folder_copy_rounded,
+                    color: c.tileGreen,
+                    title: 'Saved documents',
+                    subtitle: 'Files other apps opened with UniMarkLy and you kept',
+                    onTap: () => open(const SavedDocumentsScreen()),
+                  ),
+                  const Divider(indent: 76),
                   NavTile(
                     icon: Icons.delete_outline_rounded,
                     color: c.danger,

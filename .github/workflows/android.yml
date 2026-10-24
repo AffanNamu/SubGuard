@@ -141,6 +141,20 @@ jobs:
         if: ${{ env.KEYSTORE_B64 == '' }}
         run: echo "::notice::KEYSTORE_B64 is not set, so this build uses the debug key. It proves the app builds but cannot be uploaded to Google Play."
 
+      # Runs the JVM tests of the code that receives documents from other apps
+      # (copying a content:// document safely, refusing odd or oversized ones).
+      - name: Android unit tests
+        working-directory: android
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+
+      - name: Upload unit test report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-unit-test-report
+          path: android/app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore
+
       # The run number only goes up, so every build has a higher version code
       # than the last, which Google Play requires.
       - name: Build APK

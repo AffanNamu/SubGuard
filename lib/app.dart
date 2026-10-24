@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/navigation.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/home_shell.dart';
+import 'features/incoming/incoming_controller.dart';
 import 'providers/providers.dart';
 
 class UniMarkLyApp extends ConsumerWidget {
@@ -14,6 +16,8 @@ class UniMarkLyApp extends ConsumerWidget {
     return MaterialApp(
       title: 'UniMarkLy',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
+      builder: (context, child) => IncomingOverlay(child: child),
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: mode,

@@ -21,7 +21,6 @@ Future<String?> runUpload(
   String? batchId,
   String? courseId,
 }) async {
-  final scans = ref.read(scanRepositoryProvider);
   final settings = ref.read(settingsProvider);
 
   // Which course are these booklets for?
@@ -30,7 +29,7 @@ Future<String?> runUpload(
     course = ref.read(batchProvider(batchId))?.course.id ?? course;
   }
   if (course == null) {
-    final chosen = await _chooseCourse(context, ref);
+    final chosen = await chooseCourse(context, ref);
     if (chosen == null || !context.mounted) return null;
     course = chosen;
   }
@@ -56,6 +55,25 @@ Future<String?> runUpload(
     return null;
   }
   if (picked.isEmpty || !context.mounted) return null;
+  return addPhotos(context, ref, picked, courseId: course, batchId: batchId);
+}
+
+/// Stores [picked] photos in a batch of [courseId] and queues them for reading:
+/// the part of "add photos" that is the same whether they came from the camera,
+/// the gallery, or another app that opened them with UniMarkLy.
+///
+/// Photos already stored are asked about once; photos that can not be used are
+/// listed with the reason. Returns the batch, or null if nothing was added.
+Future<String?> addPhotos(
+  BuildContext context,
+  WidgetRef ref,
+  List<PickedImage> picked, {
+  required String courseId,
+  String? batchId,
+}) async {
+  final scans = ref.read(scanRepositoryProvider);
+  final settings = ref.read(settingsProvider);
+  final course = courseId;
 
   final id = batchId ?? await scans.createBatch(course);
   final intake = ref.read(intakeServiceProvider);
@@ -99,14 +117,19 @@ Future<String?> runUpload(
 
 /// Asks which course, unless there is only one. Null if the examiner backed
 /// out, or has to make a course first.
-Future<String?> _chooseCourse(BuildContext context, WidgetRef ref) async {
+Future<String?> chooseCourse(
+  BuildContext context,
+  WidgetRef ref, {
+  String question = 'Which course are these booklets for?',
+  String createMessage = 'Booklets are filed under a course, so UniMarkLy can match each exam number to the class list. '
+      'Create the course, add its class list, then come back to scan.',
+}) async {
   final courses = ref.read(coursesProvider).valueOrNull ?? const <Course>[];
   if (courses.isEmpty) {
     final create = await confirm(
       context,
       title: 'Create a course first',
-      message: 'Booklets are filed under a course, so UniMarkLy can match each exam number to the class list. '
-          'Create the course, add its class list, then come back to scan.',
+      message: createMessage,
       confirmLabel: 'Create a course',
     );
     if (create && context.mounted) {
@@ -135,7 +158,7 @@ Future<String?> _chooseCourse(BuildContext context, WidgetRef ref) async {
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
-          Text('Which course are these booklets for?', style: Theme.of(ctx).textTheme.titleLarge),
+          Text(question, style: Theme.of(ctx).textTheme.titleLarge),
           const SizedBox(height: 12),
           for (final c in ordered)
             Padding(

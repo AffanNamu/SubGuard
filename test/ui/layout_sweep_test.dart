@@ -1,9 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:unimarkly/core/widgets/score_keypad.dart';
 import 'package:unimarkly/domain/models.dart';
 import 'package:unimarkly/domain/scan.dart';
+import 'package:unimarkly/services/export/docx_writer.dart';
+import 'package:unimarkly/services/export/result_table.dart';
+import 'package:unimarkly/services/export/xlsx_writer.dart';
+import 'package:unimarkly/services/incoming/incoming_file.dart';
 
+import '../support/fixtures.dart';
 import 'harness.dart';
 
 /// Walks through every screen at small phone sizes and large text. Flutter
@@ -26,20 +34,30 @@ void main() {
       final (size, scale) = entry.value;
       late Course course;
 
-      await h.start(tester, size: size, textScale: scale, seed: () async {
-        course = await h.createCourse(regNos: const [
-          'FWM/24U/0538',
-          'FWM/24U/0539',
-          'FST/25U/244/5772',
-          'ASR/25U/224/0937',
-          'NOT A NUMBER',
-        ]);
-        final list = await h.students.getAll(course.id);
-        await h.setMarks(course, list[0], {0: 58, 1: 9, 2: 8, 3: 9.5});
-        await h.setMarks(course, list[1], {0: 75, 1: 4}); // above the Exam maximum
-        await h.setMarks(course, list[2], {0: 9.5});
-        await h.courses.saveTemplate('My 60 + 40', course.scheme);
-      });
+      await h.start(
+        tester,
+        size: size,
+        textScale: scale,
+        seed: () async {
+          course = await h.createCourse(
+            regNos: const [
+              'FWM/24U/0538',
+              'FWM/24U/0539',
+              'FST/25U/244/5772',
+              'ASR/25U/224/0937',
+              'NOT A NUMBER',
+            ],
+          );
+          final list = await h.students.getAll(course.id);
+          await h.setMarks(course, list[0], {0: 58, 1: 9, 2: 8, 3: 9.5});
+          await h.setMarks(course, list[1], {
+            0: 75,
+            1: 4,
+          }); // above the Exam maximum
+          await h.setMarks(course, list[2], {0: 9.5});
+          await h.courses.saveTemplate('My 60 + 40', course.scheme);
+        },
+      );
 
       Future<void> back() async {
         await tester.pageBack();
@@ -61,10 +79,13 @@ void main() {
       // Score grid, entry sheet, quick entry
       await h.tapText(tester, 'Enter scores');
       // In the wide table layout the first "Exam" is the column heading.
-      await tester.tap(size.width >= 720 ? find.text('Exam').at(1) : find.text('Exam').first);
+      await tester.tap(
+        size.width >= 720 ? find.text('Exam').at(1) : find.text('Exam').first,
+      );
       await h.settle(tester);
       Future<void> pad(String key) => tester.tap(
-          find.descendant(of: find.byType(ScoreKeypad), matching: find.text(key)));
+        find.descendant(of: find.byType(ScoreKeypad), matching: find.text(key)),
+      );
       await pad('7');
       await pad('5');
       await h.settle(tester);
@@ -84,7 +105,10 @@ void main() {
       await tester.tap(find.byTooltip('Import more students'));
       await h.settle(tester);
       await h.reveal(tester, find.byType(TextField));
-      await tester.enterText(find.byType(TextField).first, 'FWM/24U/0600\nFWM/24U/0601');
+      await tester.enterText(
+        find.byType(TextField).first,
+        'FWM/24U/0600\nFWM/24U/0601',
+      );
       await tester.pump();
       await h.tapText(tester, 'Use this list');
       await h.reveal(tester, find.text('What will happen'));
@@ -121,7 +145,12 @@ void main() {
 
       // Settings and its pages
       await h.tapText(tester, 'Settings');
-      for (final page in ['Document header', 'New course defaults', 'Saved templates', 'Bin']) {
+      for (final page in [
+        'Document header',
+        'New course defaults',
+        'Saved templates',
+        'Bin',
+      ]) {
         await h.tapText(tester, page);
         await back();
       }
@@ -141,20 +170,42 @@ void main() {
       };
       addTearDown(() => FlutterError.onError = previous);
 
-      await h.start(tester, size: size, textScale: scale, tab: null, prefsValues: {'header_examiner': 'Ada Okafor'}, seed: () async {
-        final course = await h.createCourse(code: 'AGR 114', regNos: const ['FWM/24U/0538', 'FWM/24U/0539']);
-        final other = await h.createCourse(code: 'BIO 201', department: 'FST', regNos: const ['FST/24U/0101']);
-        await h.seedBatch(course, title: 'A very long upload name that has to wrap or be cut off safely', states: [
-          ScanStatus.confirmed,
-          ScanStatus.needsReview,
-          ScanStatus.failed,
-          ScanStatus.queued,
-        ]);
-        await h.seedBatch(other, states: [ScanStatus.confirmed, ScanStatus.confirmed]);
-        for (var i = 0; i < 4; i++) {
-          await h.seedBatch(course, states: [ScanStatus.confirmed]);
-        }
-      });
+      await h.start(
+        tester,
+        size: size,
+        textScale: scale,
+        tab: null,
+        prefsValues: {'header_examiner': 'Ada Okafor'},
+        seed: () async {
+          final course = await h.createCourse(
+            code: 'AGR 114',
+            regNos: const ['FWM/24U/0538', 'FWM/24U/0539'],
+          );
+          final other = await h.createCourse(
+            code: 'BIO 201',
+            department: 'FST',
+            regNos: const ['FST/24U/0101'],
+          );
+          await h.seedBatch(
+            course,
+            title:
+                'A very long upload name that has to wrap or be cut off safely',
+            states: [
+              ScanStatus.confirmed,
+              ScanStatus.needsReview,
+              ScanStatus.failed,
+              ScanStatus.queued,
+            ],
+          );
+          await h.seedBatch(
+            other,
+            states: [ScanStatus.confirmed, ScanStatus.confirmed],
+          );
+          for (var i = 0; i < 4; i++) {
+            await h.seedBatch(course, states: [ScanStatus.confirmed]);
+          }
+        },
+      );
 
       Future<void> back() async {
         await tester.pageBack();
@@ -162,10 +213,16 @@ void main() {
       }
 
       // Home, top to bottom.
-      final list = find.byWidgetPredicate((w) => w is Scrollable && w.axis == Axis.vertical);
+      final list = find.byWidgetPredicate(
+        (w) => w is Scrollable && w.axis == Axis.vertical,
+      );
       expect(find.text('Start Scanning\nExam Scripts'), findsOneWidget);
       for (var i = 0; i < 12; i++) {
-        await tester.drag(list.first, const Offset(0, -300), warnIfMissed: false);
+        await tester.drag(
+          list.first,
+          const Offset(0, -300),
+          warnIfMissed: false,
+        );
         await tester.pump(const Duration(milliseconds: 50));
       }
       await h.settle(tester);
@@ -177,10 +234,17 @@ void main() {
       await h.tapText(tester, 'All courses');
       await h.tapText(tester, 'AGR 114');
       // The long-named upload is the one with a photo in every state.
-      await h.tapText(tester, 'A very long upload name that has to wrap or be cut off safely');
+      await h.tapText(
+        tester,
+        'A very long upload name that has to wrap or be cut off safely',
+      );
       expect(find.text('Scan & Extract'), findsWidgets);
       for (var i = 0; i < 6; i++) {
-        await tester.drag(find.byType(ListView).first, const Offset(0, -300), warnIfMissed: false);
+        await tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -300),
+          warnIfMissed: false,
+        );
         await tester.pump(const Duration(milliseconds: 50));
       }
       await h.settle(tester);
@@ -193,7 +257,11 @@ void main() {
       await tester.tapAt(const Offset(4, 4));
       await h.settle(tester);
       for (var i = 0; i < 8; i++) {
-        await tester.drag(find.byType(ListView).first, const Offset(0, -300), warnIfMissed: false);
+        await tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -300),
+          warnIfMissed: false,
+        );
         await tester.pump(const Duration(milliseconds: 50));
       }
       await h.settle(tester);
@@ -206,7 +274,10 @@ void main() {
       await back(); // all batches
 
       // The raised upload button, the review queue and the settings group.
-      await tester.tap(find.bySemanticsLabel('Add exam images').first, warnIfMissed: false);
+      await tester.tap(
+        find.bySemanticsLabel('Add exam images').first,
+        warnIfMissed: false,
+      );
       await h.settle(tester);
       noErrors(tester);
       await tester.tapAt(const Offset(4, 4));
@@ -214,6 +285,153 @@ void main() {
       await h.tapText(tester, 'Settings');
       await h.reveal(tester, find.text('Scanning & reading'));
       expect(find.text('Photo quality'), findsOneWidget);
+      noErrors(tester);
+
+      await h.stop(tester);
+    });
+  }
+
+  for (final entry in configs.entries) {
+    testWidgets('document screens fit: ${entry.key}', (tester) async {
+      final (size, scale) = entry.value;
+      final previous = FlutterError.onError;
+      FlutterError.onError = (details) {
+        _reports.add(details.toString());
+        previous?.call(details);
+      };
+      addTearDown(() => FlutterError.onError = previous);
+
+      await h.start(
+        tester,
+        size: size,
+        textScale: scale,
+        tab: null,
+        seed: () async {
+          await h.createCourse(code: 'AGR 114', regNos: const ['FWM/24U/0538']);
+        },
+      );
+
+      final fx = Fixture(extraStudents: 30);
+      final table = ResultTableBuilder.build(
+        course: fx.course,
+        students: fx.students,
+        scores: fx.scores,
+        options: ExportOptions.preset(ExportPreset.fullResult, [
+          fx.course.scheme,
+        ]),
+        header: const ExportHeader(
+          university: 'Modibbo Adama University, Yola',
+          faculty: 'Faculty of Agriculture',
+        ),
+      );
+      var n = 0;
+      IncomingFile copy(String name, List<int> bytes) {
+        final dir = Directory(p.join(h.work.path, 'incoming', 'c${n++}'))
+          ..createSync(recursive: true);
+        final f = File(p.join(dir.path, name))..writeAsBytesSync(bytes);
+        return IncomingFile(
+          id: 'i$n',
+          path: f.path,
+          name: name,
+          size: bytes.length,
+        );
+      }
+
+      final ole = [
+        0xD0,
+        0xCF,
+        0x11,
+        0xE0,
+        0xA1,
+        0xB1,
+        0x1A,
+        0xE1,
+        ...List.filled(600, 0),
+      ];
+      final cases = <(String, IncomingFile, String)>[
+        (
+          'xlsx',
+          copy(
+            'A very long file name for a results workbook that must wrap or be cut safely.xlsx',
+            XlsxWriter.build(table),
+          ),
+          'Use as class list',
+        ),
+        ('docx', copy('result.docx', DocxWriter.build(table)), 'Text view'),
+        (
+          'csv',
+          copy(
+            'list.csv',
+            'Registration No.,Name\nFWM/24U/0601,Aisha Bello\n'.codeUnits,
+          ),
+          'Use as class list',
+        ),
+        (
+          'pdf',
+          copy(
+            'r.pdf',
+            '%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF'.codeUnits,
+          ),
+          'Scan its pages as booklets',
+        ),
+        (
+          'old doc',
+          copy('old.doc', ole),
+          'Old Word files cannot be shown here',
+        ),
+        ('locked', copy('locked.docx', ole), 'This file is locked'),
+        (
+          'unsupported',
+          copy('movie.mp4', List.filled(100, 7)),
+          'This kind of file cannot be opened',
+        ),
+      ];
+
+      for (final (label, file, expected) in cases) {
+        h.incoming.deliver(IncomingArrived(files: [file]));
+        await tester.pump();
+        for (
+          var i = 0;
+          i < 60 && find.textContaining(expected).evaluate().isEmpty;
+          i++
+        ) {
+          await h.settle(tester);
+        }
+        expect(find.textContaining(expected), findsWidgets, reason: label);
+        noErrors(tester);
+        await tester.pageBack();
+        await h.settle(tester);
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+      }
+
+      // Several at once, the failure dialog and the saved documents.
+      h.incoming.deliver(
+        IncomingArrived(
+          files: [
+            copy('one.csv', 'a,b\n1,2\n'.codeUnits),
+            copy('two.csv', 'a,b\n3,4\n'.codeUnits),
+          ],
+          failures: const [
+            IncomingFailure(
+              name: 'locked-away.pdf',
+              message: 'UniMarkLy is not allowed to read this file.',
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await h.settle(tester);
+      expect(
+        find.text('Some files could not be opened').evaluate().isNotEmpty ||
+            find.text('This file could not be opened').evaluate().isNotEmpty,
+        isTrue,
+      );
+      noErrors(tester);
+      await tester.tap(find.text('OK'));
+      await h.settle(tester);
+      expect(find.text('2 documents'), findsOneWidget);
       noErrors(tester);
 
       await h.stop(tester);
@@ -230,4 +448,3 @@ void noErrors(WidgetTester tester) {
 }
 
 final _reports = <String>[];
-

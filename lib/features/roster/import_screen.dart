@@ -18,10 +18,22 @@ enum ImportMode { classList, scores }
 /// Reads a CSV file, an Excel sheet or pasted text, lets the user confirm
 /// which column is which, shows what will happen, and only then writes.
 class ImportScreen extends ConsumerStatefulWidget {
-  const ImportScreen({super.key, required this.courseId, required this.mode});
+  const ImportScreen({
+    super.key,
+    required this.courseId,
+    required this.mode,
+    this.initialTable,
+    this.initialName,
+  });
 
   final String courseId;
   final ImportMode mode;
+
+  /// A table already read from a file another app opened with UniMarkLy. It is
+  /// shown for matching columns like any other file; nothing is added until the
+  /// examiner confirms on this screen.
+  final RawTable? initialTable;
+  final String? initialName;
 
   @override
   ConsumerState<ImportScreen> createState() => _ImportScreenState();
@@ -39,6 +51,17 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   final _paste = TextEditingController();
 
   bool get _isClassList => widget.mode == ImportMode.classList;
+
+  @override
+  void initState() {
+    super.initState();
+    final table = widget.initialTable;
+    if (table != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _load(table, widget.initialName ?? 'File');
+      });
+    }
+  }
 
   @override
   void dispose() {
