@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:unimarkly/data/database/app_database.dart';
 import 'package:unimarkly/data/repositories/booklet_repository.dart';
 import 'package:unimarkly/data/repositories/course_repository.dart';
+import 'package:unimarkly/data/repositories/recognition_repository.dart';
 import 'package:unimarkly/data/repositories/scan_repository.dart';
 import 'package:unimarkly/data/repositories/score_repository.dart';
 import 'package:unimarkly/data/repositories/student_repository.dart';
@@ -20,6 +21,8 @@ import 'package:unimarkly/domain/scan.dart';
 import 'package:unimarkly/services/reader/booklet_extractor.dart';
 import 'package:unimarkly/services/reader/ocr_engine.dart';
 import 'package:unimarkly/services/reader/scan_processor.dart';
+import 'package:unimarkly/services/recognition/booklet_pipeline.dart';
+import 'package:unimarkly/services/recognition/model_registry.dart';
 import 'package:unimarkly/services/scan/image_source.dart';
 import 'package:unimarkly/services/scan/intake_service.dart';
 import 'package:unimarkly/services/scan/scan_files.dart';
@@ -69,10 +72,13 @@ OcrDocument sampleDocument() {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late AppDatabase db;
   late CourseRepository courses;
   late ScanRepository scans;
   late BookletRepository booklets;
+  late RecognitionRepository recognitions;
+  late LoadedDigitModel digits;
   late ScoreRepository scores;
   late StudentRepository students;
   late ScanFiles files;
@@ -81,6 +87,8 @@ void main() {
   late Course course;
   late String batchId;
 
+  setUpAll(() async => digits = await ModelRegistry.loadDigits());
+
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     courses = CourseRepository(db);
@@ -88,6 +96,7 @@ void main() {
     scores = ScoreRepository(db);
     students = StudentRepository(db);
     booklets = BookletRepository(db, scores);
+    recognitions = RecognitionRepository(db);
     work = Directory.systemTemp.createTempSync('unimarkly_proc_');
     files = ScanFiles(Directory(p.join(work.path, 'scans')));
     intake = IntakeService(scans, files);
@@ -102,12 +111,16 @@ void main() {
     work.deleteSync(recursive: true);
   });
 
-  ScanProcessor processor(OcrEngine engine, {Duration timeout = const Duration(seconds: 5)}) => ScanProcessor(
+  /// The real processor and the real pipeline (real quality analysis, layout,
+  /// marks stage, digit model), reading text through a fake engine.
+  ScanProcessor processor(OcrEngine engine, {Duration timeout = const Duration(seconds: 30)}) => ScanProcessor(
         scans: scans,
         booklets: booklets,
         files: files,
-        engine: engine,
+        pipeline: () async => BookletPipeline(ocr: engine, digits: digits),
+        recognitions: recognitions,
         students: students,
+        courses: courses,
         perPhotoTimeout: timeout,
       );
 
@@ -151,8 +164,11 @@ void main() {
       );
       await processor(engine).processBatch(batchId);
 
-      expect(engine.regions, hasLength(1), reason: 'only the exam-number area is re-read');
-      expect(engine.regions.single.top, inInclusiveRange(0.1, 0.2));
+      // The exam-number area is re-read close up in two picture variants (tight and
+      // a little wider), plus a close-up of the printed booklet number.
+      final examAreas = engine.regions.where((r) => r.top > 0.1 && r.top < 0.2).toList();
+      expect(examAreas, hasLength(2), reason: 'tight and wide close-ups of the exam-number area');
+      expect(examAreas.last.width, greaterThan(examAreas.first.width));
       final reading = (await booklets.forScan(photo.id))!.reading;
       expect(reading.examNumberSuggestion, 'FWM/24U/0538');
       expect(reading.examNumberOnClassList, isTrue);

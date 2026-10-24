@@ -89,4 +89,50 @@ void main() {
     expect(fresh.batchId, 'b1');
     expect(fresh.originalName, 'IMG_001.jpg');
   });
+
+  test('version 3 adds recognition runs and field reviews and leaves every earlier row as it was', () async {
+    final schema = await verifier.schemaAt(2);
+    final raw = schema.rawDatabase;
+    raw.execute("INSERT INTO course (id, updated_at, code) VALUES ('c1', '2026-09-01T10:00:00.000Z', 'AGR 114')");
+    raw.execute("INSERT INTO student (id, updated_at, course_id, reg_no, on_class_list, position) "
+        "VALUES ('s1', '2026-09-01T10:00:00.000Z', 'c1', 'FWM/24U/0538', 1, 0)");
+    raw.execute("INSERT INTO upload_batch (id, updated_at, course_id, created_at) VALUES ('b1', '2026-09-01T10:00:00.000Z', 'c1', '2026-09-01T10:00:00.000Z')");
+    raw.execute("INSERT INTO scan (id, updated_at, course_id, kind, photo_path, page_no, status, created_at, batch_id, content_hash) "
+        "VALUES ('sc1', '2026-09-01T10:00:00.000Z', 'c1', 'booklet_cover', 'scans/a.jpg', 1, 'confirmed', '2026-09-01T10:00:00.000Z', 'b1', 'h1')");
+    // A booklet confirmed by version 2 of the app, with its stored reading and marks.
+    raw.execute("INSERT INTO booklet (id, updated_at, course_id, student_id, scan_id, serial_no, read_json, status, confirmed_at) "
+        "VALUES ('bk1', '2026-09-01T10:00:00.000Z', 'c1', 's1', 'sc1', '292011', '{\"engine\":\"old\",\"reading\":{\"serialNo\":\"292011\"}}', 'confirmed', '2026-09-01T11:00:00.000Z')");
+    raw.execute("INSERT INTO question_mark (id, updated_at, booklet_id, q_no, mark, edited) "
+        "VALUES ('m1', '2026-09-01T10:00:00.000Z', 'bk1', 1, 5.5, 1)");
+    raw.execute("INSERT INTO correction (id, updated_at, crop_path, field, read_value, confirmed_value, region) "
+        "VALUES ('k1', '2026-09-01T10:00:00.000Z', 'scans/a.jpg', 'serial_no', '292017', '292011', '0.6,0.06,0.74,0.1')");
+
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+    await verifier.migrateAndValidate(db, 3);
+
+    // Everything written by version 2 is still there, unchanged.
+    final booklet = await (db.select(db.booklets)..where((b) => b.id.equals('bk1'))).getSingle();
+    expect(booklet.status, 'confirmed');
+    expect(booklet.serialNo, '292011');
+    expect(booklet.readJson, contains('"engine":"old"'));
+    expect((await (db.select(db.questionMarks)).getSingle()).mark, 5.5);
+    expect((await (db.select(db.corrections)).getSingle()).readValue, '292017');
+    expect((await db.select(db.scans).getSingle()).contentHash, 'h1');
+
+    // The new tables exist, are empty, and take rows.
+    expect(await db.select(db.recognitionRuns).get(), isEmpty);
+    expect(await db.select(db.fieldReviews).get(), isEmpty);
+    await db.into(db.recognitionRuns).insert(RecognitionRunsCompanion.insert(scanId: 'sc1', pipelineVersion: '1.0.0', resultJson: '{}', id: const Value('r1')));
+    await db.into(db.fieldReviews).insert(FieldReviewsCompanion.insert(
+          scanId: 'sc1',
+          fieldKey: 'mark_row_1',
+          kind: 'mark',
+          decision: 'edited',
+          reviewedAt: DateTime.utc(2026, 10, 1),
+          machineValue: const Value('5..5'),
+          finalValue: const Value('5.5'),
+        ));
+    expect((await db.select(db.fieldReviews).getSingle()).finalValue, '5.5');
+  });
 }

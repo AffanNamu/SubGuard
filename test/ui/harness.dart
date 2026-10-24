@@ -26,10 +26,13 @@ import 'package:unimarkly/services/incoming/incoming_source.dart';
 import 'package:unimarkly/services/incoming/pdf_backend.dart';
 import 'package:unimarkly/services/incoming/saved_documents.dart';
 import 'package:unimarkly/services/reader/ocr_engine.dart';
+import 'package:unimarkly/services/recognition/booklet_pipeline.dart';
+import 'package:unimarkly/services/recognition/model_registry.dart';
 import 'package:unimarkly/services/scan/image_source.dart';
 import 'package:unimarkly/services/scan/intake_service.dart';
 import 'package:unimarkly/services/scan/scan_files.dart';
 
+import '../support/file_bundle.dart';
 import '../support/images.dart';
 
 /// Photos the buttons "pick" in a test, or an error such as a refused
@@ -148,6 +151,10 @@ class AppHarness {
 
     /// The bottom-bar tab to open first. Most tests are about courses.
     String? tab = 'Courses',
+
+    /// The text reader. Most tests use the "unavailable" one, so photos wait for
+    /// the examiner; the end-to-end test gives it a real model.
+    OcrEngine? ocr,
   }) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     SharedPreferences.setMockInitialValues(prefsValues);
@@ -170,6 +177,8 @@ class AppHarness {
 
     if (seed != null) await tester.runAsync(seed);
     beforeStart?.call();
+    // The real handwriting model, loaded once outside the test's fake clock.
+    final digits = await tester.runAsync(() => ModelRegistry.loadDigits(FileAssetBundle()));
 
     await tester.pumpWidget(ProviderScope(
       overrides: [
@@ -180,8 +189,9 @@ class AppHarness {
         incomingSourceProvider.overrideWithValue(incoming),
         pdfBackendProvider.overrideWithValue(pdf),
         // No real reader in widget tests: photos wait for the examiner.
-        ocrEngineProvider.overrideWithValue(const UnavailableOcrEngine()),
+        ocrEngineProvider.overrideWithValue(ocr ?? const UnavailableOcrEngine()),
         imageSourceProvider.overrideWithValue(imageSource),
+        recognitionPipelineProvider.overrideWith((ref) async => BookletPipeline(ocr: ref.watch(ocrEngineProvider), digits: digits)),
       ],
       child: const UniMarkLyApp(),
     ));
@@ -208,9 +218,32 @@ class AppHarness {
     }
   }
 
+  /// Waits (in real time) until no photo is being read or waiting to be read
+  /// automatically. The reader runs the real recognition pipeline, which uses
+  /// real isolates and so takes real time that the test's fake clock does not.
+  ///
+  /// Queued photos count as unfinished when reading is automatic, or when
+  /// [untilQueueEmpty] says the test itself started the reading.
+  Future<void> waitForReading(WidgetTester tester, {Duration limit = const Duration(seconds: 40), bool untilQueueEmpty = false}) async {
+    final stop = DateTime.now().add(limit);
+    while (DateTime.now().isBefore(stop)) {
+      final busy = await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        final auto = untilQueueEmpty || (prefs.getBool('read_automatically') ?? true);
+        for (final b in await scans.batches()) {
+          if (b.counts.processing > 0 || (auto && b.counts.queued > 0)) return true;
+        }
+        return false;
+      });
+      await tester.pump(const Duration(milliseconds: 50));
+      if (busy != true) return;
+    }
+  }
+
   /// Unmounts the app first and lets the fake clock run, so the providers and
   /// drift's stream clean-up timers fire; only then closes the database.
   Future<void> stop(WidgetTester tester) async {
+    await waitForReading(tester);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
     await tester.runAsync(() => db.close().timeout(const Duration(seconds: 5), onTimeout: () {}));

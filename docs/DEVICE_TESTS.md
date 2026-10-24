@@ -21,3 +21,25 @@ renamed `.pdf`; a 150 MB file.
 
 Also check on Android that, after choosing "Always" for another app, UniMarkLy is still in the list
 under "Open with". Report any row that fails with the file used and the phone model.
+
+## Recognition on a device
+
+Nothing about the recognition pipeline has been measured on a phone. Until these are filled in, no
+phone speed, memory or accuracy figure should be quoted. Use a low-end Android phone (the weakest you
+support: record its model, RAM and Android version) and a recent iPhone. Use full-resolution photographs
+(not scaled copies), at least ten booklets from different examiners.
+
+| # | Do | Record | Android | iOS |
+|---|----|--------|:---:|:---:|
+| R1 | Add 1 photo; time from "added" to "needs review" | seconds per page (PaddleOCR close-ups included) | | |
+| R2 | Add 30 photos in one batch | total time; whether the app stayed responsive; photos read / failed | | |
+| R3 | During R2, watch memory (Android Studio profiler / Xcode) | peak resident memory | | |
+| R4 | Kill the app during R2, reopen | interrupted photos re-queued and read; none lost | | |
+| R5 | Airplane mode on, repeat R1 | still reads; no network request | | |
+| R6 | Review 10 booklets against the photos | per booklet: how many fields needed typing; exam number read at all? marks right? | | |
+| R7 | Photograph one booklet badly (blur, dark, glare, far away) | the quality notice names the fault and says what to do | | |
+| R8 | Try `PaddleOcrConfig.handwrittenRows()` for the close-ups | whether the exam number is read better than with the current config | | |
+| R9 | Rotate the phone and use font scale 1.3 on the review screen | nothing cut off; "Show on photo" works with pinch zoom | | |
+
+Report each row with the photos (if authorised) and the phone model. Rows R6 and R8 are what decide the
+next step in `docs/recognition/MODEL_SELECTION.md`.

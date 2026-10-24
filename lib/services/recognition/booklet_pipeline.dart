@@ -18,20 +18,6 @@ import 'marks_stage.dart';
 import 'model_registry.dart';
 import 'validation.dart';
 
-/// The whole photograph could not be processed (the file is missing, too large
-/// or not a picture). Reading one field failing is not this: a field that
-/// fails is reported as [FieldState.failed] and the rest carry on.
-class RecognitionException implements Exception {
-  const RecognitionException(this.message);
-  final String message;
-  @override
-  String toString() => 'RecognitionException($message)';
-}
-
-class RecognitionCancelled implements Exception {
-  const RecognitionCancelled();
-}
-
 /// Limits that keep one bad photograph from using up the phone.
 class PipelineLimits {
   const PipelineLimits({
@@ -68,7 +54,7 @@ class PipelineLimits {
 ///  7. every field is given a state by [FieldConfidencePolicy].
 ///
 /// Nothing here writes to the database or decides a record: it returns evidence.
-class BookletPipeline {
+class BookletPipeline implements RecognitionOrchestrator {
   BookletPipeline({
     required this.ocr,
     this.digits,
@@ -95,6 +81,7 @@ class BookletPipeline {
 
   /// [classList] is the course's registration numbers (suggestions only);
   /// [validator] checks marks against the course's rules, when there is a course.
+  @override
   Future<RecognitionResult> run(
     File photo, {
     List<String> classList = const [],
@@ -137,11 +124,7 @@ class BookletPipeline {
     QualityReport? report;
     PageDetection? page;
     try {
-      // Locals, so the background isolate is not handed the whole pipeline
-      // (and with it the platform text reader).
-      final analyzer = quality, detector = boundary, image = decoded.image;
-      final ow = decoded.originalWidth, oh = decoded.originalHeight;
-      final qa = await Isolate.run(() => _analyse(image, ow, oh, analyzer, detector));
+      final qa = await _analyseInIsolate(decoded.image, decoded.originalWidth, decoded.originalHeight, quality, boundary);
       report = qa.$1;
       page = qa.$2;
     } catch (e) {
@@ -159,8 +142,15 @@ class BookletPipeline {
     } catch (e) {
       ocrFailure = e is TimeoutException ? 'Reading the printed text took too long.' : 'The text reader failed.';
       notes.add('$ocrFailure The values must be entered from the photo.');
+      doc = OcrDocument(
+        engine: ocr.name,
+        lines: const [],
+        note: e is TimeoutException
+            ? 'Reading took too long. Enter the values from the photo.'
+            : 'Automatic reading failed. Enter the values from the photo.',
+      );
     }
-    if (doc.note != null) notes.add(doc.note!);
+    if (doc.note != null && ocrFailure == null) notes.add(doc.note!);
     lap('printed_text');
     checkCancelled();
 
@@ -172,7 +162,10 @@ class BookletPipeline {
     Future<void> closeup(String variant, Region region) async {
       if (engine is! RegionOcrEngine) return;
       try {
-        closeups[variant] = await engine.recognizeRegion(photo, region).timeout(limits.ocrTimeout);
+        final d = await engine.recognizeRegion(photo, region).timeout(limits.ocrTimeout);
+        closeups[variant] = d;
+        // A weaker reader taking over is said once, never silently.
+        if (d.note != null && !notes.contains(d.note)) notes.add(d.note!);
       } catch (_) {
         notes.add('A close-up reading ($variant) failed and was skipped.');
       }
@@ -214,7 +207,7 @@ class BookletPipeline {
 
     fields.addAll(_serialField(doc, reading, closeups['serial'], blocking, ocrFailure));
     fields.addAll(_examNumberField(doc, reading, closeups, classList, marks, blocking, ocrFailure));
-    final answered = _answeredField(reading, marks, blocking, ocrFailure);
+    final answered = _answeredField(doc, reading, marks, blocking, ocrFailure);
     if (answered != null) fields.add(answered);
     fields.addAll(_markFields(marks, model, blocking, marksFailure, reading));
 
@@ -248,6 +241,7 @@ class BookletPipeline {
       layout: reading,
       models: models,
       timingsMs: timings,
+      printed: doc,
       page: page,
       notes: notes,
       answeredLine: reading.questionsAnsweredText,
@@ -256,7 +250,9 @@ class BookletPipeline {
 
   // ---- stage helpers ----
 
-  Future<MarksStageResult> _readMarks(ColorRaster image, BookletReading reading, LoadedDigitModel model) {
+  /// Static, and handed only plain data: a background isolate cannot be sent
+  /// the pipeline itself, because it holds the platform text reader.
+  static Future<MarksStageResult> _readMarks(ColorRaster image, BookletReading reading, LoadedDigitModel model) {
     final marks = reading.marksRegion!;
     final questions = reading.questionColumnRegion;
     final total = reading.totalRegion;
@@ -271,6 +267,15 @@ class BookletPipeline {
       return readMarksTable(image, marks: marks, questions: questions, total: total, probes: probes, reader: reader);
     });
   }
+
+  static Future<(QualityReport, PageDetection)> _analyseInIsolate(
+    ColorRaster image,
+    int originalWidth,
+    int originalHeight,
+    DocumentQualityAnalyzer analyzer,
+    DocumentBoundaryDetector detector,
+  ) =>
+      Isolate.run(() => _analyse(image, originalWidth, originalHeight, analyzer, detector));
 
   OcrLine? _serialLine(OcrDocument doc, String? serial) {
     if (serial == null) return null;
@@ -408,7 +413,7 @@ class BookletPipeline {
     ];
   }
 
-  ExtractedField? _answeredField(BookletReading reading, MarksStageResult? marks, bool blocking, String? ocrFailure) {
+  ExtractedField? _answeredField(OcrDocument doc, BookletReading reading, MarksStageResult? marks, bool blocking, String? ocrFailure) {
     final region = reading.answeredRegion;
     if (region == null) return null;
     final text = reading.questionsAnsweredText;
@@ -427,8 +432,9 @@ class BookletPipeline {
       kind: FieldKind.handwrittenText,
       state: state,
       value: text,
-      candidates: [if (text != null) FieldCandidate(text, 0.5, source: 'ocr')],
+      candidates: [if (text != null) FieldCandidate(text, 0.5, source: '${doc.engine}/whole_photo')],
       region: region,
+      attempts: [ReadAttempt(reader: doc.engine, readerVersion: '', variant: 'whole_photo', text: text)],
       warnings: [if (text == null && strokes >= 1) 'Writing was seen but could not be read.'],
     );
   }

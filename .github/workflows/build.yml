@@ -28,6 +28,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # The recognition integration tests read a real booklet photograph with a
+      # real PP-OCR model. The phone uses PaddleOCR through its own plugin, which
+      # cannot run here; this is the same model family through ONNX Runtime
+      # (tool/bench/ocr_server.py). The tests fail, rather than skip, if it is missing.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the OCR stand-in for the recognition tests
+        run: pip install rapidocr-onnxruntime opencv-python-headless
+
       - name: Generated code is up to date
         run: |
           dart run build_runner build
@@ -37,4 +48,6 @@ jobs:
         run: flutter analyze
 
       - name: Test
+        env:
+          REQUIRE_OCR_STANDIN: '1'
         run: flutter test

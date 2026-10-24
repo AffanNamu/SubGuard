@@ -1,6 +1,6 @@
 """Shared pieces of the recognition benchmark (Python side).
 
-The Dart pipeline is benchmarked by `flutter test tool/eval`; this side compares
+The Dart pipeline is benchmarked by `tool/bench/run_benchmark.sh` (test/bench); this side compares
 candidate *recognisers* on the same ground truth, because the on-device engines
 (PaddleOCR native, ML Kit) cannot run in a development sandbox but their model
 families can (PP-OCR through ONNX Runtime, Tesseract).

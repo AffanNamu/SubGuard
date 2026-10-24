@@ -1357,8 +1357,611 @@ i1.GeneratedColumn<String> _column_73(String aliasedName) =>
       type: i1.DriftSqlType.string,
       $customConstraints: 'NULL',
     );
+
+final class Schema3 extends i0.VersionedSchema {
+  Schema3({required super.database}) : super(version: 3);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    course,
+    coursePart,
+    examQuestion,
+    gradeScale,
+    schemeTemplate,
+    student,
+    uploadBatch,
+    scan,
+    booklet,
+    questionMark,
+    rowRead,
+    partScore,
+    correction,
+    recognitionRun,
+    fieldReview,
+    account,
+    syncState,
+    courseCode,
+    coursePartCourse,
+    examQuestionCourse,
+    gradeScaleCourse,
+    studentCourse,
+    studentRegNo,
+    uploadBatchCourse,
+    scanCourse,
+    scanBatch,
+    scanHash,
+    bookletCourse,
+    questionMarkBooklet,
+    rowReadScan,
+    partScoreCourse,
+    partScoreCell,
+    recognitionRunScan,
+    fieldReviewScan,
+  ];
+  late final Shape0 course = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'course',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_7,
+        _column_8,
+        _column_9,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 coursePart = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'course_part',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_10,
+        _column_11,
+        _column_12,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_16,
+        _column_17,
+        _column_18,
+        _column_19,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 examQuestion = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'exam_question',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_10,
+        _column_20,
+        _column_12,
+        _column_21,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape3 gradeScale = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'grade_scale',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_10,
+        _column_22,
+        _column_23,
+        _column_24,
+        _column_25,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 schemeTemplate = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'scheme_template',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [_column_0, _column_1, _column_2, _column_11, _column_26],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 student = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'student',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_10,
+        _column_27,
+        _column_28,
+        _column_29,
+        _column_30,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 uploadBatch = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'upload_batch',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_10,
+        _column_31,
+        _column_32,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 scan = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'scan',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_10,
+        _column_33,
+        _column_34,
+        _column_35,
+        _column_36,
+        _column_32,
+        _column_37,
+        _column_38,
+        _column_39,
+        _column_40,
+        _column_41,
+        _column_42,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape8 booklet = Shape8(
+    source: i0.VersionedTable(
+      entityName: 'booklet',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_10,
+        _column_43,
+        _column_44,
+        _column_45,
+        _column_46,
+        _column_36,
+        _column_47,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape9 questionMark = Shape9(
+    source: i0.VersionedTable(
+      entityName: 'question_mark',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_48,
+        _column_20,
+        _column_49,
+        _column_50,
+        _column_51,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape10 rowRead = Shape10(
+    source: i0.VersionedTable(
+      entityName: 'row_read',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_52,
+        _column_53,
+        _column_54,
+        _column_55,
+        _column_43,
+        _column_56,
+        _column_57,
+        _column_50,
+        _column_58,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape11 partScore = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'part_score',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_10,
+        _column_59,
+        _column_60,
+        _column_57,
+        _column_61,
+        _column_18,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape12 correction = Shape12(
+    source: i0.VersionedTable(
+      entityName: 'correction',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_62,
+        _column_63,
+        _column_64,
+        _column_65,
+        _column_66,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape15 recognitionRun = Shape15(
+    source: i0.VersionedTable(
+      entityName: 'recognition_run',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_52,
+        _column_74,
+        _column_75,
+        _column_76,
+        _column_77,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape16 fieldReview = Shape16(
+    source: i0.VersionedTable(
+      entityName: 'field_review',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_52,
+        _column_78,
+        _column_79,
+        _column_33,
+        _column_80,
+        _column_81,
+        _column_82,
+        _column_83,
+        _column_66,
+        _column_84,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape13 account = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'account',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_67,
+        _column_68,
+        _column_69,
+        _column_70,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape14 syncState = Shape14(
+    source: i0.VersionedTable(
+      entityName: 'sync_state',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_71,
+        _column_72,
+        _column_73,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index courseCode = i1.Index(
+    'course_code',
+    'CREATE INDEX course_code ON course (code)',
+  );
+  final i1.Index coursePartCourse = i1.Index(
+    'course_part_course',
+    'CREATE INDEX course_part_course ON course_part (course_id)',
+  );
+  final i1.Index examQuestionCourse = i1.Index(
+    'exam_question_course',
+    'CREATE INDEX exam_question_course ON exam_question (course_id)',
+  );
+  final i1.Index gradeScaleCourse = i1.Index(
+    'grade_scale_course',
+    'CREATE INDEX grade_scale_course ON grade_scale (course_id)',
+  );
+  final i1.Index studentCourse = i1.Index(
+    'student_course',
+    'CREATE INDEX student_course ON student (course_id)',
+  );
+  final i1.Index studentRegNo = i1.Index(
+    'student_reg_no',
+    'CREATE INDEX student_reg_no ON student (course_id, reg_no)',
+  );
+  final i1.Index uploadBatchCourse = i1.Index(
+    'upload_batch_course',
+    'CREATE INDEX upload_batch_course ON upload_batch (course_id)',
+  );
+  final i1.Index scanCourse = i1.Index(
+    'scan_course',
+    'CREATE INDEX scan_course ON scan (course_id)',
+  );
+  final i1.Index scanBatch = i1.Index(
+    'scan_batch',
+    'CREATE INDEX scan_batch ON scan (batch_id)',
+  );
+  final i1.Index scanHash = i1.Index(
+    'scan_hash',
+    'CREATE INDEX scan_hash ON scan (course_id, content_hash)',
+  );
+  final i1.Index bookletCourse = i1.Index(
+    'booklet_course',
+    'CREATE INDEX booklet_course ON booklet (course_id)',
+  );
+  final i1.Index questionMarkBooklet = i1.Index(
+    'question_mark_booklet',
+    'CREATE INDEX question_mark_booklet ON question_mark (booklet_id)',
+  );
+  final i1.Index rowReadScan = i1.Index(
+    'row_read_scan',
+    'CREATE INDEX row_read_scan ON row_read (scan_id)',
+  );
+  final i1.Index partScoreCourse = i1.Index(
+    'part_score_course',
+    'CREATE INDEX part_score_course ON part_score (course_id)',
+  );
+  final i1.Index partScoreCell = i1.Index(
+    'part_score_cell',
+    'CREATE INDEX part_score_cell ON part_score (student_id, part_id)',
+  );
+  final i1.Index recognitionRunScan = i1.Index(
+    'recognition_run_scan',
+    'CREATE INDEX recognition_run_scan ON recognition_run (scan_id)',
+  );
+  final i1.Index fieldReviewScan = i1.Index(
+    'field_review_scan',
+    'CREATE INDEX field_review_scan ON field_review (scan_id)',
+  );
+}
+
+class Shape15 extends i0.VersionedTable {
+  Shape15({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get deletedAt =>
+      columnsByName['deleted_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get scanId =>
+      columnsByName['scan_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get pipelineVersion =>
+      columnsByName['pipeline_version']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get status =>
+      columnsByName['status']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get durationMs =>
+      columnsByName['duration_ms']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get resultJson =>
+      columnsByName['result_json']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_74(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'pipeline_version',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_75(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'status',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL DEFAULT \'complete\'',
+      defaultValue: const i1.CustomExpression('\'complete\''),
+    );
+i1.GeneratedColumn<int> _column_76(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'duration_ms',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL DEFAULT 0',
+      defaultValue: const i1.CustomExpression('0'),
+    );
+i1.GeneratedColumn<String> _column_77(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'result_json',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+
+class Shape16 extends i0.VersionedTable {
+  Shape16({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get deletedAt =>
+      columnsByName['deleted_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get scanId =>
+      columnsByName['scan_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get runId =>
+      columnsByName['run_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get fieldKey =>
+      columnsByName['field_key']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get kind =>
+      columnsByName['kind']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get machineValue =>
+      columnsByName['machine_value']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get machineState =>
+      columnsByName['machine_state']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get finalValue =>
+      columnsByName['final_value']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get decision =>
+      columnsByName['decision']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get region =>
+      columnsByName['region']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get reviewedAt =>
+      columnsByName['reviewed_at']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_78(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'run_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_79(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'field_key',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_80(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'machine_value',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_81(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'machine_state',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_82(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'final_value',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_83(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'decision',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_84(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'reviewed_at',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -1367,6 +1970,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from1To2(migrator, schema);
         return 2;
+      case 2:
+        final schema = Schema3(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from2To3(migrator, schema);
+        return 3;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -1375,6 +1983,7 @@ i0.MigrationStepWithVersion migrationSteps({
 
 i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) => i0.VersionedSchema.stepByStepHelper(
-  step: migrationSteps(from1To2: from1To2),
+  step: migrationSteps(from1To2: from1To2, from2To3: from2To3),
 );

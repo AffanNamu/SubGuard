@@ -251,6 +251,64 @@ class Corrections extends Table with SyncColumns {
   TextColumn get region => text().nullable()();
 }
 
+/// One run of the recognition pipeline on one photo: what it found, how sure it
+/// was, which models produced it. The machine's output is kept exactly as it
+/// was produced (never edited), so a reading can always be traced; what the
+/// examiner decided is in [FieldReviews]. A photo read again gets a new row.
+///
+/// Added in schema version 3.
+@DataClassName('RecognitionRunRow')
+@TableIndex(name: 'recognition_run_scan', columns: {#scanId})
+class RecognitionRuns extends Table with SyncColumns {
+  @override
+  String get tableName => 'recognition_run';
+
+  TextColumn get scanId => text().references(Scans, #id)();
+  TextColumn get pipelineVersion => text()();
+
+  /// `complete`, or `partial` when a stage failed and its fields say so.
+  TextColumn get status => text().withDefault(const Constant('complete'))();
+  IntColumn get durationMs => integer().withDefault(const Constant(0))();
+
+  /// Fields (value, candidates, confidences, regions, attempts, warnings),
+  /// quality report, findings, models, timings and notes, as JSON.
+  TextColumn get resultJson => text()();
+}
+
+/// What the examiner decided about one field of one photo, with when. Together
+/// with the photo and [region] each row is a labelled example: the confirmed
+/// text and the part of the photo it was written on.
+///
+/// Added in schema version 3.
+@DataClassName('FieldReviewRow')
+@TableIndex(name: 'field_review_scan', columns: {#scanId})
+class FieldReviews extends Table with SyncColumns {
+  @override
+  String get tableName => 'field_review';
+
+  TextColumn get scanId => text().references(Scans, #id)();
+
+  /// The run the machine value came from, when there was one.
+  TextColumn get runId => text().nullable()();
+  TextColumn get fieldKey => text()();
+  TextColumn get kind => text()();
+  TextColumn get machineValue => text().nullable()();
+  TextColumn get machineState => text().nullable()();
+
+  /// What the examiner confirmed; null for a field they left blank or rejected.
+  TextColumn get finalValue => text().nullable()();
+
+  /// `accepted` (the machine's value, confirmed), `suggestion` (another of the
+  /// machine's candidates, tapped by the examiner), `edited` (changed from the
+  /// machine's value), `entered` (typed with no machine value), `rejected` (the
+  /// machine's value was dismissed) or `blank`.
+  TextColumn get decision => text()();
+
+  /// Where on the photo, "left,top,right,bottom" as fractions.
+  TextColumn get region => text().nullable()();
+  DateTimeColumn get reviewedAt => dateTime()();
+}
+
 @DataClassName('AccountRow')
 class Accounts extends Table with SyncColumns {
   @override

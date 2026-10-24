@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import '../../domain/ocr.dart';
 import '../../domain/recognition.dart';
 import '../reader/booklet_extractor.dart';
 import '../reader/ocr_engine.dart';
@@ -42,6 +45,7 @@ class RecognitionResult {
     required this.layout,
     required this.models,
     required this.timingsMs,
+    required this.printed,
     this.page,
     this.notes = const [],
     this.answeredLine,
@@ -52,6 +56,9 @@ class RecognitionResult {
   final QualityReport? quality;
   final List<ValidationFinding> findings;
   final BookletReading layout;
+
+  /// The printed text found over the whole photo, with the engine that read it.
+  final OcrDocument printed;
 
   /// Every model that produced something in this result: name, version, and
   /// what it was used for.
@@ -73,6 +80,65 @@ class RecognitionResult {
     }
     return null;
   }
+
+  /// A stage failed, so some fields are `failed` rather than read.
+  bool get partial => fields.any((f) => f.state == FieldState.failed);
+
+  Map<String, Object?> toJson() => {
+        'pipelineVersion': pipelineVersion,
+        'fields': [for (final f in fields) f.toJson()],
+        'quality': quality?.toJson(),
+        'findings': [for (final f in findings) f.toJson()],
+        'layout': layout.toJson(),
+        'models': models,
+        'timingsMs': timingsMs,
+        'page': page?.toJson(),
+        'notes': notes,
+        'answeredLine': answeredLine,
+      };
+
+  static RecognitionResult fromJson(Map<String, dynamic> j, {OcrDocument printed = OcrDocument.empty}) => RecognitionResult(
+        pipelineVersion: j['pipelineVersion'] as String? ?? 'unknown',
+        fields: [for (final f in (j['fields'] as List? ?? const [])) ExtractedField.fromJson(f as Map<String, dynamic>)],
+        quality: j['quality'] == null ? null : QualityReport.fromJson(j['quality'] as Map<String, dynamic>),
+        findings: [for (final f in (j['findings'] as List? ?? const [])) ValidationFinding.fromJson(f as Map<String, dynamic>)],
+        layout: BookletReading.fromJson((j['layout'] as Map?)?.cast<String, dynamic>() ?? const {}),
+        models: [for (final m in (j['models'] as List? ?? const [])) (m as Map).map((k, v) => MapEntry(k as String, v as String))],
+        timingsMs: ((j['timingsMs'] as Map?) ?? const {}).map((k, v) => MapEntry(k as String, (v as num).toInt())),
+        printed: printed,
+        page: j['page'] == null ? null : PageDetection.fromJson(j['page'] as Map<String, dynamic>),
+        notes: [for (final n in (j['notes'] as List? ?? const [])) n as String],
+        answeredLine: j['answeredLine'] as String?,
+      );
+}
+
+/// Runs the recognition stages on one photo. The scan processor depends on this
+/// interface, so a different orchestrator (or a test double) can replace the
+/// pipeline.
+abstract interface class RecognitionOrchestrator {
+  /// Throws [RecognitionException] when the photo cannot be processed at all
+  /// and [RecognitionCancelled] when [isCancelled] says to stop; any other
+  /// problem is reported inside the result.
+  Future<RecognitionResult> run(
+    File photo, {
+    List<String> classList,
+    ExaminationValidator? validator,
+    bool Function()? isCancelled,
+  });
+}
+
+/// The photograph could not be processed at all (the file is missing, too large
+/// or not a picture). One field failing is not this: it is reported as
+/// `FieldState.failed` and the rest carry on.
+class RecognitionException implements Exception {
+  const RecognitionException(this.message);
+  final String message;
+  @override
+  String toString() => 'RecognitionException($message)';
+}
+
+class RecognitionCancelled implements Exception {
+  const RecognitionCancelled();
 }
 
 class BookletPipelineInfo {

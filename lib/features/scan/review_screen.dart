@@ -6,23 +6,28 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/number_pad_sheet.dart';
 import '../../core/widgets/ui_kit.dart';
 import '../../data/repositories/booklet_repository.dart';
+import '../../data/repositories/recognition_repository.dart';
 import '../../data/repositories/student_repository.dart';
 import '../../domain/models.dart';
 import '../../domain/ocr.dart';
+import '../../domain/recognition.dart';
 import '../../domain/reg_no.dart';
 import '../../domain/scan.dart';
 import '../../domain/scheme.dart';
 import '../../domain/scoring.dart';
 import '../../providers/providers.dart';
 import '../../services/reader/booklet_extractor.dart';
+import '../../services/recognition/validation.dart';
 import '../setup/course_setup_screen.dart';
+import 'recognition_widgets.dart';
 import 'scan_widgets.dart';
 
 /// Checks one booklet against its photo and confirms it.
 ///
-/// The photo is shown beside every field. The reader fills in only what it
-/// could read from print; the exam number and the marks are typed by the
-/// examiner from the photo. Nothing reaches the score grid until Confirm.
+/// The photo is shown beside every field. What the machine read is offered as
+/// suggestions, each saying where it came from and how far it can be trusted;
+/// nothing handwritten is entered for the examiner. The examiner confirms every
+/// value, and only Confirm puts a mark in the score grid.
 class ReviewScreen extends ConsumerStatefulWidget {
   const ReviewScreen({super.key, required this.scanId, required this.queue});
 
@@ -52,9 +57,22 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   bool _addExtra = false;
   bool _allowDuplicate = false;
   bool _serialFromReader = false;
-  bool _examFromReader = false;
   bool _saving = false;
   bool _editing = false;
+
+  /// What the pipeline found (kept as produced), and what the examiner decided
+  /// about each field the last time this booklet was confirmed.
+  StoredRun? _run;
+  List<FieldReview> _reviews = const [];
+
+  /// The suggestion the examiner tapped for the exam number, if they did.
+  FieldCandidate? _examChosen;
+
+  /// Question number -> the machine row its mark was taken from.
+  final Map<int, String> _markFrom = {};
+
+  /// Machine rows the examiner dismissed.
+  final Set<String> _dismissed = {};
 
   StoredBooklet? _serialClash;
   StoredBooklet? _studentClash;
@@ -82,8 +100,15 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       if (course == null) throw StateError('course');
       final students = await ref.read(studentRepositoryProvider).getAll(course.id);
 
+      final recognitions = ref.read(recognitionRepositoryProvider);
+      final run = await recognitions.latestRun(widget.scanId);
+      final reviews = stored?.confirmed == true ? await recognitions.reviewsOf(widget.scanId) : const <FieldReview>[];
+
       _marks.clear();
       _edited.clear();
+      _markFrom.clear();
+      _dismissed.clear();
+      _examChosen = null;
       _picked = null;
       _addExtra = false;
       _allowDuplicate = false;
@@ -94,14 +119,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         _exam.text = s?.regNo ?? '';
         _serial.text = stored.serialNo ?? '';
         _serialFromReader = false;
-        _examFromReader = false;
         _marks.addAll(stored.marks);
       } else {
-        // What the reader found is put in the field so there is nothing to
-        // type when it was right, and it says so, so it is checked.
-        final suggested = stored?.reading.examNumberSuggestion;
-        _exam.text = suggested ?? '';
-        _examFromReader = suggested != null;
+        // The exam number is left for the examiner: the machine's readings are
+        // offered below it as suggestions to tap, never entered for them. The
+        // printed booklet number is filled in and labelled, because it is
+        // printed, not handwritten.
+        _exam.text = '';
         _serial.text = stored?.reading.serialNo ?? '';
         _serialFromReader = stored?.reading.serialNo != null;
       }
@@ -111,6 +135,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         _stored = stored;
         _course = course;
         _students = students;
+        _run = run;
+        _reviews = reviews;
         _loading = false;
         _editing = !(stored?.confirmed ?? false);
       });
@@ -164,41 +190,17 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   double get _examScore => ScoreCalculator.examScoreFromQuestions(_scheme, _entered);
 
   /// Things the examiner should look at. They guide; only the same booklet
-  /// twice needs an explicit OK.
+  /// twice needs an explicit OK. The rules are the same ones the pipeline
+  /// applies to what it read.
   List<({BannerKind kind, String message})> get _issues {
-    final out = <({BannerKind kind, String message})>[];
-    final exam = _scheme.examPart;
-    for (final e in _entered.entries) {
-      final q = _spec(e.key);
-      final max = q?.max;
-      if (max != null && e.value > max + 1e-9) {
-        out.add((kind: BannerKind.danger, message: 'Q${e.key}: ${formatNumber(e.value)} is above the question maximum of ${formatNumber(max)}.'));
-      }
-      if (exam != null && !ScoreCalculator.isOnStep(e.value, exam.step)) {
-        out.add((kind: BannerKind.warning, message: 'Q${e.key}: ${formatNumber(e.value)} is not a multiple of ${formatNumber(exam.step)}.'));
-      }
-    }
-    if (exam != null && _entered.isNotEmpty && _examScore > exam.max + 1e-9) {
-      out.add((kind: BannerKind.danger, message: 'The exam score ${formatNumber(_examScore)} is above the ${exam.name} maximum of ${formatNumber(exam.max)}.'));
-    }
-    if (_written != null && _entered.isNotEmpty && (_written! - _examScore).abs() > 1e-6) {
-      out.add((
-        kind: BannerKind.warning,
-        message:
-            'The examiner wrote ${formatNumber(_written!)}, but the marks add up to ${formatNumber(_examScore)} under "${_scheme.countRule.label}". Check the marks, or the counting rule in Course setup.',
-      ));
-    }
-    final answered = _stored?.reading.questionsAnsweredText;
-    if (answered != null && _entered.isNotEmpty) {
-      final listed = RegExp(r'\d+').allMatches(answered).map((m) => int.parse(m.group(0)!)).toSet();
-      if (listed.isNotEmpty && !listed.containsAll(_entered.keys)) {
-        out.add((
-          kind: BannerKind.warning,
-          message: 'The "questions answered" line reads "$answered", but you entered marks for ${_entered.keys.map((k) => 'Q$k').join(', ')}.',
-        ));
-      }
-    }
-    return out;
+    final findings = SchemeExaminationValidator(_scheme).validate(ExamSnapshot(
+      marks: _entered,
+      writtenTotal: _written,
+      answeredLine: _stored?.reading.questionsAnsweredText,
+    ));
+    return [
+      for (final f in findings) (kind: f.severity == FindingSeverity.danger ? BannerKind.danger : BannerKind.warning, message: f.message),
+    ];
   }
 
   bool get _duplicateNeedsOk => _serialClash != null || _studentClash != null;
@@ -231,6 +233,157 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       _existingScore = existing;
       if (serialClash == null && studentClash == null) _allowDuplicate = false;
     });
+  }
+
+  // ---- what the machine found ----
+
+  ExtractedField? _field(String key) => _run?.result.field(key);
+
+  List<ExtractedField> get _markRows => [
+        for (final f in _run?.result.fields ?? const <ExtractedField>[])
+          if (f.key.startsWith('mark_row_')) f,
+      ];
+
+  static double? _numeric(String? v) => (v == null || v.contains('?')) ? null : double.tryParse(v);
+
+  FieldReview? _reviewOf(String key) {
+    FieldReview? last;
+    for (final r in _reviews) {
+      if (r.fieldKey == key) last = r;
+    }
+    return last;
+  }
+
+  /// The machine's first choice for a field, used to say what the examiner's
+  /// decision was measured against.
+  static String? _machineValue(ExtractedField? f) => f == null ? null : (f.value ?? (f.candidates.isEmpty ? null : f.candidates.first.text));
+
+  void _useExamSuggestion(FieldCandidate c) => setState(() {
+        _exam.text = c.text;
+        _examChosen = c;
+        _picked = null;
+        _addExtra = false;
+        _refreshChecks();
+      });
+
+  void _useMark(ExtractedField row, int? q, FieldCandidate c) {
+    final v = double.tryParse(c.text);
+    if (q == null || v == null) {
+      showMessage(context, 'The question number for this row is not clear. Type the mark under the right question.');
+      return;
+    }
+    setState(() {
+      _marks[q] = v;
+      _edited.remove(q);
+      _markFrom[q] = row.key;
+    });
+  }
+
+  void _useWritten(FieldCandidate c) {
+    final v = double.tryParse(c.text);
+    if (v == null) return;
+    setState(() => _written = v);
+  }
+
+  /// The examiner's decision about every field, against what the machine read.
+  List<FieldReviewDraft> _reviewDrafts(Student student, String? serial) {
+    final out = <FieldReviewDraft>[];
+    String decide(String? machine, String? finalValue) {
+      if (finalValue == null || finalValue.isEmpty) return machine == null ? 'blank' : 'rejected';
+      if (machine == null) return 'entered';
+      return machine == finalValue ? 'accepted' : 'edited';
+    }
+
+    final reading = _stored?.reading;
+    final exam = _field('exam_number');
+    final machineExam = _machineValue(exam) ?? reading?.examNumberSuggestion;
+    // The number the examiner confirmed, measured against what the machine read:
+    // the machine's own reading ("accepted"), another of its suggestions that
+    // the examiner tapped (for instance a class-list number, "suggestion"),
+    // or something the examiner typed ("edited" or "entered").
+    final finalKey = RegNo.key(student.regNo);
+    final String examDecision;
+    if (machineExam != null && RegNo.key(machineExam) == finalKey) {
+      examDecision = 'accepted';
+    } else if (exam != null && exam.candidates.any((c) => RegNo.key(c.text) == finalKey)) {
+      examDecision = 'suggestion';
+    } else {
+      examDecision = machineExam == null ? 'entered' : 'edited';
+    }
+    out.add(FieldReviewDraft(
+      fieldKey: 'exam_number',
+      kind: FieldKind.registrationNumber.dbValue,
+      machineValue: machineExam,
+      machineState: exam?.state.dbValue,
+      finalValue: student.regNo,
+      decision: examDecision,
+      region: exam?.region ?? reading?.examNumberRegion,
+    ));
+
+    final serialField = _field('serial_no');
+    final machineSerial = serialField?.value ?? reading?.serialNo;
+    if (machineSerial != null || serial != null) {
+      out.add(FieldReviewDraft(
+        fieldKey: 'serial_no',
+        kind: FieldKind.printedNumber.dbValue,
+        machineValue: machineSerial,
+        machineState: serialField?.state.dbValue,
+        finalValue: serial,
+        decision: decide(machineSerial, serial),
+        region: serialField?.region,
+      ));
+    }
+
+    final rowsByQuestion = <int, ExtractedField>{};
+    for (final r in _markRows) {
+      final q = int.tryParse(r.question ?? '');
+      if (q != null) rowsByQuestion.putIfAbsent(q, () => r);
+    }
+    final used = <String>{};
+    for (final e in _entered.entries) {
+      final row = rowsByQuestion[e.key];
+      if (row != null) used.add(row.key);
+      final machine = row?.value;
+      final fin = formatNumber(e.value);
+      final same = machine != null && _numeric(machine) != null && (_numeric(machine)! - e.value).abs() < 1e-9;
+      out.add(FieldReviewDraft(
+        fieldKey: 'mark_q${e.key}',
+        kind: FieldKind.mark.dbValue,
+        machineValue: machine,
+        machineState: row?.state.dbValue,
+        finalValue: fin,
+        decision: machine == null ? 'entered' : (same ? 'accepted' : 'edited'),
+        region: row?.region,
+      ));
+    }
+    for (final r in _markRows) {
+      if (used.contains(r.key) || r.value == null) continue;
+      out.add(FieldReviewDraft(
+        fieldKey: r.key,
+        kind: FieldKind.mark.dbValue,
+        machineValue: r.value,
+        machineState: r.state.dbValue,
+        decision: 'rejected',
+        region: r.region,
+      ));
+    }
+
+    final total = _field('total_written');
+    final machineTotal = total?.value;
+    if (_written != null || machineTotal != null) {
+      final fin = _written == null ? null : formatNumber(_written!);
+      final same = machineTotal != null && _written != null && _numeric(machineTotal) != null && (_numeric(machineTotal)! - _written!).abs() < 1e-9;
+      out.add(FieldReviewDraft(
+        fieldKey: 'total_written',
+        kind: FieldKind.mark.dbValue,
+        machineValue: machineTotal,
+        machineState: total?.state.dbValue,
+        finalValue: fin,
+        decision: fin == null ? 'rejected' : (machineTotal == null ? 'entered' : (same ? 'accepted' : 'edited')),
+        region: total?.region,
+      ));
+    }
+    return out;
   }
 
   // ---- actions ----
@@ -290,13 +443,14 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             confirmedValue: serial ?? '',
             region: null,
           ),
-        if (reading?.examNumberSuggestion != null && student.regNo != reading!.examNumberSuggestion)
-          CorrectionDraft(
-            field: 'exam_number',
-            readValue: reading.examNumberSuggestion,
-            confirmedValue: student.regNo,
-            region: reading.examNumberRegion,
-          ),
+        if (_machineValue(_field('exam_number')) ?? reading?.examNumberSuggestion case final machine?)
+          if (RegNo.key(machine) != RegNo.key(student.regNo))
+            CorrectionDraft(
+              field: 'exam_number',
+              readValue: machine,
+              confirmedValue: student.regNo,
+              region: reading?.examNumberRegion,
+            ),
       ];
 
       await ref.read(bookletRepositoryProvider).confirm(
@@ -310,6 +464,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             examPartId: exam.id,
             photoPath: _scan!.relativePath,
             corrections: corrections,
+            reviews: _reviewDrafts(student, serial),
+            runId: _run?.id,
           );
       if (!mounted) return;
       _next(confirmedMessage: '${student.regNo}: ${exam.name} ${formatNumber(_examScore)} saved');
@@ -348,10 +504,41 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     if (mounted) setState(() => _editing = true);
   }
 
-  void _openPhoto() {
+  /// The whole photo, zoomable. With [highlight] the field's place on it is
+  /// outlined and brought into view.
+  void _openPhoto({Region? highlight, String? label}) {
     final scan = _scan;
     if (scan == null) return;
-    Navigator.push(context, MaterialPageRoute(builder: (_) => _PhotoViewer(relativePath: scan.relativePath, title: scan.displayName)));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PhotoViewerScreen(
+          relativePath: scan.relativePath,
+          title: scan.displayName,
+          highlight: highlight,
+          label: label,
+          photoWidth: scan.width,
+          photoHeight: scan.height,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _rejectPhoto() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject this photo?'),
+        content: const Text('It will leave the review queue and be marked as not usable. Nothing is added to the score grid. Take the photo again to read it.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Reject photo')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await ref.read(scanRepositoryProvider).setStatus(widget.scanId, ScanStatus.failed, error: 'You rejected this photo. Take it again to read it.');
+    if (mounted) _next();
   }
 
   // ---- build ----
@@ -377,7 +564,15 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       appBar: AppBar(
         title: Text(position >= 0 && widget.queue.length > 1 ? 'Review ${position + 1} of ${widget.queue.length}' : 'Review'),
         actions: [
-          IconButton(tooltip: 'See the whole photo', icon: const Icon(Icons.fullscreen_rounded), onPressed: _openPhoto),
+          IconButton(tooltip: 'See the whole photo', icon: const Icon(Icons.fullscreen_rounded), onPressed: () => _openPhoto()),
+          if (!locked)
+            PopupMenuButton<String>(
+              tooltip: 'More',
+              onSelected: (v) {
+                if (v == 'reject') _rejectPhoto();
+              },
+              itemBuilder: (context) => const [PopupMenuItem(value: 'reject', child: Text("Can't use this photo"))],
+            ),
         ],
       ),
       body: Column(
@@ -390,6 +585,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 children: [
                   Text('${scan.displayName} · ${_course!.title}', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
                   const SizedBox(height: 8),
+                  if (!locked && _run?.result.quality != null) QualityNotice(_run!.result.quality!),
+                  if (!locked) _runNotes(),
                   if (reading != null && reading.warnings.isNotEmpty)
                     for (final w in reading.warnings)
                       Padding(padding: const EdgeInsets.only(bottom: 8), child: InfoBanner(message: w, kind: BannerKind.info)),
@@ -425,23 +622,21 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                     icon: Icons.badge_rounded,
                     color: context.colors.tileBlue,
                     title: 'Exam number',
+                    trailing: locked
+                        ? const FieldStateChip(FieldState.recognized, confirmed: true)
+                        : (_field('exam_number') == null ? null : FieldStateChip(_field('exam_number')!.state)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _PhotoPart(scan: scan, region: reading?.examNumberRegion, maxHeight: 110, onTap: _openPhoto),
+                        _PhotoPart(
+                          scan: scan,
+                          region: reading?.examNumberRegion,
+                          maxHeight: 110,
+                          onTap: () => _openPhoto(highlight: reading?.examNumberRegion, label: 'exam number'),
+                        ),
                         const SizedBox(height: 10),
-                        if (_examFromReader && !locked)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: InfoBanner(
-                              message: 'Read automatically'
-                                  '${reading?.examNumberConfidence == null ? '' : ' (${((reading!.examNumberConfidence!) * 100).round()}% sure)'}'
-                                  '${reading?.examNumberOnClassList == true ? ' and found on the class list' : ''}'
-                                  '. Check it against the photo; tap the field to change it.',
-                              kind: BannerKind.warning,
-                              icon: Icons.auto_awesome_rounded,
-                            ),
-                          ),
+                        if (!locked) _examSuggestions(reading),
+                        if (locked) _confirmedNote('exam_number'),
                         TextField(
                           controller: _exam,
                           enabled: !locked,
@@ -451,7 +646,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                           onChanged: (_) => setState(() {
                             _picked = null;
                             _addExtra = false;
-                            _examFromReader = false;
+                            _examChosen = null;
                             _refreshChecks();
                           }),
                           decoration: const InputDecoration(labelText: 'Registration number', hintText: 'FWM/24U/0538'),
@@ -468,9 +663,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                     icon: Icons.tag_rounded,
                     color: context.colors.tilePurple,
                     title: 'Booklet number',
+                    trailing: locked
+                        ? const FieldStateChip(FieldState.recognized, confirmed: true)
+                        : (_field('serial_no') == null ? null : FieldStateChip(_field('serial_no')!.state)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (locked) _confirmedNote('serial_no'),
                         TextField(
                           controller: _serial,
                           enabled: !locked,
@@ -508,6 +707,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                     icon: Icons.edit_note_rounded,
                     color: context.colors.tileGreen,
                     title: 'Marks',
+                    trailing: locked ? const FieldStateChip(FieldState.recognized, confirmed: true) : null,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -515,12 +715,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                           scan: scan,
                           region: _marksRegion(reading),
                           maxHeight: 240,
-                          onTap: _openPhoto,
+                          onTap: () => _openPhoto(highlight: _marksRegion(reading), label: 'marks'),
                         ),
                         const SizedBox(height: 4),
                         Text('Skip a question that has a line through it or no mark.',
                             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                         const SizedBox(height: 8),
+                        if (!locked) _machineMarks(),
                         for (final q in _questionNumbers) _markRow(q, locked),
                         if (!locked)
                           Align(
@@ -561,8 +762,14 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                         Text('Counting rule: ${_scheme.countRule.label}${_scheme.countN == null ? '' : ' (${_scheme.countN})'}',
                             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                         const SizedBox(height: 10),
-                        _PhotoPart(scan: scan, region: reading?.totalRegion, maxHeight: 70, onTap: _openPhoto),
+                        _PhotoPart(
+                          scan: scan,
+                          region: reading?.totalRegion,
+                          maxHeight: 70,
+                          onTap: () => _openPhoto(highlight: reading?.totalRegion, label: "examiner's total"),
+                        ),
                         const SizedBox(height: 8),
+                        if (!locked) _machineTotal(),
                         OutlinedButton(
                           onPressed: locked ? null : _enterWritten,
                           child: Text(_written == null ? "Add the examiner's written total (optional)" : "Examiner's total: ${formatNumber(_written!)}"),
@@ -643,6 +850,217 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     );
   }
 
+  // ---- machine readings ----
+
+  /// Things the run itself reports that the examiner should know: a reader that
+  /// was unavailable, a weaker reader that took over, a stage that failed.
+  /// (Picture-quality notes are shown by the quality notice instead.)
+  Widget _runNotes() {
+    final notes = [
+      for (final n in _run?.result.notes ?? const <String>[])
+        if (!n.startsWith('Picture:')) n,
+    ];
+    if (notes.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final n in notes.take(3))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: InfoBanner(message: n, kind: n.contains('ignored') ? BannerKind.info : BannerKind.warning),
+          ),
+      ],
+    );
+  }
+
+  /// The exam number the machine may have read, as suggestions to tap. Nothing
+  /// is entered for the examiner.
+  Widget _examSuggestions(BookletReading? reading) {
+    final f = _field('exam_number');
+    final text = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    var candidates = f?.candidates ?? const <FieldCandidate>[];
+    if (f == null && reading?.examNumberSuggestion != null) {
+      // A photo read before recognition results were kept: its one suggestion.
+      candidates = [
+        FieldCandidate(
+          reading!.examNumberSuggestion!,
+          reading.examNumberConfidence ?? 0,
+          source: reading.examNumberOnClassList ? 'class_list' : 'ocr',
+          note: 'from an earlier reading of this photo',
+        ),
+      ];
+    }
+    final chosen = _examChosen != null && _exam.text == _examChosen!.text;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (candidates.isEmpty)
+            Text(
+              f == null ? 'Read the number from the photo and type it below.' : 'The machine could not read this clearly. Type the number from the photo.',
+              style: text.bodyMedium?.copyWith(color: muted),
+            )
+          else ...[
+            Text('Suggestions. Tap one to use it, then check it against the photo.', style: text.bodyMedium?.copyWith(color: muted)),
+            const SizedBox(height: 6),
+            CandidateChips(candidates: candidates, onUse: _useExamSuggestion),
+          ],
+          if (chosen)
+            const Padding(
+              padding: EdgeInsets.only(top: 4, bottom: 4),
+              child: InfoBanner(
+                message: 'This is the machine\'s suggestion, not yet checked by you. Compare it with the photo before you confirm.',
+                kind: BannerKind.warning,
+                icon: Icons.auto_awesome_rounded,
+              ),
+            ),
+          if (f != null) EvidenceTile(f),
+        ],
+      ),
+    );
+  }
+
+  /// For a confirmed booklet: what the machine read, beside what was confirmed.
+  Widget _confirmedNote(String key) {
+    final r = _reviewOf(key);
+    if (r == null || r.machineValue == null) return const SizedBox.shrink();
+    final text = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final String msg;
+    if (r.decision == 'accepted') {
+      msg = 'The machine read "${r.machineValue}" and you confirmed it.';
+    } else if (r.decision == 'rejected') {
+      msg = 'The machine read "${r.machineValue}"; you left it out.';
+    } else {
+      msg = 'The machine read "${r.machineValue}"; you confirmed "${r.finalValue}".';
+    }
+    return Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(msg, style: text.bodyMedium?.copyWith(color: muted)));
+  }
+
+  /// One card per row of the marks table the machine found, each a suggestion
+  /// the examiner can use, dismiss, or look at on the photo.
+  Widget _machineMarks() {
+    final run = _run;
+    if (run == null) return const SizedBox.shrink();
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final failed = _field('mark_rows');
+    if (failed != null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: InfoBanner(message: failed.warnings.isEmpty ? 'The marks could not be read by machine.' : failed.warnings.first, kind: BannerKind.warning),
+      );
+    }
+    final rows = [for (final r in _markRows) if (!_dismissed.contains(r.key)) r];
+    final notes = [
+      for (final f in run.result.findings)
+        if (const {'mark_unclear', 'question_unclear', 'duplicate_question'}.contains(f.code)) f.message,
+    ];
+    if (rows.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Text(_markRows.isEmpty ? 'No marks were found by machine. Enter them from the photo.' : 'All machine readings were dismissed.',
+            style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Machine readings of the marks table. Handwriting is read imperfectly: check each against the photo before using it.',
+              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          for (final row in rows) _markCard(row),
+          for (final n in notes)
+            Padding(padding: const EdgeInsets.only(bottom: 6), child: InfoBanner(message: n, kind: BannerKind.info)),
+        ],
+      ),
+    );
+  }
+
+  Widget _markCard(ExtractedField row) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final q = int.tryParse(row.question ?? '');
+    final partial = row.value != null && row.value!.contains('?');
+    final numeric = [for (final c in row.candidates) if (_numeric(c.text) != null) c];
+    final index = row.key.replaceFirst('mark_row_', '');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 4),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('Row $index${q == null ? ' · question not clear' : ' · reads as Q$q'}', style: text.titleSmall)),
+              FieldStateChip(row.state),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (row.value == null)
+            Text('Nothing readable in this cell.', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant))
+          else if (partial || numeric.isEmpty)
+            Text('Partly read: "${row.value}". Type the mark from the photo.', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant))
+          else
+            CandidateChips(candidates: numeric, onUse: (c) => _useMark(row, q, c)),
+          if (row.warnings.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(row.warnings.first, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            ),
+          Wrap(
+            children: [
+              TextButton(
+                onPressed: () => _openPhoto(highlight: row.region, label: 'mark in row $index'),
+                child: const Text('Show on photo'),
+              ),
+              TextButton(
+                onPressed: () => setState(() => _dismissed.add(row.key)),
+                child: const Text('Dismiss'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The machine's reading of the Total box: a suggestion, or "blank".
+  Widget _machineTotal() {
+    final f = _field('total_written');
+    if (f == null) return const SizedBox.shrink();
+    final text = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final numeric = [for (final c in f.candidates) if (_numeric(c.text) != null) c];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (f.value == null)
+            Text(f.state == FieldState.recognized ? 'The Total box looks blank on the photo.' : 'The Total box could not be read. Check the photo.',
+                style: text.bodyMedium?.copyWith(color: muted))
+          else if (numeric.isEmpty)
+            Text('Partly read: "${f.value}". Type the total from the photo.', style: text.bodyMedium?.copyWith(color: muted))
+          else ...[
+            Text('Machine reading of the Total box (check it):', style: text.bodyMedium?.copyWith(color: muted)),
+            const SizedBox(height: 4),
+            CandidateChips(candidates: numeric, onUse: _useWritten, max: 2),
+          ],
+        ],
+      ),
+    );
+  }
+
   Region? _marksRegion(BookletReading? r) {
     final m = r?.marksRegion;
     if (m == null) return null;
@@ -688,7 +1106,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   onPressed: () => setState(() {
                     _picked = _students.firstWhere((st) => RegNo.key(st.regNo) == s.regNo);
                     _exam.text = _picked!.regNo;
-                    _examFromReader = false;
+                    _examChosen = null;
                     _refreshChecks();
                   }),
                 ),
@@ -761,12 +1179,15 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.icon, required this.color, required this.title, required this.child});
+  const _Section({required this.icon, required this.color, required this.title, required this.child, this.trailing});
 
   final IconData icon;
   final Color color;
   final String title;
   final Widget child;
+
+  /// A chip saying how far the machine's reading of this section can be trusted.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) => GlowCard(
@@ -778,6 +1199,7 @@ class _Section extends StatelessWidget {
               GradientIcon(icon: icon, color: color, size: 38),
               const SizedBox(width: 12),
               Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+              if (trailing != null) trailing!,
             ]),
             const SizedBox(height: 12),
             child,
@@ -825,26 +1247,4 @@ class _PhotoPart extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PhotoViewer extends StatelessWidget {
-  const _PhotoViewer({required this.relativePath, required this.title});
-
-  final String relativePath;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          title: Text(title),
-        ),
-        body: InteractiveViewer(
-          minScale: 1,
-          maxScale: 8,
-          child: Center(child: ScanImage(relativePath: relativePath, fit: BoxFit.contain, cacheWidth: 2400)),
-        ),
-      );
 }

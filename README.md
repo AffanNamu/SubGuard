@@ -42,11 +42,18 @@ lands in the grid and the exports. Handwriting is **not** read automatically yet
   twice is caught and you are asked. A progress screen shows each photo's real state, with
   pause, and photos left half-read when the app closes are picked up again.
 - **Review**: for each booklet the photo's exam-number crop, marks crop and total crop sit
-  beside the fields. Nothing reaches the score grid until you press Confirm; confirming a
+  beside the fields, and "Show on photo" outlines a field's place on the whole photo, zoomed.
+  What the machine read is offered as **suggestions to tap** (each says whether it was read from
+  the photo or came from the class list, with a note on how), each field carries a state chip
+  (Read / Check this / Not readable / Reading failed) and "How this was read" lists every attempt.
+  **Nothing handwritten is entered for you.** A photo the quality check says is unusable says
+  so first, with what to do. Nothing reaches the score grid until you press Confirm; confirming a
   second booklet for the same student, or the same booklet number again, needs an explicit OK.
-  Marks above a question's maximum, a written total that disagrees with the marks, and an
-  exam number that is not on the class list are all shown. Confirmed records are never
-  overwritten by a later re-read, and corrections are logged for training.
+  Marks above a question's maximum, a written total that disagrees with the marks (both numbers
+  kept, never "corrected"), and an exam number that is not on the class list are all shown. The
+  waiting list says why each booklet is waiting. Confirmed records show what the machine read
+  beside what you confirmed, are never overwritten by a later re-read, and every decision is
+  stored with its time as a labelled example.
 - Light and dark themes, with a switch in Settings.
 - Undo for deletes, and a bin for deleted courses.
 
@@ -86,14 +93,15 @@ engine draws pages, and the iOS copying code (it is only compiled). The list of 
 
 ## What it does not do (yet)
 
-- Handwriting is read only partly. The reader is PaddleOCR (PP-OCR) running on the phone with
-  no internet, with Google ML Kit as the fallback. It reads the printed labels and booklet
-  number, and the handwritten exam number from a close-up of its area. The number is matched to
-  the class list, mostly by its sequence number (`0538`), because the department and year in
-  handwriting are the hard part. It fills the field and says it was read automatically; when the
-  writing is unclear, or two students fit equally, it leaves the field empty. **The marks are
-  not read**: they are typed from the photo crop beside the field. A digit reader trained on
-  the examiners' own corrections is the plan for them.
+- **Handwriting is not reliably read, and the app does not pretend it is.** Printed text is read
+  by PaddleOCR (PP-OCR) on the phone, with no internet, and ML Kit as a fallback. Marks are read
+  by a small digit network (`assets/models/digits_v1.bin`, 128 KB, trained on MNIST); on the one
+  real photograph available it read 1 of 4 marks exactly, and the handwritten exam number was
+  not read at all. So handwritten values are **suggestions the examiner checks**, never
+  accepted automatically. Real accuracy needs labelled examples from real booklets; the app now
+  records them on every confirmation. See `docs/recognition/` (AUDIT, BENCHMARK, MODEL_SELECTION).
+- No accuracy figure can be given: the evaluation set is one photograph. No phone speed or memory
+  figure can be given either: the pipeline has not been measured on a phone.
 - PDF input is not supported.
 - Accounts, sync and purchases do not exist; Settings says so.
 - The PaddleOCR and ML Kit readers, camera and gallery pickers have only been exercised through the test
@@ -124,18 +132,22 @@ lib/
     import/      CSV, Excel and paste readers; column guessing; import planning
     scan/        picking, storing and fingerprinting photos
     reader/      the OCR engine interface, the booklet extractor, the processing queue
+    recognition/ the recognition pipeline: stages as interfaces, marks table, validation, models
+    vision/      pure-Dart image work: quality, page outline, ink separation, lines, digit network
     export/      one ResultTable model, rendered by four writers (docx, xlsx, pdf, csv)
   providers/     Riverpod providers; the grid combines scheme + students + marks
   features/      one folder per screen group
   core/          theme and shared widgets
-test/            unit, database, migration, export, widget and layout tests
-tool/            schema and icon generators
+test/            unit, database, migration, export, widget, layout and recognition tests
+tool/            schema and icon generators; train/ (the digit model); bench/ (the benchmark)
+eval/            the evaluation dataset (read eval/README.md)
 docs/RELEASE.md  how the store builds are made
+docs/recognition/ how recognition works, what it was measured at, and what is not known
 ```
 
 ## Database
 
-Fifteen tables: the fourteen in the brief plus `upload_batch`. Every table has a UUID `id`, `updated_at` and a soft-delete
+Seventeen tables: the fourteen in the brief plus `upload_batch`, `recognition_run` and `field_review`. Every table has a UUID `id`, `updated_at` and a soft-delete
 `deleted_at` from the first version, so Pro sync can be added without migrating anyone's data.
 Repositories set `updated_at` on every write and never hard-delete.
 
@@ -146,7 +158,9 @@ the `upload_batch` table, and on `scan`: `batch_id`, `original_name`, `content_h
 
 Schema changes are step-by-step migrations checked against dumps in `drift_schemas/`
 (`tool/generate_schema.sh` regenerates them). Version 2 added the upload tables and
-columns; a test upgrades a version 1 database full of data and checks nothing is lost.
+columns; version 3 added `recognition_run` (what the pipeline found, kept as produced) and
+`field_review` (what the examiner decided about each field, with when). Tests upgrade old
+databases full of data and check nothing is lost.
 
 ## Where the later steps plug in
 

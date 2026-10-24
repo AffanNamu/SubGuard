@@ -1,41 +1,56 @@
 import 'dart:async';
 
 import '../../data/repositories/booklet_repository.dart';
+import '../../data/repositories/course_repository.dart';
+import '../../data/repositories/recognition_repository.dart';
 import '../../data/repositories/scan_repository.dart';
 import '../../data/repositories/student_repository.dart';
 import '../../domain/models.dart';
 import '../../domain/ocr.dart';
 import '../../domain/scan.dart';
+import '../recognition/interfaces.dart';
+import '../recognition/validation.dart';
 import '../scan/scan_files.dart';
 import 'booklet_extractor.dart';
-import 'ocr_engine.dart';
 
-/// Works through the queued photos of a batch, one at a time: reads each,
-/// finds the printed labels, stores what was found, and hands it to the
-/// examiner. It never marks anything confirmed and never fills in a value it
-/// could not read.
+/// Works through the queued photos of a batch, one at a time: runs the
+/// recognition pipeline on each, stores what it found (kept exactly as
+/// produced), and hands it to the examiner. It never marks anything confirmed
+/// and never fills in a value the pipeline did not read.
+///
+/// One photo at a time is deliberate: a phone cannot hold several full-size
+/// photos in memory, and the pipeline already uses background isolates for its
+/// heavy stages. Each photo is isolated from the others: one that fails is
+/// marked failed with the reason and the batch carries on.
 class ScanProcessor {
   ScanProcessor({
     required this._scans,
     required this._booklets,
     required this._files,
-    required this._engine,
+    required this._pipeline,
+    this._recognitions,
     this._students,
-    this._extractor = const BookletExtractor(),
-    this.perPhotoTimeout = const Duration(seconds: 60),
+    this._courses,
+    this.perPhotoTimeout = const Duration(minutes: 3),
   });
 
   final ScanRepository _scans;
   final BookletRepository _booklets;
   final ScanFiles _files;
-  final OcrEngine _engine;
+
+  /// Built on first use (it loads the handwriting model).
+  final Future<RecognitionOrchestrator> Function() _pipeline;
+  final RecognitionRepository? _recognitions;
   final StudentRepository? _students;
-  final BookletExtractor _extractor;
+  final CourseRepository? _courses;
+
+  /// A safety net for a photo that never finishes. The pipeline has its own,
+  /// shorter limits on the text reader; this stops anything else that hangs.
   final Duration perPhotoTimeout;
 
-  /// Reads every queued photo in [batchId]. Stops after the current photo when
-  /// [shouldStop] returns true; the rest stay queued. [onProgress] gets the
-  /// number finished and the number to do in this run.
+  /// Reads every queued photo in [batchId]. Stops after the photo in hand when
+  /// [shouldStop] returns true; the rest stay queued. [onProgress] gets the number finished and the number
+  /// to do in this run.
   Future<void> processBatch(
     String batchId, {
     bool Function()? shouldStop,
@@ -46,7 +61,17 @@ class ScanProcessor {
     onProgress?.call(0, queued.length);
     for (final scan in queued) {
       if (shouldStop?.call() ?? false) break;
-      await processOne(scan);
+      try {
+        await processOne(scan);
+      } on RecognitionCancelled {
+        // Put back for the next run; nothing was stored for it.
+        await _safely(() => _scans.setStatus(scan.id, ScanStatus.queued));
+        break;
+      } catch (_) {
+        // Whatever went wrong with this photo does not stop the others.
+        await _safely(() => _scans.setStatus(scan.id, ScanStatus.failed,
+            error: 'This photo could not be read because of an unexpected problem. Try again, or remove it and add the photo again.'));
+      }
       done++;
       onProgress?.call(done, queued.length);
     }
@@ -62,49 +87,66 @@ class ScanProcessor {
       return;
     }
 
-    OcrDocument document;
-    try {
-      document = await _engine
-          .recognize(file, width: scan.width ?? 0, height: scan.height ?? 0)
-          .timeout(perPhotoTimeout);
-    } catch (e) {
-      // The photo is fine; only the automatic reading failed. The examiner can
-      // still enter the values from it, so this is a review, not a failure.
-      document = OcrDocument(
-        engine: _engine.name,
-        lines: const [],
-        note: e is TimeoutException
-            ? 'Reading took too long. Enter the values from the photo.'
-            : 'Automatic reading failed. Enter the values from the photo.',
-      );
-    }
-
-    // First pass finds the printed labels and so where the exam number is;
-    // second pass reads just that area, close up, and matches it to the class list.
     final classList = [for (final s in await _students?.getAll(scan.courseId) ?? const <Student>[]) s.regNo];
-    var reading = _extractor.extract(document, classList: classList);
-    final region = reading.examNumberRegion;
-    final engine = _engine;
-    if (region != null && engine is RegionOcrEngine) {
-      try {
-        final crop = await engine.recognizeRegion(file, region).timeout(perPhotoTimeout);
-        reading = _extractor.extract(document, examNumberCrop: crop, classList: classList);
-      } catch (_) {
-        // The close-up failed; the whole-photo reading stands.
-      }
-    }
+    final course = await _courses?.get(scan.courseId);
+    final validator = course == null ? null : SchemeExaminationValidator(course.scheme);
+
+    RecognitionResult result;
+    var abandoned = false;
     try {
-      await _booklets.saveReading(
-        scanId: scan.id,
-        courseId: scan.courseId,
-        document: document,
-        reading: reading,
+      final pipeline = await _pipeline();
+      result = await pipeline
+          .run(
+            file,
+            classList: classList,
+            validator: validator,
+            isCancelled: () => abandoned,
+          )
+          .timeout(perPhotoTimeout);
+    } on RecognitionCancelled {
+      rethrow;
+    } on RecognitionException catch (e) {
+      // The photo itself cannot be used: not a picture, too large, unreadable.
+      await _scans.setStatus(scan.id, ScanStatus.failed, error: e.message);
+      return;
+    } catch (e) {
+      // The photo is fine; the automatic reading failed or did not finish. The
+      // examiner can still enter the values from it, so this is a review.
+      abandoned = true;
+      await _store(
+        scan,
+        null,
+        OcrDocument(
+          engine: 'none',
+          lines: const [],
+          note: e is TimeoutException
+              ? 'Reading took too long. Enter the values from the photo.'
+              : 'Automatic reading failed. Enter the values from the photo.',
+        ),
       );
+      return;
+    }
+    await _store(scan, result, result.printed);
+  }
+
+  /// Stores the result and moves the photo to review. [result] is null when
+  /// there is none (the run failed or timed out): only the note is kept.
+  Future<void> _store(ScanItem scan, RecognitionResult? result, OcrDocument printed) async {
+    try {
+      final reading = result?.layout ?? const BookletExtractor().extract(printed);
+      await _booklets.saveReading(scanId: scan.id, courseId: scan.courseId, document: printed, reading: reading);
+      if (result != null) await _recognitions?.saveRun(scan.id, result);
       await _scans.setStatus(scan.id, ScanStatus.needsReview);
     } catch (_) {
-      // Nothing was stored for this photo, so put it back for another try.
-      await _scans.setStatus(scan.id, ScanStatus.queued);
+      // Nothing was stored for this photo; the batch marks it failed, with the
+      // reason, and carries on with the others.
       rethrow;
     }
+  }
+
+  Future<void> _safely(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (_) {}
   }
 }

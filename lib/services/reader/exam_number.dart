@@ -101,7 +101,11 @@ class ExamNumberResolver {
         tidied.putIfAbsent(reg.canonical, () => {}).add(r.variant);
         add(reg.canonical, base, src,
             note: reg.corrections.isEmpty ? null : 'Tidied from "${line.text.trim()}": ${reg.corrections.join('; ')}.');
-      } else {
+      } else if (RegExp(r'\d').allMatches(line.text).length >= 3) {
+        // Part of a number was read (for example "L0/0538"): worth showing, as
+        // a poor candidate. Text with almost no digits ("Number:", a stray
+        // label) is not a candidate for a registration number; it stays in the
+        // attempts, as evidence of what the reader saw.
         add(line.text.trim(), base * 0.5, src, note: 'Does not fit DEPT/YYU/NNNN.');
       }
 

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database/app_database.dart';
 import '../data/repositories/course_repository.dart';
 import '../data/repositories/booklet_repository.dart';
+import '../data/repositories/recognition_repository.dart';
 import '../data/repositories/scan_repository.dart';
 import '../data/repositories/score_repository.dart';
 import '../data/repositories/settings_repository.dart';
@@ -17,6 +18,10 @@ import '../domain/scheme.dart';
 import '../domain/scoring.dart';
 import '../services/reader/ocr_engine.dart';
 import '../services/reader/scan_processor.dart';
+import '../services/recognition/attention.dart';
+import '../services/recognition/booklet_pipeline.dart';
+import '../services/recognition/interfaces.dart';
+import '../services/recognition/model_registry.dart';
 import '../services/scan/image_source.dart';
 import '../services/scan/intake_service.dart';
 import '../services/scan/scan_files.dart';
@@ -46,12 +51,38 @@ final bookletRepositoryProvider = Provider(
 /// What reads the text in photos. Tests replace it.
 final ocrEngineProvider = Provider<OcrEngine>((ref) => defaultOcrEngine());
 
+final recognitionRepositoryProvider = Provider((ref) => RecognitionRepository(ref.watch(databaseProvider)));
+
+/// Why a photo is waiting for review, from its stored recognition run.
+final attentionProvider = FutureProvider.family<String?, String>((ref, scanId) async {
+  final run = await ref.watch(recognitionRepositoryProvider).latestRun(scanId);
+  return attentionOf(run?.result);
+});
+
+/// The recognition pipeline: the text reader above, the layout, and the
+/// verified handwriting model. If the model file is missing or damaged the
+/// pipeline is still built, and says so for every photo (marks fail with the
+/// reason) rather than reading with something else. Tests replace this.
+final recognitionPipelineProvider = FutureProvider<RecognitionOrchestrator>((ref) async {
+  final ocr = ref.watch(ocrEngineProvider);
+  LoadedDigitModel? digits;
+  String? error;
+  try {
+    digits = await ModelRegistry.loadDigits();
+  } on ModelException catch (e) {
+    error = e.message;
+  }
+  return BookletPipeline(ocr: ocr, digits: digits, digitsError: error);
+});
+
 final scanProcessorProvider = Provider((ref) => ScanProcessor(
       scans: ref.watch(scanRepositoryProvider),
       booklets: ref.watch(bookletRepositoryProvider),
       files: ref.watch(scanFilesProvider),
-      engine: ref.watch(ocrEngineProvider),
+      pipeline: () => ref.read(recognitionPipelineProvider.future),
+      recognitions: ref.watch(recognitionRepositoryProvider),
       students: ref.watch(studentRepositoryProvider),
+      courses: ref.watch(courseRepositoryProvider),
     ));
 
 /// Where the original photos are kept. Overridden in main() and in tests.

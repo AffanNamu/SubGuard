@@ -1,0 +1,830 @@
+{
+ "schema": 1,
+ "generated": "2026-10-24T20:17:48.834013Z",
+ "pipeline_version": "1.0.0",
+ "environment": {
+  "platform": "linux",
+  "cpus": 4,
+  "ocr_reader": "PP-OCRv4 via ONNX Runtime (test stand-in for PaddleOCR)",
+  "note": "A development machine with a PP-OCRv4 stand-in for the phone's PaddleOCR. NOT a phone: timings and memory are not phone figures."
+ },
+ "models": [
+  {
+   "id": "unimarkly-digits",
+   "version": "1.0.0",
+   "sha256": "05bb539c040c91bbdcb7abcc85d664faee5e0bdc98a9f0d6dda2194cd66519f5"
+  }
+ ],
+ "data": {
+  "documents": 1,
+  "independent_photographs": 1,
+  "runs": 7,
+  "original_runs": 1,
+  "degraded_runs": 6,
+  "splits": {
+   "booklet-001": "dev"
+  },
+  "note": "Degraded runs are derived from the original photographs by known damage; they test the stages, not handwriting variety."
+ },
+ "metrics": {
+  "registration_number_exact_raw": {
+   "right": 0,
+   "of": 7,
+   "rate": 0.0
+  },
+  "registration_number_read_at_all": {
+   "right": 0,
+   "of": 7,
+   "rate": 0.0
+  },
+  "registration_number_in_candidates": {
+   "right": 1,
+   "of": 7,
+   "rate": 0.14285714285714285
+  },
+  "registration_number_top_candidate_exact_with_class_list": {
+   "right": 1,
+   "of": 7,
+   "rate": 0.14285714285714285
+  },
+  "registration_number_character_error_rate": {
+   "edits": 84,
+   "chars": 84,
+   "rate": 1.0
+  },
+  "mark_exact_with_question_assigned": {
+   "right": 2,
+   "of": 28,
+   "rate": 0.07142857142857142
+  },
+  "mark_in_candidates_with_question": {
+   "right": 2,
+   "of": 28,
+   "rate": 0.07142857142857142
+  },
+  "mark_row_found_at_right_place": {
+   "right": 15,
+   "of": 28,
+   "rate": 0.5357142857142857
+  },
+  "mark_row_question_label_correct": {
+   "right": 11,
+   "of": 28,
+   "rate": 0.39285714285714285
+  },
+  "printed_serial_exact": {
+   "right": 5,
+   "of": 7,
+   "rate": 0.7142857142857143
+  },
+  "written_total_correct_including_blank": {
+   "right": 5,
+   "of": 7,
+   "rate": 0.7142857142857143
+  },
+  "document_exact": {
+   "right": 0,
+   "of": 7,
+   "rate": 0.0
+  },
+  "documents_needing_review": {
+   "right": 7,
+   "of": 7,
+   "rate": 1.0
+  },
+  "fields_needing_review": {
+   "right": 61,
+   "of": 66,
+   "rate": 0.9242424242424242
+  },
+  "false_acceptance": {
+   "accepted_fields_with_ground_truth": 5,
+   "accepted_and_wrong": 0,
+   "rate": 0.0
+  },
+  "time_per_page_ms": {
+   "median": 5724,
+   "min": 1007,
+   "max": 6570
+  },
+  "peak_resident_memory_mb": 217,
+  "batch_reliability": {
+   "inputs": 6,
+   "completed": 2,
+   "failed_with_reason": 4,
+   "crashed": 0,
+   "reasons": [
+    "This is not a photo UniMarkLy can read, or the file is damaged.",
+    "The photo file is missing from this phone, so it cannot be read. Remove it and add the photo again.",
+    "This is not a photo UniMarkLy can read, or the file is damaged.",
+    "This is not a photo UniMarkLy can read, or the file is damaged."
+   ]
+  }
+ },
+ "by_category": {
+  "clear": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 1,
+    "of": 4,
+    "rate": 0.25
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "blur_mild": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "blur_heavy": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "underexposed": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "noisy": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "faint_ink": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "shadow": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 1,
+    "of": 4,
+    "rate": 0.25
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  }
+ },
+ "runs": [
+  {
+   "doc": "booklet-001",
+   "variant": "original",
+   "category": "clear",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "text_small",
+    "cropped"
+   ],
+   "ms": 6570,
+   "stage_ms": {
+    "decode": 33,
+    "quality": 832,
+    "printed_text": 1588,
+    "closeups": 3340,
+    "marks": 750,
+    "validation": 18
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "FWM/24U/0538",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": "140",
+      "row_found": true,
+      "question_read": "1",
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": "141",
+      "row_found": true,
+      "question_read": "2",
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": true,
+      "question_read": "0",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": "5.5",
+      "row_found": true,
+      "question_read": "5",
+      "exact": true
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "blur_mild",
+   "category": "blur_mild",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "faint",
+    "text_small",
+    "cropped"
+   ],
+   "ms": 2485,
+   "stage_ms": {
+    "decode": 38,
+    "quality": 718,
+    "printed_text": 1384,
+    "closeups": 7,
+    "marks": 333,
+    "validation": 1
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": "980",
+      "row_found": true,
+      "question_read": "1",
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": "1111",
+      "row_found": true,
+      "question_read": "2",
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": "2.61",
+      "row_found": true,
+      "question_read": "4",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": "...5",
+      "row_found": true,
+      "question_read": "5",
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "blur_heavy",
+   "category": "blur_heavy",
+   "split": "dev",
+   "quality_verdict": "poor",
+   "quality_issues": [
+    "blurry",
+    "faint",
+    "text_small",
+    "cropped"
+   ],
+   "ms": 1007,
+   "stage_ms": {
+    "decode": 55,
+    "quality": 581,
+    "printed_text": 369,
+    "closeups": 0,
+    "marks": 0,
+    "validation": 0
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": null,
+     "correct": false
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "dark",
+   "category": "underexposed",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "too_dark",
+    "uneven_light",
+    "text_small",
+    "page_not_found"
+   ],
+   "ms": 5861,
+   "stage_ms": {
+    "decode": 42,
+    "quality": 539,
+    "printed_text": 1307,
+    "closeups": 3539,
+    "marks": 429,
+    "validation": 2
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "/200/053x",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "noisy",
+   "category": "noisy",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "blurry",
+    "noisy",
+    "text_small",
+    "cropped"
+   ],
+   "ms": 2894,
+   "stage_ms": {
+    "decode": 34,
+    "quality": 498,
+    "printed_text": 1502,
+    "closeups": 581,
+    "marks": 276,
+    "validation": 0
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": true,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": true,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": true,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "low_contrast",
+   "category": "faint_ink",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "faint",
+    "text_small",
+    "page_not_found"
+   ],
+   "ms": 5742,
+   "stage_ms": {
+    "decode": 47,
+    "quality": 551,
+    "printed_text": 1346,
+    "closeups": 3404,
+    "marks": 386,
+    "validation": 4
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "FwA/2001053X",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": ".88..?2",
+     "state": "needs_review",
+     "correct": false
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "shadow",
+   "category": "shadow",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "uneven_light",
+    "text_small",
+    "cropped"
+   ],
+   "ms": 5724,
+   "stage_ms": {
+    "decode": 36,
+    "quality": 406,
+    "printed_text": 1369,
+    "closeups": 3643,
+    "marks": 265,
+    "validation": 3
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "w/200/053x",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": "147",
+      "row_found": true,
+      "question_read": "1",
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": "11",
+      "row_found": true,
+      "question_read": "2",
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": "2.1.",
+      "row_found": true,
+      "question_read": "4",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": "5.5",
+      "row_found": true,
+      "question_read": "5",
+      "exact": true
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  }
+ ]
+}

@@ -7,6 +7,7 @@ import '../../domain/ocr.dart';
 import '../../domain/scan.dart';
 import '../../services/reader/booklet_extractor.dart';
 import '../database/app_database.dart';
+import 'recognition_repository.dart';
 import 'score_repository.dart';
 
 /// What the reader found on one photo, as stored.
@@ -164,6 +165,8 @@ class BookletRepository {
     required String examPartId,
     required String photoPath,
     List<CorrectionDraft> corrections = const [],
+    List<FieldReviewDraft> reviews = const [],
+    String? runId,
   }) =>
       _db.transaction(() async {
         final now = _now;
@@ -212,6 +215,26 @@ class BookletRepository {
                 readValue: Value(c.readValue),
                 confirmedValue: Value(c.confirmedValue),
                 region: Value(c.region?.encode()),
+                updatedAt: Value(now),
+              ));
+        }
+
+        // The examiner's decision on every field, with when: the audit trail,
+        // and a labelled example for each piece of writing that has a place on
+        // the photo.
+        for (final r in reviews) {
+          await _db.into(_db.fieldReviews).insert(FieldReviewsCompanion.insert(
+                scanId: scanId,
+                fieldKey: r.fieldKey,
+                kind: r.kind,
+                decision: r.decision,
+                reviewedAt: now,
+                id: Value(newId()),
+                runId: Value(runId),
+                machineValue: Value(r.machineValue),
+                machineState: Value(r.machineState),
+                finalValue: Value(r.finalValue),
+                region: Value(r.region?.encode()),
                 updatedAt: Value(now),
               ));
         }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/ui_kit.dart';
 import '../../domain/models.dart';
@@ -221,6 +222,18 @@ class ReviewQueueScreen extends ConsumerWidget {
                                   color: scheme.onSurfaceVariant,
                                 ),
                               ),
+                              // Why it is waiting, so the ones that need the
+                              // most care can be seen at a glance.
+                              Consumer(builder: (context, ref, _) {
+                                final why = ref.watch(attentionProvider(s.id)).valueOrNull;
+                                if (why == null) return const SizedBox.shrink();
+                                return Text(
+                                  why,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.bodySmall?.copyWith(color: context.colors.warning),
+                                );
+                              }),
                             ],
                           ),
                         ),

@@ -27,6 +27,22 @@ class PageDetection {
 
   final double areaFraction;
   final String? reason;
+
+  Map<String, Object?> toJson() => {
+        'quad': quad?.toJson(),
+        'confidence': confidence,
+        'fullyVisible': fullyVisible,
+        'areaFraction': areaFraction,
+        'reason': reason,
+      };
+
+  static PageDetection fromJson(Map<String, dynamic> j) => PageDetection(
+        quad: j['quad'] == null ? null : Quad.fromJson(j['quad'] as Map<String, dynamic>),
+        confidence: (j['confidence'] as num?)?.toDouble() ?? 0,
+        fullyVisible: j['fullyVisible'] as bool? ?? false,
+        areaFraction: (j['areaFraction'] as num?)?.toDouble() ?? 0,
+        reason: j['reason'] as String?,
+      );
 }
 
 /// Finds the page's outline: separates the bright, pale paper from the table

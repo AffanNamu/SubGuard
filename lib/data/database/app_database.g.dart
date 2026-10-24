@@ -7369,6 +7369,1298 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
   }
 }
 
+class $RecognitionRunsTable extends RecognitionRuns
+    with TableInfo<$RecognitionRunsTable, RecognitionRunRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecognitionRunsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: newId,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now().toUtc(),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scanIdMeta = const VerificationMeta('scanId');
+  @override
+  late final GeneratedColumn<String> scanId = GeneratedColumn<String>(
+    'scan_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES scan (id)',
+    ),
+  );
+  static const VerificationMeta _pipelineVersionMeta = const VerificationMeta(
+    'pipelineVersion',
+  );
+  @override
+  late final GeneratedColumn<String> pipelineVersion = GeneratedColumn<String>(
+    'pipeline_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('complete'),
+  );
+  static const VerificationMeta _durationMsMeta = const VerificationMeta(
+    'durationMs',
+  );
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+    'duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _resultJsonMeta = const VerificationMeta(
+    'resultJson',
+  );
+  @override
+  late final GeneratedColumn<String> resultJson = GeneratedColumn<String>(
+    'result_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    updatedAt,
+    deletedAt,
+    scanId,
+    pipelineVersion,
+    status,
+    durationMs,
+    resultJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recognition_run';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecognitionRunRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('scan_id')) {
+      context.handle(
+        _scanIdMeta,
+        scanId.isAcceptableOrUnknown(data['scan_id']!, _scanIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scanIdMeta);
+    }
+    if (data.containsKey('pipeline_version')) {
+      context.handle(
+        _pipelineVersionMeta,
+        pipelineVersion.isAcceptableOrUnknown(
+          data['pipeline_version']!,
+          _pipelineVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_pipelineVersionMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+        _durationMsMeta,
+        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
+      );
+    }
+    if (data.containsKey('result_json')) {
+      context.handle(
+        _resultJsonMeta,
+        resultJson.isAcceptableOrUnknown(data['result_json']!, _resultJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resultJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RecognitionRunRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecognitionRunRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      scanId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scan_id'],
+      )!,
+      pipelineVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pipeline_version'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      durationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_ms'],
+      )!,
+      resultJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}result_json'],
+      )!,
+    );
+  }
+
+  @override
+  $RecognitionRunsTable createAlias(String alias) {
+    return $RecognitionRunsTable(attachedDatabase, alias);
+  }
+}
+
+class RecognitionRunRow extends DataClass
+    implements Insertable<RecognitionRunRow> {
+  final String id;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String scanId;
+  final String pipelineVersion;
+
+  /// `complete`, or `partial` when a stage failed and its fields say so.
+  final String status;
+  final int durationMs;
+
+  /// Fields (value, candidates, confidences, regions, attempts, warnings),
+  /// quality report, findings, models, timings and notes, as JSON.
+  final String resultJson;
+  const RecognitionRunRow({
+    required this.id,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.scanId,
+    required this.pipelineVersion,
+    required this.status,
+    required this.durationMs,
+    required this.resultJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['scan_id'] = Variable<String>(scanId);
+    map['pipeline_version'] = Variable<String>(pipelineVersion);
+    map['status'] = Variable<String>(status);
+    map['duration_ms'] = Variable<int>(durationMs);
+    map['result_json'] = Variable<String>(resultJson);
+    return map;
+  }
+
+  RecognitionRunsCompanion toCompanion(bool nullToAbsent) {
+    return RecognitionRunsCompanion(
+      id: Value(id),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      scanId: Value(scanId),
+      pipelineVersion: Value(pipelineVersion),
+      status: Value(status),
+      durationMs: Value(durationMs),
+      resultJson: Value(resultJson),
+    );
+  }
+
+  factory RecognitionRunRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecognitionRunRow(
+      id: serializer.fromJson<String>(json['id']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      scanId: serializer.fromJson<String>(json['scanId']),
+      pipelineVersion: serializer.fromJson<String>(json['pipelineVersion']),
+      status: serializer.fromJson<String>(json['status']),
+      durationMs: serializer.fromJson<int>(json['durationMs']),
+      resultJson: serializer.fromJson<String>(json['resultJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'scanId': serializer.toJson<String>(scanId),
+      'pipelineVersion': serializer.toJson<String>(pipelineVersion),
+      'status': serializer.toJson<String>(status),
+      'durationMs': serializer.toJson<int>(durationMs),
+      'resultJson': serializer.toJson<String>(resultJson),
+    };
+  }
+
+  RecognitionRunRow copyWith({
+    String? id,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? scanId,
+    String? pipelineVersion,
+    String? status,
+    int? durationMs,
+    String? resultJson,
+  }) => RecognitionRunRow(
+    id: id ?? this.id,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    scanId: scanId ?? this.scanId,
+    pipelineVersion: pipelineVersion ?? this.pipelineVersion,
+    status: status ?? this.status,
+    durationMs: durationMs ?? this.durationMs,
+    resultJson: resultJson ?? this.resultJson,
+  );
+  RecognitionRunRow copyWithCompanion(RecognitionRunsCompanion data) {
+    return RecognitionRunRow(
+      id: data.id.present ? data.id.value : this.id,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      scanId: data.scanId.present ? data.scanId.value : this.scanId,
+      pipelineVersion: data.pipelineVersion.present
+          ? data.pipelineVersion.value
+          : this.pipelineVersion,
+      status: data.status.present ? data.status.value : this.status,
+      durationMs: data.durationMs.present
+          ? data.durationMs.value
+          : this.durationMs,
+      resultJson: data.resultJson.present
+          ? data.resultJson.value
+          : this.resultJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecognitionRunRow(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('scanId: $scanId, ')
+          ..write('pipelineVersion: $pipelineVersion, ')
+          ..write('status: $status, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('resultJson: $resultJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    updatedAt,
+    deletedAt,
+    scanId,
+    pipelineVersion,
+    status,
+    durationMs,
+    resultJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecognitionRunRow &&
+          other.id == this.id &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.scanId == this.scanId &&
+          other.pipelineVersion == this.pipelineVersion &&
+          other.status == this.status &&
+          other.durationMs == this.durationMs &&
+          other.resultJson == this.resultJson);
+}
+
+class RecognitionRunsCompanion extends UpdateCompanion<RecognitionRunRow> {
+  final Value<String> id;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> scanId;
+  final Value<String> pipelineVersion;
+  final Value<String> status;
+  final Value<int> durationMs;
+  final Value<String> resultJson;
+  final Value<int> rowid;
+  const RecognitionRunsCompanion({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.scanId = const Value.absent(),
+    this.pipelineVersion = const Value.absent(),
+    this.status = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.resultJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RecognitionRunsCompanion.insert({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required String scanId,
+    required String pipelineVersion,
+    this.status = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    required String resultJson,
+    this.rowid = const Value.absent(),
+  }) : scanId = Value(scanId),
+       pipelineVersion = Value(pipelineVersion),
+       resultJson = Value(resultJson);
+  static Insertable<RecognitionRunRow> custom({
+    Expression<String>? id,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? scanId,
+    Expression<String>? pipelineVersion,
+    Expression<String>? status,
+    Expression<int>? durationMs,
+    Expression<String>? resultJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (scanId != null) 'scan_id': scanId,
+      if (pipelineVersion != null) 'pipeline_version': pipelineVersion,
+      if (status != null) 'status': status,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (resultJson != null) 'result_json': resultJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RecognitionRunsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? scanId,
+    Value<String>? pipelineVersion,
+    Value<String>? status,
+    Value<int>? durationMs,
+    Value<String>? resultJson,
+    Value<int>? rowid,
+  }) {
+    return RecognitionRunsCompanion(
+      id: id ?? this.id,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      scanId: scanId ?? this.scanId,
+      pipelineVersion: pipelineVersion ?? this.pipelineVersion,
+      status: status ?? this.status,
+      durationMs: durationMs ?? this.durationMs,
+      resultJson: resultJson ?? this.resultJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (scanId.present) {
+      map['scan_id'] = Variable<String>(scanId.value);
+    }
+    if (pipelineVersion.present) {
+      map['pipeline_version'] = Variable<String>(pipelineVersion.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (resultJson.present) {
+      map['result_json'] = Variable<String>(resultJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecognitionRunsCompanion(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('scanId: $scanId, ')
+          ..write('pipelineVersion: $pipelineVersion, ')
+          ..write('status: $status, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('resultJson: $resultJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FieldReviewsTable extends FieldReviews
+    with TableInfo<$FieldReviewsTable, FieldReviewRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FieldReviewsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: newId,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now().toUtc(),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scanIdMeta = const VerificationMeta('scanId');
+  @override
+  late final GeneratedColumn<String> scanId = GeneratedColumn<String>(
+    'scan_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES scan (id)',
+    ),
+  );
+  static const VerificationMeta _runIdMeta = const VerificationMeta('runId');
+  @override
+  late final GeneratedColumn<String> runId = GeneratedColumn<String>(
+    'run_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fieldKeyMeta = const VerificationMeta(
+    'fieldKey',
+  );
+  @override
+  late final GeneratedColumn<String> fieldKey = GeneratedColumn<String>(
+    'field_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _machineValueMeta = const VerificationMeta(
+    'machineValue',
+  );
+  @override
+  late final GeneratedColumn<String> machineValue = GeneratedColumn<String>(
+    'machine_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _machineStateMeta = const VerificationMeta(
+    'machineState',
+  );
+  @override
+  late final GeneratedColumn<String> machineState = GeneratedColumn<String>(
+    'machine_state',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _finalValueMeta = const VerificationMeta(
+    'finalValue',
+  );
+  @override
+  late final GeneratedColumn<String> finalValue = GeneratedColumn<String>(
+    'final_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _decisionMeta = const VerificationMeta(
+    'decision',
+  );
+  @override
+  late final GeneratedColumn<String> decision = GeneratedColumn<String>(
+    'decision',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _regionMeta = const VerificationMeta('region');
+  @override
+  late final GeneratedColumn<String> region = GeneratedColumn<String>(
+    'region',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reviewedAtMeta = const VerificationMeta(
+    'reviewedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> reviewedAt = GeneratedColumn<DateTime>(
+    'reviewed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    updatedAt,
+    deletedAt,
+    scanId,
+    runId,
+    fieldKey,
+    kind,
+    machineValue,
+    machineState,
+    finalValue,
+    decision,
+    region,
+    reviewedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'field_review';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FieldReviewRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('scan_id')) {
+      context.handle(
+        _scanIdMeta,
+        scanId.isAcceptableOrUnknown(data['scan_id']!, _scanIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scanIdMeta);
+    }
+    if (data.containsKey('run_id')) {
+      context.handle(
+        _runIdMeta,
+        runId.isAcceptableOrUnknown(data['run_id']!, _runIdMeta),
+      );
+    }
+    if (data.containsKey('field_key')) {
+      context.handle(
+        _fieldKeyMeta,
+        fieldKey.isAcceptableOrUnknown(data['field_key']!, _fieldKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fieldKeyMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('machine_value')) {
+      context.handle(
+        _machineValueMeta,
+        machineValue.isAcceptableOrUnknown(
+          data['machine_value']!,
+          _machineValueMeta,
+        ),
+      );
+    }
+    if (data.containsKey('machine_state')) {
+      context.handle(
+        _machineStateMeta,
+        machineState.isAcceptableOrUnknown(
+          data['machine_state']!,
+          _machineStateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('final_value')) {
+      context.handle(
+        _finalValueMeta,
+        finalValue.isAcceptableOrUnknown(data['final_value']!, _finalValueMeta),
+      );
+    }
+    if (data.containsKey('decision')) {
+      context.handle(
+        _decisionMeta,
+        decision.isAcceptableOrUnknown(data['decision']!, _decisionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_decisionMeta);
+    }
+    if (data.containsKey('region')) {
+      context.handle(
+        _regionMeta,
+        region.isAcceptableOrUnknown(data['region']!, _regionMeta),
+      );
+    }
+    if (data.containsKey('reviewed_at')) {
+      context.handle(
+        _reviewedAtMeta,
+        reviewedAt.isAcceptableOrUnknown(data['reviewed_at']!, _reviewedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reviewedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FieldReviewRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FieldReviewRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      scanId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scan_id'],
+      )!,
+      runId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}run_id'],
+      ),
+      fieldKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field_key'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      machineValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}machine_value'],
+      ),
+      machineState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}machine_state'],
+      ),
+      finalValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}final_value'],
+      ),
+      decision: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}decision'],
+      )!,
+      region: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}region'],
+      ),
+      reviewedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reviewed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FieldReviewsTable createAlias(String alias) {
+    return $FieldReviewsTable(attachedDatabase, alias);
+  }
+}
+
+class FieldReviewRow extends DataClass implements Insertable<FieldReviewRow> {
+  final String id;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String scanId;
+
+  /// The run the machine value came from, when there was one.
+  final String? runId;
+  final String fieldKey;
+  final String kind;
+  final String? machineValue;
+  final String? machineState;
+
+  /// What the examiner confirmed; null for a field they left blank or rejected.
+  final String? finalValue;
+
+  /// `accepted` (the machine's value, confirmed), `edited` (changed from it),
+  /// `entered` (typed with no machine value), `rejected` (the machine's value
+  /// was dismissed) or `blank`.
+  final String decision;
+
+  /// Where on the photo, "left,top,right,bottom" as fractions.
+  final String? region;
+  final DateTime reviewedAt;
+  const FieldReviewRow({
+    required this.id,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.scanId,
+    this.runId,
+    required this.fieldKey,
+    required this.kind,
+    this.machineValue,
+    this.machineState,
+    this.finalValue,
+    required this.decision,
+    this.region,
+    required this.reviewedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['scan_id'] = Variable<String>(scanId);
+    if (!nullToAbsent || runId != null) {
+      map['run_id'] = Variable<String>(runId);
+    }
+    map['field_key'] = Variable<String>(fieldKey);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || machineValue != null) {
+      map['machine_value'] = Variable<String>(machineValue);
+    }
+    if (!nullToAbsent || machineState != null) {
+      map['machine_state'] = Variable<String>(machineState);
+    }
+    if (!nullToAbsent || finalValue != null) {
+      map['final_value'] = Variable<String>(finalValue);
+    }
+    map['decision'] = Variable<String>(decision);
+    if (!nullToAbsent || region != null) {
+      map['region'] = Variable<String>(region);
+    }
+    map['reviewed_at'] = Variable<DateTime>(reviewedAt);
+    return map;
+  }
+
+  FieldReviewsCompanion toCompanion(bool nullToAbsent) {
+    return FieldReviewsCompanion(
+      id: Value(id),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      scanId: Value(scanId),
+      runId: runId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(runId),
+      fieldKey: Value(fieldKey),
+      kind: Value(kind),
+      machineValue: machineValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(machineValue),
+      machineState: machineState == null && nullToAbsent
+          ? const Value.absent()
+          : Value(machineState),
+      finalValue: finalValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(finalValue),
+      decision: Value(decision),
+      region: region == null && nullToAbsent
+          ? const Value.absent()
+          : Value(region),
+      reviewedAt: Value(reviewedAt),
+    );
+  }
+
+  factory FieldReviewRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FieldReviewRow(
+      id: serializer.fromJson<String>(json['id']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      scanId: serializer.fromJson<String>(json['scanId']),
+      runId: serializer.fromJson<String?>(json['runId']),
+      fieldKey: serializer.fromJson<String>(json['fieldKey']),
+      kind: serializer.fromJson<String>(json['kind']),
+      machineValue: serializer.fromJson<String?>(json['machineValue']),
+      machineState: serializer.fromJson<String?>(json['machineState']),
+      finalValue: serializer.fromJson<String?>(json['finalValue']),
+      decision: serializer.fromJson<String>(json['decision']),
+      region: serializer.fromJson<String?>(json['region']),
+      reviewedAt: serializer.fromJson<DateTime>(json['reviewedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'scanId': serializer.toJson<String>(scanId),
+      'runId': serializer.toJson<String?>(runId),
+      'fieldKey': serializer.toJson<String>(fieldKey),
+      'kind': serializer.toJson<String>(kind),
+      'machineValue': serializer.toJson<String?>(machineValue),
+      'machineState': serializer.toJson<String?>(machineState),
+      'finalValue': serializer.toJson<String?>(finalValue),
+      'decision': serializer.toJson<String>(decision),
+      'region': serializer.toJson<String?>(region),
+      'reviewedAt': serializer.toJson<DateTime>(reviewedAt),
+    };
+  }
+
+  FieldReviewRow copyWith({
+    String? id,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? scanId,
+    Value<String?> runId = const Value.absent(),
+    String? fieldKey,
+    String? kind,
+    Value<String?> machineValue = const Value.absent(),
+    Value<String?> machineState = const Value.absent(),
+    Value<String?> finalValue = const Value.absent(),
+    String? decision,
+    Value<String?> region = const Value.absent(),
+    DateTime? reviewedAt,
+  }) => FieldReviewRow(
+    id: id ?? this.id,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    scanId: scanId ?? this.scanId,
+    runId: runId.present ? runId.value : this.runId,
+    fieldKey: fieldKey ?? this.fieldKey,
+    kind: kind ?? this.kind,
+    machineValue: machineValue.present ? machineValue.value : this.machineValue,
+    machineState: machineState.present ? machineState.value : this.machineState,
+    finalValue: finalValue.present ? finalValue.value : this.finalValue,
+    decision: decision ?? this.decision,
+    region: region.present ? region.value : this.region,
+    reviewedAt: reviewedAt ?? this.reviewedAt,
+  );
+  FieldReviewRow copyWithCompanion(FieldReviewsCompanion data) {
+    return FieldReviewRow(
+      id: data.id.present ? data.id.value : this.id,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      scanId: data.scanId.present ? data.scanId.value : this.scanId,
+      runId: data.runId.present ? data.runId.value : this.runId,
+      fieldKey: data.fieldKey.present ? data.fieldKey.value : this.fieldKey,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      machineValue: data.machineValue.present
+          ? data.machineValue.value
+          : this.machineValue,
+      machineState: data.machineState.present
+          ? data.machineState.value
+          : this.machineState,
+      finalValue: data.finalValue.present
+          ? data.finalValue.value
+          : this.finalValue,
+      decision: data.decision.present ? data.decision.value : this.decision,
+      region: data.region.present ? data.region.value : this.region,
+      reviewedAt: data.reviewedAt.present
+          ? data.reviewedAt.value
+          : this.reviewedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FieldReviewRow(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('scanId: $scanId, ')
+          ..write('runId: $runId, ')
+          ..write('fieldKey: $fieldKey, ')
+          ..write('kind: $kind, ')
+          ..write('machineValue: $machineValue, ')
+          ..write('machineState: $machineState, ')
+          ..write('finalValue: $finalValue, ')
+          ..write('decision: $decision, ')
+          ..write('region: $region, ')
+          ..write('reviewedAt: $reviewedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    updatedAt,
+    deletedAt,
+    scanId,
+    runId,
+    fieldKey,
+    kind,
+    machineValue,
+    machineState,
+    finalValue,
+    decision,
+    region,
+    reviewedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FieldReviewRow &&
+          other.id == this.id &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.scanId == this.scanId &&
+          other.runId == this.runId &&
+          other.fieldKey == this.fieldKey &&
+          other.kind == this.kind &&
+          other.machineValue == this.machineValue &&
+          other.machineState == this.machineState &&
+          other.finalValue == this.finalValue &&
+          other.decision == this.decision &&
+          other.region == this.region &&
+          other.reviewedAt == this.reviewedAt);
+}
+
+class FieldReviewsCompanion extends UpdateCompanion<FieldReviewRow> {
+  final Value<String> id;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> scanId;
+  final Value<String?> runId;
+  final Value<String> fieldKey;
+  final Value<String> kind;
+  final Value<String?> machineValue;
+  final Value<String?> machineState;
+  final Value<String?> finalValue;
+  final Value<String> decision;
+  final Value<String?> region;
+  final Value<DateTime> reviewedAt;
+  final Value<int> rowid;
+  const FieldReviewsCompanion({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.scanId = const Value.absent(),
+    this.runId = const Value.absent(),
+    this.fieldKey = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.machineValue = const Value.absent(),
+    this.machineState = const Value.absent(),
+    this.finalValue = const Value.absent(),
+    this.decision = const Value.absent(),
+    this.region = const Value.absent(),
+    this.reviewedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FieldReviewsCompanion.insert({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required String scanId,
+    this.runId = const Value.absent(),
+    required String fieldKey,
+    required String kind,
+    this.machineValue = const Value.absent(),
+    this.machineState = const Value.absent(),
+    this.finalValue = const Value.absent(),
+    required String decision,
+    this.region = const Value.absent(),
+    required DateTime reviewedAt,
+    this.rowid = const Value.absent(),
+  }) : scanId = Value(scanId),
+       fieldKey = Value(fieldKey),
+       kind = Value(kind),
+       decision = Value(decision),
+       reviewedAt = Value(reviewedAt);
+  static Insertable<FieldReviewRow> custom({
+    Expression<String>? id,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? scanId,
+    Expression<String>? runId,
+    Expression<String>? fieldKey,
+    Expression<String>? kind,
+    Expression<String>? machineValue,
+    Expression<String>? machineState,
+    Expression<String>? finalValue,
+    Expression<String>? decision,
+    Expression<String>? region,
+    Expression<DateTime>? reviewedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (scanId != null) 'scan_id': scanId,
+      if (runId != null) 'run_id': runId,
+      if (fieldKey != null) 'field_key': fieldKey,
+      if (kind != null) 'kind': kind,
+      if (machineValue != null) 'machine_value': machineValue,
+      if (machineState != null) 'machine_state': machineState,
+      if (finalValue != null) 'final_value': finalValue,
+      if (decision != null) 'decision': decision,
+      if (region != null) 'region': region,
+      if (reviewedAt != null) 'reviewed_at': reviewedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FieldReviewsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? scanId,
+    Value<String?>? runId,
+    Value<String>? fieldKey,
+    Value<String>? kind,
+    Value<String?>? machineValue,
+    Value<String?>? machineState,
+    Value<String?>? finalValue,
+    Value<String>? decision,
+    Value<String?>? region,
+    Value<DateTime>? reviewedAt,
+    Value<int>? rowid,
+  }) {
+    return FieldReviewsCompanion(
+      id: id ?? this.id,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      scanId: scanId ?? this.scanId,
+      runId: runId ?? this.runId,
+      fieldKey: fieldKey ?? this.fieldKey,
+      kind: kind ?? this.kind,
+      machineValue: machineValue ?? this.machineValue,
+      machineState: machineState ?? this.machineState,
+      finalValue: finalValue ?? this.finalValue,
+      decision: decision ?? this.decision,
+      region: region ?? this.region,
+      reviewedAt: reviewedAt ?? this.reviewedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (scanId.present) {
+      map['scan_id'] = Variable<String>(scanId.value);
+    }
+    if (runId.present) {
+      map['run_id'] = Variable<String>(runId.value);
+    }
+    if (fieldKey.present) {
+      map['field_key'] = Variable<String>(fieldKey.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (machineValue.present) {
+      map['machine_value'] = Variable<String>(machineValue.value);
+    }
+    if (machineState.present) {
+      map['machine_state'] = Variable<String>(machineState.value);
+    }
+    if (finalValue.present) {
+      map['final_value'] = Variable<String>(finalValue.value);
+    }
+    if (decision.present) {
+      map['decision'] = Variable<String>(decision.value);
+    }
+    if (region.present) {
+      map['region'] = Variable<String>(region.value);
+    }
+    if (reviewedAt.present) {
+      map['reviewed_at'] = Variable<DateTime>(reviewedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FieldReviewsCompanion(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('scanId: $scanId, ')
+          ..write('runId: $runId, ')
+          ..write('fieldKey: $fieldKey, ')
+          ..write('kind: $kind, ')
+          ..write('machineValue: $machineValue, ')
+          ..write('machineState: $machineState, ')
+          ..write('finalValue: $finalValue, ')
+          ..write('decision: $decision, ')
+          ..write('region: $region, ')
+          ..write('reviewedAt: $reviewedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AccountsTable extends Accounts
     with TableInfo<$AccountsTable, AccountRow> {
   @override
@@ -8269,6 +9561,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RowReadsTable rowReads = $RowReadsTable(this);
   late final $PartScoresTable partScores = $PartScoresTable(this);
   late final $CorrectionsTable corrections = $CorrectionsTable(this);
+  late final $RecognitionRunsTable recognitionRuns = $RecognitionRunsTable(
+    this,
+  );
+  late final $FieldReviewsTable fieldReviews = $FieldReviewsTable(this);
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $SyncStatesTable syncStates = $SyncStatesTable(this);
   late final Index courseCode = Index(
@@ -8331,6 +9627,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'part_score_cell',
     'CREATE INDEX part_score_cell ON part_score (student_id, part_id)',
   );
+  late final Index recognitionRunScan = Index(
+    'recognition_run_scan',
+    'CREATE INDEX recognition_run_scan ON recognition_run (scan_id)',
+  );
+  late final Index fieldReviewScan = Index(
+    'field_review_scan',
+    'CREATE INDEX field_review_scan ON field_review (scan_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8349,6 +9653,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     rowReads,
     partScores,
     corrections,
+    recognitionRuns,
+    fieldReviews,
     accounts,
     syncStates,
     courseCode,
@@ -8366,6 +9672,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     rowReadScan,
     partScoreCourse,
     partScoreCell,
+    recognitionRunScan,
+    fieldReviewScan,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -12242,6 +13550,44 @@ final class $$ScansTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$RecognitionRunsTable, List<RecognitionRunRow>>
+  _recognitionRunsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.recognitionRuns,
+    aliasName: $_aliasNameGenerator(db.scans.id, db.recognitionRuns.scanId),
+  );
+
+  $$RecognitionRunsTableProcessedTableManager get recognitionRunsRefs {
+    final manager = $$RecognitionRunsTableTableManager(
+      $_db,
+      $_db.recognitionRuns,
+    ).filter((f) => f.scanId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _recognitionRunsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$FieldReviewsTable, List<FieldReviewRow>>
+  _fieldReviewsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.fieldReviews,
+    aliasName: $_aliasNameGenerator(db.scans.id, db.fieldReviews.scanId),
+  );
+
+  $$FieldReviewsTableProcessedTableManager get fieldReviewsRefs {
+    final manager = $$FieldReviewsTableTableManager(
+      $_db,
+      $_db.fieldReviews,
+    ).filter((f) => f.scanId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_fieldReviewsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ScansTableFilterComposer extends Composer<_$AppDatabase, $ScansTable> {
@@ -12404,6 +13750,56 @@ class $$ScansTableFilterComposer extends Composer<_$AppDatabase, $ScansTable> {
           }) => $$RowReadsTableFilterComposer(
             $db: $db,
             $table: $db.rowReads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> recognitionRunsRefs(
+    Expression<bool> Function($$RecognitionRunsTableFilterComposer f) f,
+  ) {
+    final $$RecognitionRunsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recognitionRuns,
+      getReferencedColumn: (t) => t.scanId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecognitionRunsTableFilterComposer(
+            $db: $db,
+            $table: $db.recognitionRuns,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> fieldReviewsRefs(
+    Expression<bool> Function($$FieldReviewsTableFilterComposer f) f,
+  ) {
+    final $$FieldReviewsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.fieldReviews,
+      getReferencedColumn: (t) => t.scanId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FieldReviewsTableFilterComposer(
+            $db: $db,
+            $table: $db.fieldReviews,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12684,6 +14080,56 @@ class $$ScansTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> recognitionRunsRefs<T extends Object>(
+    Expression<T> Function($$RecognitionRunsTableAnnotationComposer a) f,
+  ) {
+    final $$RecognitionRunsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recognitionRuns,
+      getReferencedColumn: (t) => t.scanId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecognitionRunsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.recognitionRuns,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> fieldReviewsRefs<T extends Object>(
+    Expression<T> Function($$FieldReviewsTableAnnotationComposer a) f,
+  ) {
+    final $$FieldReviewsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.fieldReviews,
+      getReferencedColumn: (t) => t.scanId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FieldReviewsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.fieldReviews,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ScansTableTableManager
@@ -12704,6 +14150,8 @@ class $$ScansTableTableManager
             bool batchId,
             bool bookletsRefs,
             bool rowReadsRefs,
+            bool recognitionRunsRefs,
+            bool fieldReviewsRefs,
           })
         > {
   $$ScansTableTableManager(_$AppDatabase db, $ScansTable table)
@@ -12801,12 +14249,16 @@ class $$ScansTableTableManager
                 batchId = false,
                 bookletsRefs = false,
                 rowReadsRefs = false,
+                recognitionRunsRefs = false,
+                fieldReviewsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (bookletsRefs) db.booklets,
                     if (rowReadsRefs) db.rowReads,
+                    if (recognitionRunsRefs) db.recognitionRuns,
+                    if (fieldReviewsRefs) db.fieldReviews,
                   ],
                   addJoins:
                       <
@@ -12897,6 +14349,48 @@ class $$ScansTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (recognitionRunsRefs)
+                        await $_getPrefetchedData<
+                          ScanRow,
+                          $ScansTable,
+                          RecognitionRunRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ScansTableReferences
+                              ._recognitionRunsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ScansTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).recognitionRunsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.scanId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (fieldReviewsRefs)
+                        await $_getPrefetchedData<
+                          ScanRow,
+                          $ScansTable,
+                          FieldReviewRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ScansTableReferences
+                              ._fieldReviewsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ScansTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).fieldReviewsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.scanId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -12922,6 +14416,8 @@ typedef $$ScansTableProcessedTableManager =
         bool batchId,
         bool bookletsRefs,
         bool rowReadsRefs,
+        bool recognitionRunsRefs,
+        bool fieldReviewsRefs,
       })
     >;
 typedef $$BookletsTableCreateCompanionBuilder =
@@ -15460,6 +16956,878 @@ typedef $$CorrectionsTableProcessedTableManager =
       CorrectionRow,
       PrefetchHooks Function()
     >;
+typedef $$RecognitionRunsTableCreateCompanionBuilder =
+    RecognitionRunsCompanion Function({
+      Value<String> id,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      required String scanId,
+      required String pipelineVersion,
+      Value<String> status,
+      Value<int> durationMs,
+      required String resultJson,
+      Value<int> rowid,
+    });
+typedef $$RecognitionRunsTableUpdateCompanionBuilder =
+    RecognitionRunsCompanion Function({
+      Value<String> id,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> scanId,
+      Value<String> pipelineVersion,
+      Value<String> status,
+      Value<int> durationMs,
+      Value<String> resultJson,
+      Value<int> rowid,
+    });
+
+final class $$RecognitionRunsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $RecognitionRunsTable,
+          RecognitionRunRow
+        > {
+  $$RecognitionRunsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ScansTable _scanIdTable(_$AppDatabase db) => db.scans.createAlias(
+    $_aliasNameGenerator(db.recognitionRuns.scanId, db.scans.id),
+  );
+
+  $$ScansTableProcessedTableManager get scanId {
+    final $_column = $_itemColumn<String>('scan_id')!;
+
+    final manager = $$ScansTableTableManager(
+      $_db,
+      $_db.scans,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_scanIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$RecognitionRunsTableFilterComposer
+    extends Composer<_$AppDatabase, $RecognitionRunsTable> {
+  $$RecognitionRunsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pipelineVersion => $composableBuilder(
+    column: $table.pipelineVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resultJson => $composableBuilder(
+    column: $table.resultJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ScansTableFilterComposer get scanId {
+    final $$ScansTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableFilterComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecognitionRunsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecognitionRunsTable> {
+  $$RecognitionRunsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pipelineVersion => $composableBuilder(
+    column: $table.pipelineVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resultJson => $composableBuilder(
+    column: $table.resultJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ScansTableOrderingComposer get scanId {
+    final $$ScansTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableOrderingComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecognitionRunsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecognitionRunsTable> {
+  $$RecognitionRunsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get pipelineVersion => $composableBuilder(
+    column: $table.pipelineVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resultJson => $composableBuilder(
+    column: $table.resultJson,
+    builder: (column) => column,
+  );
+
+  $$ScansTableAnnotationComposer get scanId {
+    final $$ScansTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableAnnotationComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RecognitionRunsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecognitionRunsTable,
+          RecognitionRunRow,
+          $$RecognitionRunsTableFilterComposer,
+          $$RecognitionRunsTableOrderingComposer,
+          $$RecognitionRunsTableAnnotationComposer,
+          $$RecognitionRunsTableCreateCompanionBuilder,
+          $$RecognitionRunsTableUpdateCompanionBuilder,
+          (RecognitionRunRow, $$RecognitionRunsTableReferences),
+          RecognitionRunRow,
+          PrefetchHooks Function({bool scanId})
+        > {
+  $$RecognitionRunsTableTableManager(
+    _$AppDatabase db,
+    $RecognitionRunsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecognitionRunsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecognitionRunsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecognitionRunsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> scanId = const Value.absent(),
+                Value<String> pipelineVersion = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                Value<String> resultJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RecognitionRunsCompanion(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                scanId: scanId,
+                pipelineVersion: pipelineVersion,
+                status: status,
+                durationMs: durationMs,
+                resultJson: resultJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String scanId,
+                required String pipelineVersion,
+                Value<String> status = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                required String resultJson,
+                Value<int> rowid = const Value.absent(),
+              }) => RecognitionRunsCompanion.insert(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                scanId: scanId,
+                pipelineVersion: pipelineVersion,
+                status: status,
+                durationMs: durationMs,
+                resultJson: resultJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$RecognitionRunsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({scanId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (scanId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.scanId,
+                                referencedTable:
+                                    $$RecognitionRunsTableReferences
+                                        ._scanIdTable(db),
+                                referencedColumn:
+                                    $$RecognitionRunsTableReferences
+                                        ._scanIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RecognitionRunsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecognitionRunsTable,
+      RecognitionRunRow,
+      $$RecognitionRunsTableFilterComposer,
+      $$RecognitionRunsTableOrderingComposer,
+      $$RecognitionRunsTableAnnotationComposer,
+      $$RecognitionRunsTableCreateCompanionBuilder,
+      $$RecognitionRunsTableUpdateCompanionBuilder,
+      (RecognitionRunRow, $$RecognitionRunsTableReferences),
+      RecognitionRunRow,
+      PrefetchHooks Function({bool scanId})
+    >;
+typedef $$FieldReviewsTableCreateCompanionBuilder =
+    FieldReviewsCompanion Function({
+      Value<String> id,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      required String scanId,
+      Value<String?> runId,
+      required String fieldKey,
+      required String kind,
+      Value<String?> machineValue,
+      Value<String?> machineState,
+      Value<String?> finalValue,
+      required String decision,
+      Value<String?> region,
+      required DateTime reviewedAt,
+      Value<int> rowid,
+    });
+typedef $$FieldReviewsTableUpdateCompanionBuilder =
+    FieldReviewsCompanion Function({
+      Value<String> id,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> scanId,
+      Value<String?> runId,
+      Value<String> fieldKey,
+      Value<String> kind,
+      Value<String?> machineValue,
+      Value<String?> machineState,
+      Value<String?> finalValue,
+      Value<String> decision,
+      Value<String?> region,
+      Value<DateTime> reviewedAt,
+      Value<int> rowid,
+    });
+
+final class $$FieldReviewsTableReferences
+    extends BaseReferences<_$AppDatabase, $FieldReviewsTable, FieldReviewRow> {
+  $$FieldReviewsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ScansTable _scanIdTable(_$AppDatabase db) => db.scans.createAlias(
+    $_aliasNameGenerator(db.fieldReviews.scanId, db.scans.id),
+  );
+
+  $$ScansTableProcessedTableManager get scanId {
+    final $_column = $_itemColumn<String>('scan_id')!;
+
+    final manager = $$ScansTableTableManager(
+      $_db,
+      $_db.scans,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_scanIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$FieldReviewsTableFilterComposer
+    extends Composer<_$AppDatabase, $FieldReviewsTable> {
+  $$FieldReviewsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get runId => $composableBuilder(
+    column: $table.runId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fieldKey => $composableBuilder(
+    column: $table.fieldKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get machineValue => $composableBuilder(
+    column: $table.machineValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get machineState => $composableBuilder(
+    column: $table.machineState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get finalValue => $composableBuilder(
+    column: $table.finalValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get decision => $composableBuilder(
+    column: $table.decision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get region => $composableBuilder(
+    column: $table.region,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ScansTableFilterComposer get scanId {
+    final $$ScansTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableFilterComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FieldReviewsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FieldReviewsTable> {
+  $$FieldReviewsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get runId => $composableBuilder(
+    column: $table.runId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fieldKey => $composableBuilder(
+    column: $table.fieldKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get machineValue => $composableBuilder(
+    column: $table.machineValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get machineState => $composableBuilder(
+    column: $table.machineState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get finalValue => $composableBuilder(
+    column: $table.finalValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get decision => $composableBuilder(
+    column: $table.decision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get region => $composableBuilder(
+    column: $table.region,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ScansTableOrderingComposer get scanId {
+    final $$ScansTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableOrderingComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FieldReviewsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FieldReviewsTable> {
+  $$FieldReviewsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get runId =>
+      $composableBuilder(column: $table.runId, builder: (column) => column);
+
+  GeneratedColumn<String> get fieldKey =>
+      $composableBuilder(column: $table.fieldKey, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get machineValue => $composableBuilder(
+    column: $table.machineValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get machineState => $composableBuilder(
+    column: $table.machineState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get finalValue => $composableBuilder(
+    column: $table.finalValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get decision =>
+      $composableBuilder(column: $table.decision, builder: (column) => column);
+
+  GeneratedColumn<String> get region =>
+      $composableBuilder(column: $table.region, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => column,
+  );
+
+  $$ScansTableAnnotationComposer get scanId {
+    final $$ScansTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableAnnotationComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FieldReviewsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FieldReviewsTable,
+          FieldReviewRow,
+          $$FieldReviewsTableFilterComposer,
+          $$FieldReviewsTableOrderingComposer,
+          $$FieldReviewsTableAnnotationComposer,
+          $$FieldReviewsTableCreateCompanionBuilder,
+          $$FieldReviewsTableUpdateCompanionBuilder,
+          (FieldReviewRow, $$FieldReviewsTableReferences),
+          FieldReviewRow,
+          PrefetchHooks Function({bool scanId})
+        > {
+  $$FieldReviewsTableTableManager(_$AppDatabase db, $FieldReviewsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FieldReviewsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FieldReviewsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FieldReviewsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> scanId = const Value.absent(),
+                Value<String?> runId = const Value.absent(),
+                Value<String> fieldKey = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> machineValue = const Value.absent(),
+                Value<String?> machineState = const Value.absent(),
+                Value<String?> finalValue = const Value.absent(),
+                Value<String> decision = const Value.absent(),
+                Value<String?> region = const Value.absent(),
+                Value<DateTime> reviewedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FieldReviewsCompanion(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                scanId: scanId,
+                runId: runId,
+                fieldKey: fieldKey,
+                kind: kind,
+                machineValue: machineValue,
+                machineState: machineState,
+                finalValue: finalValue,
+                decision: decision,
+                region: region,
+                reviewedAt: reviewedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String scanId,
+                Value<String?> runId = const Value.absent(),
+                required String fieldKey,
+                required String kind,
+                Value<String?> machineValue = const Value.absent(),
+                Value<String?> machineState = const Value.absent(),
+                Value<String?> finalValue = const Value.absent(),
+                required String decision,
+                Value<String?> region = const Value.absent(),
+                required DateTime reviewedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FieldReviewsCompanion.insert(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                scanId: scanId,
+                runId: runId,
+                fieldKey: fieldKey,
+                kind: kind,
+                machineValue: machineValue,
+                machineState: machineState,
+                finalValue: finalValue,
+                decision: decision,
+                region: region,
+                reviewedAt: reviewedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FieldReviewsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({scanId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (scanId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.scanId,
+                                referencedTable: $$FieldReviewsTableReferences
+                                    ._scanIdTable(db),
+                                referencedColumn: $$FieldReviewsTableReferences
+                                    ._scanIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FieldReviewsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FieldReviewsTable,
+      FieldReviewRow,
+      $$FieldReviewsTableFilterComposer,
+      $$FieldReviewsTableOrderingComposer,
+      $$FieldReviewsTableAnnotationComposer,
+      $$FieldReviewsTableCreateCompanionBuilder,
+      $$FieldReviewsTableUpdateCompanionBuilder,
+      (FieldReviewRow, $$FieldReviewsTableReferences),
+      FieldReviewRow,
+      PrefetchHooks Function({bool scanId})
+    >;
 typedef $$AccountsTableCreateCompanionBuilder =
     AccountsCompanion Function({
       Value<String> id,
@@ -15950,6 +18318,10 @@ class $AppDatabaseManager {
       $$PartScoresTableTableManager(_db, _db.partScores);
   $$CorrectionsTableTableManager get corrections =>
       $$CorrectionsTableTableManager(_db, _db.corrections);
+  $$RecognitionRunsTableTableManager get recognitionRuns =>
+      $$RecognitionRunsTableTableManager(_db, _db.recognitionRuns);
+  $$FieldReviewsTableTableManager get fieldReviews =>
+      $$FieldReviewsTableTableManager(_db, _db.fieldReviews);
   $$AccountsTableTableManager get accounts =>
       $$AccountsTableTableManager(_db, _db.accounts);
   $$SyncStatesTableTableManager get syncStates =>

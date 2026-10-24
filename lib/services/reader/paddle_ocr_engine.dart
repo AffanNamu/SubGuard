@@ -90,6 +90,10 @@ class PaddleOcrEngine implements RegionOcrEngine {
 
 /// Tries [primary]; if it throws (not installed, unsupported phone, native
 /// crash), the same photo is read by [fallback], so reading never stops working.
+///
+/// It is never silent: the document the fallback returns carries a note saying
+/// the main reader could not run and a weaker one was used, and the pipeline
+/// passes that on to the examiner. The weaker reader reads print only.
 class FallbackOcrEngine implements RegionOcrEngine {
   FallbackOcrEngine(this.primary, this.fallback);
 
@@ -99,25 +103,35 @@ class FallbackOcrEngine implements RegionOcrEngine {
   @override
   String get name => primary.name;
 
+  String _note(Object error) =>
+      'The main text reader (${primary.name}) could not run on this phone, so ${fallback.name} was used instead. '
+      'It reads printed text only; check every value against the photo.';
+
+  OcrDocument _flagged(OcrDocument d, Object error) =>
+      OcrDocument(engine: d.engine, lines: d.lines, note: d.note == null ? _note(error) : '${_note(error)} ${d.note}');
+
   @override
   Future<OcrDocument> recognize(File image, {required int width, required int height}) async {
     try {
       return await primary.recognize(image, width: width, height: height);
-    } catch (_) {
-      return fallback.recognize(image, width: width, height: height);
+    } catch (e) {
+      return _flagged(await fallback.recognize(image, width: width, height: height), e);
     }
   }
 
   @override
   Future<OcrDocument> recognizeRegion(File image, Region region) async {
+    Object error = 'unavailable';
     final first = primary;
     if (first is RegionOcrEngine) {
       try {
         return await first.recognizeRegion(image, region);
-      } catch (_) {}
+      } catch (e) {
+        error = e;
+      }
     }
     final second = fallback;
-    if (second is RegionOcrEngine) return second.recognizeRegion(image, region);
+    if (second is RegionOcrEngine) return _flagged(await second.recognizeRegion(image, region), error);
     return const OcrDocument(engine: 'none', lines: []);
   }
 }

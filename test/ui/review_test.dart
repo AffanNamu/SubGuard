@@ -3,6 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unimarkly/core/widgets/score_keypad.dart';
 import 'package:unimarkly/core/widgets/ui_kit.dart';
 import 'package:unimarkly/data/repositories/booklet_repository.dart';
+import 'package:unimarkly/data/repositories/recognition_repository.dart';
+import 'package:unimarkly/domain/recognition.dart';
+import 'package:unimarkly/features/home/batch_card.dart';
+import 'package:unimarkly/features/scan/recognition_widgets.dart';
+import 'package:unimarkly/features/scan/scan_widgets.dart';
+import 'package:unimarkly/services/recognition/interfaces.dart';
+import 'package:unimarkly/services/recognition/validation.dart';
+import 'package:unimarkly/services/vision/quality.dart';
 import 'package:unimarkly/domain/models.dart';
 import 'package:unimarkly/domain/ocr.dart';
 import 'package:unimarkly/services/reader/booklet_extractor.dart';
@@ -202,7 +210,105 @@ void main() {
     await h.stop(tester);
   });
 
-  testWidgets('an exam number the reader found is already in the field, marked as read automatically', (tester) async {
+  /// A stored run of the pipeline for the first photo of the seeded batch.
+  Future<String> seedRun(
+    List<ExtractedField> fields, {
+    QualityReport? quality,
+    List<ValidationFinding> findings = const [],
+  }) async {
+    final scan = (await h.scans.batches()).first;
+    final item = (await h.scans.scansOf(scan.id)).single;
+    const layout = BookletReading(
+      examNumberRegion: Region(0.3, 0.1, 0.95, 0.2),
+      marksRegion: Region(0.78, 0.33, 0.98, 0.6),
+      questionColumnRegion: Region(0.64, 0.33, 0.78, 0.6),
+      totalRegion: Region(0.78, 0.82, 0.96, 0.87),
+    );
+    await BookletRepository(h.db, h.scores).saveReading(
+      scanId: item.id,
+      courseId: course.id,
+      document: const OcrDocument(engine: 'test', lines: []),
+      reading: layout,
+    );
+    return RecognitionRepository(h.db).saveRun(
+      item.id,
+      RecognitionResult(
+        fields: fields,
+        quality: quality,
+        findings: findings,
+        layout: layout,
+        models: const [],
+        timingsMs: const {'decode': 1},
+        printed: const OcrDocument(engine: 'test', lines: []),
+      ),
+    );
+  }
+
+  const examField = ExtractedField(
+    key: 'exam_number',
+    kind: FieldKind.registrationNumber,
+    state: FieldState.needsReview,
+    candidates: [
+      FieldCandidate('FWM/24U/0538', 0.48, source: 'class_list(test/closeup)', note: 'The only class-list number within 1 character of what was read ("FWM/24U/0548").'),
+      FieldCandidate('FWM/24U/0548', 0.40, source: 'test/closeup'),
+    ],
+    value: 'FWM/24U/0548',
+    region: Region(0.3, 0.1, 0.95, 0.2),
+    attempts: [ReadAttempt(reader: 'test', readerVersion: '1', variant: 'closeup', text: 'FWM/24U/0548', confidence: 0.4)],
+  );
+
+  ExtractedField markRow(int i, {String? value, String? question, List<FieldCandidate>? candidates, FieldState state = FieldState.needsReview}) =>
+      ExtractedField(
+        key: 'mark_row_$i',
+        kind: FieldKind.mark,
+        state: state,
+        value: value,
+        question: question,
+        candidates: candidates ?? [if (value != null && !value.contains('?')) FieldCandidate(value, 0.5, source: 'unimarkly-digits/red_ink')],
+        region: Region(0.78, 0.33 + i * 0.05, 0.98, 0.37 + i * 0.05),
+      );
+
+  testWidgets('a number the machine suggests is offered as a tap and never entered: the field stays empty until the examiner taps it', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun([examField]);
+    });
+    await openFirstReview(tester);
+
+    final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Registration number'));
+    expect(field.controller!.text, isEmpty, reason: 'a machine reading is never entered for the examiner');
+    expect(find.text('Check this'), findsWidgets);
+    expect(find.text('Enter the exam number from the photo.'), findsOneWidget);
+    expect(confirmEnabled(tester), isFalse);
+
+    // Each suggestion says where it came from.
+    expect(find.widgetWithText(ActionChip, 'FWM/24U/0538'), findsOneWidget);
+    expect(find.textContaining('from the class list'), findsOneWidget);
+    expect(find.textContaining('read from the photo'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ActionChip, 'FWM/24U/0538'));
+    await h.settle(tester);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Registration number')).controller!.text, 'FWM/24U/0538');
+    expect(find.textContaining('not yet checked by you'), findsOneWidget);
+
+    // Typing anything clears the "unchecked suggestion" note: it is the examiner's now.
+    await typeExamNumber(tester, 'FWM/24U/0539');
+    expect(find.textContaining('not yet checked by you'), findsNothing);
+    await h.stop(tester);
+  });
+
+  testWidgets('what was read is explained on request: reader, picture variant, text and confidence', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun([examField]);
+    });
+    await openFirstReview(tester);
+    await h.tapText(tester, 'How this was read');
+    expect(find.textContaining('test · closeup: "FWM/24U/0548" (40%)'), findsOneWidget);
+    await h.stop(tester);
+  });
+
+  testWidgets('a booklet read before results were kept still offers its one suggestion, labelled as earlier', (tester) async {
     await h.start(tester, size: tall, tab: null, seed: () async {
       await seed();
       final scan = (await h.scans.batches()).first;
@@ -211,29 +317,220 @@ void main() {
         scanId: item.id,
         courseId: course.id,
         document: const OcrDocument(engine: 'test', lines: []),
-        reading: const BookletReading(
-          examNumberSuggestion: 'FWM/24U/0538',
-          examNumberConfidence: 0.82,
-          examNumberOnClassList: true,
-          examNumberRegion: Region(0.3, 0.1, 0.95, 0.2),
-        ),
+        reading: const BookletReading(examNumberSuggestion: 'FWM/24U/0538', examNumberConfidence: 0.82, examNumberOnClassList: true),
       );
     });
     await openFirstReview(tester);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Registration number')).controller!.text, isEmpty);
+    expect(find.widgetWithText(ActionChip, 'FWM/24U/0538'), findsOneWidget);
+    expect(find.textContaining('from an earlier reading'), findsOneWidget);
+    await h.stop(tester);
+  });
 
-    final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Registration number'));
-    expect(field.controller!.text, 'FWM/24U/0538');
-    expect(find.textContaining('Read automatically (82% sure) and found on the class list'), findsOneWidget);
-    expect(find.textContaining('FWM/24U/0538 is on the class list'), findsOneWidget);
+  testWidgets('machine rows: a clean one can be used for its question; an unclear question or a partial reading cannot', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun([
+        markRow(1, value: '4.5', question: '3'),
+        markRow(2, value: '2.0', question: null),
+        markRow(3, value: '1?0', question: '2', candidates: const []),
+        markRow(4, state: FieldState.unreadable),
+      ]);
+    });
+    await openFirstReview(tester);
 
-    // Only the marks are left to enter.
-    expect(find.text('Enter at least one mark from the photo.'), findsOneWidget);
-    await typeMark(tester, 1, ['3', '0']);
-    expect(confirmEnabled(tester), isTrue);
+    expect(find.textContaining('Row 1 · reads as Q3'), findsOneWidget);
+    expect(find.textContaining('Row 2 · question not clear'), findsOneWidget);
+    expect(find.textContaining('Partly read: "1?0"'), findsOneWidget);
+    expect(find.text('Nothing readable in this cell.'), findsOneWidget);
 
-    // Changing it takes the "automatic" label away: it is now the examiner's.
-    await typeExamNumber(tester, 'FWM/24U/0539');
-    expect(find.textContaining('Read automatically'), findsNothing);
+    // Using row 1's reading fills Q-3, and only Q-3.
+    await tester.tap(find.widgetWithText(ActionChip, '4.5'));
+    await h.settle(tester);
+    expect(find.bySemanticsLabel(RegExp(r'Question 3, mark 4\.5')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'Question 1, no mark')), findsOneWidget);
+
+    // Row 2's question is unclear: the reading cannot be placed.
+    await tester.tap(find.widgetWithText(ActionChip, '2.0'));
+    await h.settle(tester);
+    expect(find.textContaining('question number for this row is not clear'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'Question 2, mark 2')), findsNothing);
+    await h.stop(tester);
+  });
+
+  testWidgets('Show on photo opens the whole photo with that field outlined', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun([markRow(1, value: '4.5', question: '3')]);
+    });
+    await openFirstReview(tester);
+    await h.tapText(tester, 'Show on photo');
+    expect(find.byType(PhotoViewerScreen), findsOneWidget);
+    expect(find.textContaining('Outlined: mark in row 1'), findsOneWidget);
+    await h.stop(tester);
+  });
+
+  testWidgets('a photo the quality check says to retake says so first, with the instruction', (tester) async {
+    const metrics = QualityMetrics(
+      originalWidth: 800,
+      originalHeight: 600,
+      sharpness: 0.1,
+      noise: 1,
+      p2: 40,
+      p98: 220,
+      darkClip: 0,
+      brightClip: 0,
+      shadowRatio: 0,
+      glareFraction: 0,
+      inkContrast: 30,
+      textHeightPx: 6,
+      tiltDegrees: 0,
+      tiltStrength: 0,
+      perspectiveDegrees: 0,
+      pageFound: true,
+      pageFullyVisible: true,
+      pageAreaFraction: 0.8,
+    );
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun(const [], quality: const QualityReport(
+        metrics: metrics,
+        verdict: QualityVerdict.poor,
+        issues: [
+          QualityIssue(
+            code: 'blur',
+            severity: QualitySeverity.blocking,
+            message: 'The photo is too blurred to read the handwriting.',
+            advice: 'Hold the phone steady and retake it.',
+            value: 0.1,
+            threshold: 0.3,
+          ),
+        ],
+      ));
+    });
+    await openFirstReview(tester);
+    expect(find.textContaining('too blurred to read the handwriting. Hold the phone steady and retake it.'), findsOneWidget);
+    await h.stop(tester);
+  });
+
+  testWidgets('confirming records the examiner\'s decision on every field, with when, against what the machine read', (tester) async {
+    late String runId;
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      runId = await seedRun([
+        examField,
+        markRow(1, value: '1.0', question: '1'), // used as read
+        markRow(2, value: '2.0', question: '2'), // used, then typed over
+        markRow(3, value: '9.0', question: '3'), // dismissed
+      ]);
+    });
+    await openFirstReview(tester);
+
+    await tester.tap(find.widgetWithText(ActionChip, 'FWM/24U/0538')); // exam number, as suggested
+    await h.settle(tester);
+    await tester.tap(find.widgetWithText(ActionChip, '1.0')); // row 1: Q1 = 1, as read
+    await h.settle(tester);
+    await typeMark(tester, 2, ['5']); // Q2: the machine said 2.0, the examiner says 5
+    await typeMark(tester, 4, ['3']); // Q4: no machine reading at all
+    // Row 3's reading (9.0) is dismissed.
+    final row3 = find.ancestor(of: find.textContaining('Row 3 ·'), matching: find.byType(Container)).first;
+    await tester.tap(find.descendant(of: row3, matching: find.text('Dismiss')));
+    await h.settle(tester);
+    await tester.tap(confirmButton());
+    await h.settle(tester);
+
+    final data = await tester.runAsync(() async {
+      final rows = await h.db.select(h.db.fieldReviews).get();
+      final examples = await RecognitionRepository(h.db).labelledExamples();
+      return (rows, examples);
+    });
+    final rows = {for (final r in data!.$1) r.fieldKey: r};
+    expect(rows['exam_number']!.decision, 'suggestion', reason: 'the examiner tapped a class-list suggestion, not the machine\'s own reading');
+    expect(rows['exam_number']!.machineValue, 'FWM/24U/0548', reason: 'measured against the machine\'s own reading');
+    expect(rows['exam_number']!.finalValue, 'FWM/24U/0538');
+    expect(rows['mark_q1']!.decision, 'accepted');
+    expect(rows['mark_q1']!.machineValue, '1.0');
+    expect(rows['mark_q2']!.decision, 'edited');
+    expect(rows['mark_q2']!.machineValue, '2.0');
+    expect(rows['mark_q2']!.finalValue, '5');
+    expect(rows['mark_q4']!.decision, 'entered');
+    expect(rows['mark_q4']!.machineValue, isNull);
+    expect(rows['mark_row_3']!.decision, 'rejected');
+    expect(rows['mark_row_3']!.finalValue, isNull);
+    for (final r in rows.values) {
+      expect(r.runId, runId, reason: '${r.fieldKey} is tied to the run it was measured against');
+      expect(r.reviewedAt.isUtc || r.reviewedAt.year >= 2026, isTrue);
+    }
+
+    // Each confirmed piece of writing with a place on the photo is a labelled example.
+    final labelled = {for (final e in data.$2) e.fieldKey: e};
+    expect(labelled['mark_q1']!.text, '1');
+    expect(labelled['mark_q2']!.text, '5');
+    expect(labelled.keys, isNot(contains('mark_row_3')), reason: 'a dismissed reading is not a label');
+    await h.stop(tester);
+  });
+
+  testWidgets('Can\'t use this photo takes it out of the queue and marks it unusable, adding nothing to the grid', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: seed);
+    await openFirstReview(tester);
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await h.settle(tester);
+    await h.tapText(tester, "Can't use this photo");
+    expect(find.text('Reject this photo?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Reject photo'));
+    await h.settle(tester);
+
+    expect(find.text('Nothing to review'), findsOneWidget);
+    final batches = await tester.runAsync(() => h.scans.batches());
+    expect(batches!.single.counts.failed, 1);
+    expect(batches.single.counts.confirmed, 0);
+    await h.stop(tester);
+  });
+
+  testWidgets('the review queue says why each booklet is waiting', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun(const [ExtractedField(key: 'exam_number', kind: FieldKind.registrationNumber, state: FieldState.unreadable)]);
+    });
+    await h.tapText(tester, 'Home');
+    await h.tapText(tester, 'Review Results');
+    expect(find.textContaining('Exam number not read'), findsOneWidget);
+    expect(find.textContaining('no marks found'), findsOneWidget);
+    await h.stop(tester);
+  });
+
+  testWidgets('a confirmed booklet shows what the machine read beside what the examiner confirmed', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      final runId = await seedRun([examField, markRow(1, value: '4.0', question: '1')]);
+      final scan = (await h.scans.batches()).first;
+      final item = (await h.scans.scansOf(scan.id)).single;
+      final student = (await h.students.getAll(course.id)).firstWhere((s) => s.regNo == 'FWM/24U/0538');
+      await BookletRepository(h.db, h.scores).confirm(
+        scanId: item.id,
+        courseId: course.id,
+        studentId: student.id,
+        serialNo: null,
+        marks: const {1: 14.0},
+        editedMarks: const {1},
+        examScore: 14,
+        examPartId: course.scheme.examPart!.id,
+        photoPath: item.relativePath,
+        runId: runId,
+        reviews: const [
+          FieldReviewDraft(fieldKey: 'exam_number', kind: 'registration_number', machineValue: 'FWM/24U/0548', finalValue: 'FWM/24U/0538', decision: 'edited'),
+        ],
+      );
+    });
+    await h.tapText(tester, 'Home');
+    await h.reveal(tester, find.byType(BatchCard));
+    await tester.tap(find.byType(BatchCard).first);
+    await h.settle(tester);
+    await tester.tap(find.byType(ScanThumb).first);
+    await h.settle(tester);
+
+    expect(find.text('Confirmed by you'), findsWidgets);
+    expect(find.textContaining('The machine read "FWM/24U/0548"; you confirmed "FWM/24U/0538"'), findsOneWidget);
     await h.stop(tester);
   });
 }

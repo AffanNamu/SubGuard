@@ -108,32 +108,47 @@ MarksStageResult readMarksTable(
     return MarksStageResult(
         rows: const [], inkVariant: null, notes: const ['The marks area is too small in the photo to read.'], strokesCrossingRows: const [], strokes: probed);
   }
-  final markColor = photo.crop(m.l, m.t, m.r, m.b);
   final qpx = questions == null ? null : px(questions);
-  final qColor = qpx == null || qpx.r - qpx.l < 8 ? null : photo.crop(qpx.l, qpx.t, qpx.r, qpx.b);
+  final tpx = total == null ? null : px(total);
+  final hasQuestions = qpx != null && qpx.r - qpx.l >= 8;
+  final hasTotal = tpx != null && tpx.r - tpx.l >= 8 && tpx.b - tpx.t >= 8;
+
+  // One ink picture over the whole table (labels, marks and total), so a line
+  // struck across it is found at its full length and removed everywhere, and
+  // the typical character size is judged from every character in the table.
+  final boxes = [m, if (hasQuestions) qpx, if (hasTotal) tpx];
+  final u = (
+    l: boxes.map((b) => b.l).reduce(math.min),
+    t: boxes.map((b) => b.t).reduce(math.min),
+    r: boxes.map((b) => b.r).reduce(math.max),
+    b: boxes.map((b) => b.b).reduce(math.max),
+  );
+  final tableColor = photo.crop(u.l, u.t, u.r, u.b);
+  Raster cut(Raster ink, ({int l, int t, int r, int b}) box) => ink.crop(box.l - u.l, box.t - u.t, box.r - u.l, box.b - u.t);
 
   // Rows are found in the picture of the pen's ink. Red is tried first: it is
   // the examiner's usual pen and separates cleanly from the printed form. Dark
   // ink is the fallback, with printed rules removed so they are not read as rows.
   String? variant;
-  Raster? inkMarks, inkQuestions;
+  Raster? ink;
   var bands = const <RowBand>[];
   final strokesRemoved = <({int left, int top, int right, int bottom})>[];
   for (final v in const ['red_ink', 'dark_ink']) {
     strokesRemoved.clear();
-    final im = _ink(markColor, v, strokesRemoved);
-    final b = TableRows.find(im);
+    final im = _ink(tableColor, v, strokesRemoved);
+    final b = TableRows.find(cut(im, m));
     if (b.isNotEmpty) {
       variant = v;
-      inkMarks = im;
+      ink = im;
       bands = b;
-      inkQuestions = qColor == null ? null : _ink(qColor, v, strokesRemoved);
       break;
     }
   }
-  if (variant == null || inkMarks == null) {
+
+  if (variant == null || ink == null) {
     notes.add('No pen ink was found in the marks area.');
-    final t = _readTotal(photo, total == null ? null : px(total), null, reader, w, h);
+    // The total box may still have writing in it.
+    final t = hasTotal ? _readTotal(tableColor, tpx, u, null, reader, w, h) : null;
     return MarksStageResult(
       rows: const [],
       inkVariant: null,
@@ -152,30 +167,29 @@ MarksStageResult readMarksTable(
   // Lines, underlines and strike-throughs were removed from the ink picture
   // before the rows were found; they are reported so the examiner can see them.
   final crossings = <Region>[
-    for (final r in strokesRemoved) _regionOf(m, r.left, r.top, r.right, r.bottom, w, h),
+    for (final r in strokesRemoved) _regionOf(u, r.left, r.top, r.right, r.bottom, w, h),
   ];
   if (crossings.isNotEmpty) {
     notes.add('${crossings.length} long line${crossings.length == 1 ? '' : 's'} (a rule, underline or strike-through) were ignored, not read as marks.');
   }
-  final usable = bands;
 
+  final inkMarks = cut(ink, m);
+  final inkQuestions = hasQuestions ? cut(ink, qpx) : null;
   final rows = <MarkRowRead>[];
-  for (final b in usable) {
+  for (final b in bands) {
     final pad = math.max(2, (b.height * 0.18).round());
     final top = math.max(0, b.top - pad), bottom = math.min(inkMarks.height, b.bottom + pad);
-    final cellInk = inkMarks.crop(0, top, inkMarks.width, bottom);
-    final mark = reader.read(cellInk);
+    final mark = reader.read(inkMarks.crop(0, top, inkMarks.width, bottom));
 
     MarkReading? question;
     String? qText;
     var qCandidates = const <FieldCandidate>[];
     Region? qRegion;
-    if (inkQuestions != null && qpx != null) {
+    if (inkQuestions != null) {
       // The label cell shares the row's vertical extent in the photo.
       final photoTop = m.t + top, photoBottom = m.t + bottom;
-      final qTop = (photoTop - qpx.t).clamp(0, inkQuestions.height - 1), qBottom = (photoBottom - qpx.t).clamp(qTop + 1, inkQuestions.height);
-      final qInk = inkQuestions.crop(0, qTop, inkQuestions.width, qBottom);
-      question = reader.read(qInk);
+      final qTop = (photoTop - qpx!.t).clamp(0, inkQuestions.height - 1), qBottom = (photoBottom - qpx.t).clamp(qTop + 1, inkQuestions.height);
+      question = reader.read(inkQuestions.crop(0, qTop, inkQuestions.width, qBottom));
       final parsed = _questionNumber(question);
       qText = parsed?.text;
       qCandidates = parsed?.candidates ?? const [];
@@ -196,7 +210,7 @@ MarksStageResult readMarksTable(
       inkVariant: variant,
     ));
   }
-  final t = _readTotal(photo, total == null ? null : px(total), variant, reader, w, h);
+  final t = hasTotal ? _readTotal(tableColor, tpx, u, ink, reader, w, h) : null;
   return MarksStageResult(
     rows: rows,
     inkVariant: variant,
@@ -209,21 +223,23 @@ MarksStageResult readMarksTable(
   );
 }
 
-({MarkReading? reading, Region cell, int strokes})? _readTotal(
-  ColorRaster photo,
-  ({int l, int t, int r, int b})? box,
-  String? preferred,
+/// Reads the Total box from the table's ink picture. When there is none (no ink
+/// in the marks area), both pictures are tried for the box on its own.
+({MarkReading? reading, Region cell, int strokes}) _readTotal(
+  ColorRaster tableColor,
+  ({int l, int t, int r, int b}) box,
+  ({int l, int t, int r, int b}) origin,
+  Raster? ink,
   HandwritingRecognizer reader,
   int w,
   int h,
 ) {
-  if (box == null || box.r - box.l < 8 || box.b - box.t < 8) return null;
-  final color = photo.crop(box.l, box.t, box.r, box.b);
   final cell = Region(box.l / w, box.t / h, box.r / w, box.b / h).clamped();
-  for (final v in [if (preferred != null) preferred, 'red_ink', 'dark_ink']) {
-    final ink = _ink(color, v);
-    final n = strokeCount(ink);
-    if (n > 0) return (reading: reader.read(ink), cell: cell, strokes: n);
+  Raster cut(Raster r) => r.crop(box.l - origin.l, box.t - origin.t, box.r - origin.l, box.b - origin.t);
+  for (final picture in [if (ink != null) ink else ...[_ink(tableColor, 'red_ink'), _ink(tableColor, 'dark_ink')]]) {
+    final cell0 = cut(picture);
+    final n = strokeCount(cell0);
+    if (n > 0) return (reading: reader.read(cell0), cell: cell, strokes: n);
   }
   return (reading: null, cell: cell, strokes: 0);
 }

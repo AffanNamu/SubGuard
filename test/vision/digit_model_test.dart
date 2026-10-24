@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unimarkly/services/recognition/model_registry.dart';
 import 'package:unimarkly/services/vision/digit_model.dart';
 import 'package:unimarkly/services/vision/raster.dart';
+
+import '../support/file_bundle.dart';
 
 /// The digit network: the shipped file is the one the manifest describes, the
 /// Dart code computes what PyTorch computed, and the measured accuracy on
@@ -34,7 +35,7 @@ void main() {
       final good = loaded.weights;
       final bad = Uint8List.fromList(good)..[100] ^= 0xFF;
       expect(
-        () => ModelRegistry.loadDigits(_Bundle(weights: bad)),
+        () => ModelRegistry.loadDigits(FileAssetBundle(replaceWeights: true, weights: bad)),
         throwsA(isA<ModelException>().having((e) => e.message, 'message', contains('damaged'))),
       );
     });
@@ -42,14 +43,14 @@ void main() {
     test('a truncated file is refused', () async {
       final short = Uint8List.sublistView(loaded.weights, 0, 4000);
       expect(
-        () => ModelRegistry.loadDigits(_Bundle(weights: short)),
+        () => ModelRegistry.loadDigits(FileAssetBundle(replaceWeights: true, weights: short)),
         throwsA(isA<ModelException>().having((e) => e.message, 'message', contains('wrong size'))),
       );
     });
 
     test('a missing file says to reinstall, and nothing else is read in its place', () async {
       expect(
-        () => ModelRegistry.loadDigits(_Bundle(weights: null)),
+        () => ModelRegistry.loadDigits(FileAssetBundle(replaceWeights: true)),
         throwsA(isA<ModelException>().having((e) => e.message, 'message', contains('Reinstall'))),
       );
     });
@@ -174,24 +175,4 @@ Raster _cropToInk(Raster r) {
   }
   if (rr < l) return r;
   return r.crop(l, t, rr + 1, b + 1);
-}
-
-/// An asset bundle holding only the digit model files, for testing a damaged,
-/// truncated or missing weight file.
-class _Bundle extends CachingAssetBundle {
-  _Bundle({required this.weights});
-
-  final Uint8List? weights;
-
-  @override
-  Future<ByteData> load(String key) async {
-    if (key.endsWith('.bin')) {
-      if (weights == null) throw Exception('missing');
-      return ByteData.sublistView(weights!);
-    }
-    return ByteData.sublistView(File(key).readAsBytesSync());
-  }
-
-  @override
-  Future<String> loadString(String key, {bool cache = true}) async => File(key).readAsStringSync();
 }

@@ -16,6 +16,18 @@ class ProcessOcrEngine implements RegionOcrEngine {
 
   static ProcessOcrEngine? _shared;
 
+  /// Starts the stand-in, or returns null when Python or its OCR package is not
+  /// installed. Tests that need it skip with a clear message, unless
+  /// REQUIRE_OCR_STANDIN=1 (set in CI), in which case they fail instead.
+  static Future<ProcessOcrEngine?> tryStart() async {
+    try {
+      return await start();
+    } catch (_) {
+      if (Platform.environment['REQUIRE_OCR_STANDIN'] == '1') rethrow;
+      return null;
+    }
+  }
+
   /// One shared process; model start-up takes a couple of seconds.
   static Future<ProcessOcrEngine> start() async {
     final existing = _shared;

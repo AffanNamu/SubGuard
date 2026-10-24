@@ -34,10 +34,10 @@ void main() {
     const tables = [
       'course', 'course_part', 'exam_question', 'grade_scale', 'scheme_template',
       'student', 'upload_batch', 'scan', 'booklet', 'question_mark', 'row_read', 'part_score',
-      'correction', 'account', 'sync_state',
+      'correction', 'recognition_run', 'field_review', 'account', 'sync_state',
     ];
 
-    test('has the fourteen tables from the brief, plus upload_batch', () async {
+    test('has the fourteen tables from the brief, plus upload_batch, recognition_run and field_review', () async {
       final rows = await db
           .customSelect("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
           .get();

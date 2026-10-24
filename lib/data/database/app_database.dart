@@ -8,6 +8,7 @@ part 'app_database.g.dart';
 
 /// Version 1: the original fourteen tables.
 /// Version 2: batches, and the intake columns on scans.
+/// Version 3: recognition runs and field reviews (the examiner's decisions).
 ///
 /// To change the schema:
 ///  1. Edit `tables.dart` and bump this number.
@@ -17,7 +18,7 @@ part 'app_database.g.dart';
 ///     field have already run it.
 ///  4. Add a test in `test/data/migration_test.dart` that opens the old version
 ///     with data in it and checks the data survives.
-const int latestSchemaVersion = 2;
+const int latestSchemaVersion = 3;
 
 @DriftDatabase(tables: [
   Courses,
@@ -33,6 +34,8 @@ const int latestSchemaVersion = 2;
   RowReads,
   PartScores,
   Corrections,
+  RecognitionRuns,
+  FieldReviews,
   Accounts,
   SyncStates,
 ])
@@ -58,6 +61,13 @@ class AppDatabase extends _$AppDatabase {
             await m.createIndex(schema.scanBatch);
             await m.createIndex(schema.scanHash);
             await m.createIndex(schema.uploadBatchCourse);
+          },
+          from2To3: (m, schema) async {
+            // Two new tables; no existing table or row is touched.
+            await m.createTable(schema.recognitionRun);
+            await m.createTable(schema.fieldReview);
+            await m.createIndex(schema.recognitionRunScan);
+            await m.createIndex(schema.fieldReviewScan);
           },
         ),
         beforeOpen: (details) async {

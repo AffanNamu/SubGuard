@@ -50,9 +50,9 @@ void main() {
     await h.settle(tester);
     await h.tapText(tester, 'Open');
     await h.tapText(tester, 'Read 2 photos');
-    for (var i = 0; i < 5; i++) {
-      await h.settle(tester);
-    }
+    // The real pipeline reads them (real isolates), so this waits in real time.
+    await h.waitForReading(tester, untilQueueEmpty: true);
+    await h.settle(tester);
 
     // The reader on this test phone is the "unavailable" one, which says so
     // and leaves every value for the examiner. Nothing is invented.
@@ -66,9 +66,9 @@ void main() {
 
   testWidgets('with automatic reading on, queued photos are read when the app opens', (tester) async {
     await h.start(tester, size: tall, tab: null, seed: seed);
-    for (var i = 0; i < 5; i++) {
-      await h.settle(tester);
-    }
+    // The real pipeline reads the photos (real isolates), so this waits in real time.
+    await h.waitForReading(tester);
+    await h.settle(tester);
     final after = await tester.runAsync(() => h.scans.batches());
     expect(after!.single.counts.queued, 0);
     expect(after.single.counts.needsReview, 2);

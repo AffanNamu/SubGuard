@@ -232,17 +232,17 @@ class QualityThresholds {
   final double warnTiltDegrees, warnPerspectiveDegrees;
 }
 
-/// Measures a photograph and explains what is wrong with it, if anything.
-///
-/// Every measurement is made on the page itself when it can be found (not on
-/// the table around it), at a fixed analysis size so a 12-megapixel photo and a
-/// small one are judged on the same footing.
 /// Judges how readable a photograph is. An interface so a different analyser
 /// (for instance one trained on a department's own photos) can replace this one.
 abstract interface class DocumentQualityAnalyzer {
   QualityReport analyze(ColorRaster photo, {required int originalWidth, required int originalHeight, PageDetection? page});
 }
 
+/// Measures a photograph and explains what is wrong with it, if anything.
+///
+/// Every measurement is made on the page itself when it can be found (not on
+/// the table around it), at a fixed analysis size so a 12-megapixel photo and a
+/// small one are judged on the same footing.
 class QualityAnalyzer implements DocumentQualityAnalyzer {
   const QualityAnalyzer({this.thresholds = const QualityThresholds(), this.analysisSide = 1200});
 
