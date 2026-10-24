@@ -24,11 +24,73 @@ OcrDocument loadSample() {
   );
 }
 
+OcrDocument loadSample2() {
+  final j = jsonDecode(File('test/fixtures/sample2_booklet_ocr.json').readAsStringSync()) as Map<String, dynamic>;
+  return OcrDocument(
+    engine: j['engine'] as String,
+    lines: [
+      for (final l in (j['lines'] as List).cast<Map<String, dynamic>>())
+        OcrLine(
+          l['text'] as String,
+          Region((l['left'] as num).toDouble(), (l['top'] as num).toDouble(), (l['right'] as num).toDouble(),
+              (l['bottom'] as num).toDouble()),
+          confidence: (l['confidence'] as num).toDouble(),
+        ),
+    ],
+  );
+}
+
 OcrLine line(String text, double l, double t, double r, double b, [double conf = 0.9]) =>
     OcrLine(text, Region(l, t, r, b), confidence: conf);
 
 void main() {
   const extractor = BookletExtractor();
+
+  group('the second real booklet (clear photo, handwritten FWM/24U/0538)', () {
+    const classList = ['FWM/24U/0537', 'FWM/24U/0538', 'FWM/24U/0539', 'FST/25U/244/5772'];
+    OcrDocument crop(String text, double conf) =>
+        OcrDocument(engine: 'crop', lines: [line(text, 0, 0.1, 1, 0.9, conf)]);
+
+    test('finds the printed booklet number and the layout', () {
+      final r = extractor.extract(loadSample2());
+      expect(r.serialNo, '292011');
+      expect(r.layoutRecognised, isTrue);
+    });
+
+    test('the exam-number area holds the handwriting line and stops above the title line', () {
+      final r = extractor.extract(loadSample2());
+      final area = r.examNumberRegion!;
+      // The photo has the handwritten number at about 0.135 to 0.158 of its
+      // height, and the handwritten title starting at about 0.17.
+      expect(area.top, lessThan(0.135));
+      expect(area.bottom, greaterThan(0.158));
+      expect(area.bottom, lessThan(0.175));
+      expect(area.left, inInclusiveRange(0.3, 0.45));
+    });
+
+    test('a garbled prefix with the right sequence number is matched to the one student', () {
+      // What the PP-OCR engine actually returned for this area.
+      for (final read in ['7200/0538', 'w/250/0538']) {
+        final r = extractor.extract(loadSample2(), examNumberCrop: crop(read, 0.55), classList: classList);
+        expect(r.examNumberSuggestion, 'FWM/24U/0538', reason: read);
+        expect(r.examNumberOnClassList, isTrue);
+      }
+    });
+
+    test('a last digit it cannot read is not guessed between 0538 and 0539', () {
+      final r = extractor.extract(loadSample2(), examNumberCrop: crop('w/260/053X', 0.55), classList: classList);
+      expect(r.examNumberSuggestion, isNull);
+    });
+
+    test('two students with the same sequence number are not told apart by it', () {
+      final r = extractor.extract(
+        loadSample2(),
+        examNumberCrop: crop('7200/0538', 0.55),
+        classList: const ['FWM/24U/0538', 'FST/25U/0538'],
+      );
+      expect(r.examNumberSuggestion, isNull);
+    });
+  });
 
   group('the real sample booklet', () {
     final reading = extractor.extract(loadSample());
@@ -47,8 +109,8 @@ void main() {
 
     test('places the exam-number region on the line beside the label', () {
       final r = reading.examNumberRegion!;
-      expect(r.top, inInclusiveRange(0.12, 0.17));
-      expect(r.bottom, inInclusiveRange(0.19, 0.24));
+      expect(r.top, inInclusiveRange(0.10, 0.14));
+      expect(r.bottom, inInclusiveRange(0.165, 0.18));
       expect(r.left, inInclusiveRange(0.28, 0.36));
       expect(r.right, greaterThan(0.85));
     });

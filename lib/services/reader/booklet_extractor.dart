@@ -206,11 +206,13 @@ class BookletExtractor {
     Region? examNumberRegion;
     if (examLabel != null) {
       final b = examLabel.box;
+      // The writing sits on the line the label is printed on, mostly above it.
+      // Below the label comes the handwritten title, so the area stops there.
       examNumberRegion = Region(
         b.right < 0.3 ? 0.3 : b.right,
-        b.top - 0.02,
+        b.top - 0.03,
         0.96,
-        b.bottom + 0.02,
+        b.bottom - 0.002,
       ).clamped();
     }
 
@@ -289,7 +291,8 @@ class BookletExtractor {
 
   /// Chooses the exam number from what was read in its area.
   ///
-  /// A reading that is close to exactly one class-list number is that number:
+  /// A reading that is close to exactly one class-list number, or whose last
+  /// digits match exactly one, is that number:
   /// handwriting is rarely read perfectly, but "FWM/24U/O538" next to a class
   /// list holding FWM/24U/0538 and no other near match is not in doubt. With no
   /// class-list match, only a clear reading in the right pattern is offered.
@@ -326,6 +329,21 @@ class BookletExtractor {
           continue;
         }
       }
+      // The prefix (department, year) is the hard part to read in handwriting;
+      // the sequence number is mostly digits and is read far better. If its
+      // digits match exactly one class-list number, that is the student.
+      final seq = RegExp(r'(\d{3,5})\D*$').firstMatch(line.text.trim())?.group(1);
+      if (seq != null && roster.isNotEmpty) {
+        final hits = [
+          for (final k in roster.keys)
+            if (RegExp(r'(\d{3,5})$').firstMatch(k)?.group(1) == seq) k,
+        ];
+        if (hits.length == 1 && (conf == null || conf >= 0.4)) {
+          offer(roster[hits.single]!, (conf ?? 0.5) * 0.85, true);
+          continue;
+        }
+      }
+
       // Close to two class-list numbers equally: the writing is ambiguous, so
       // nothing is offered rather than a number that may belong to nobody.
       final ambiguous = near.length > 1 && near[0].distance == near[1].distance;
