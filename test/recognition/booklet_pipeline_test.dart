@@ -186,6 +186,16 @@ void main() {
       expect(failed?.warnings.join(' '), contains('missing from this install'));
     });
 
+    test('variants that were tried and read nothing are still in the record', () async {
+      // A reader that finds no text at all: the exam number has no reading, but the
+      // record still shows which picture variants were tried.
+      final r = await BookletPipeline(ocr: const _LabelsRegionOcr(), digits: digits).run(File(bookletPath));
+      final exam = r.field('exam_number')!;
+      expect(exam.attempts.map((a) => a.variant), containsAll(['closeup', 'closeup_wide', 'whole_photo']));
+      expect(exam.attempts.every((a) => a.text == null), isTrue);
+      expect(exam.value, isNull);
+    });
+
     test('a text reader that is too slow times out into a note, not a hang', () async {
       final r = await BookletPipeline(
         ocr: _SlowOcr(),
@@ -223,4 +233,18 @@ class _LabelsOcr implements OcrEngine {
         OcrLine('Question', Region(0.64, 0.30, 0.74, 0.33), confidence: 0.9),
         OcrLine('Total', Region(0.66, 0.84, 0.76, 0.88), confidence: 0.9),
       ]);
+}
+
+/// Finds the label the exam number hangs on and nothing else, and reads nothing
+/// in any close-up.
+class _LabelsRegionOcr implements RegionOcrEngine {
+  const _LabelsRegionOcr();
+  @override
+  String get name => 'labels';
+  @override
+  Future<OcrDocument> recognize(File image, {required int width, required int height}) async => const OcrDocument(engine: 'labels', lines: [
+        OcrLine("Candidate's Examination Number:", Region(0.05, 0.15, 0.40, 0.19), confidence: 0.9),
+      ]);
+  @override
+  Future<OcrDocument> recognizeRegion(File image, Region region) async => const OcrDocument(engine: 'labels', lines: []);
 }

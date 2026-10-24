@@ -450,6 +450,18 @@ class BookletPipeline implements RecognitionOrchestrator {
     ]));
 
     final ev = ExamNumberResolver.resolve(readings, classList);
+
+    // A variant that was tried and read nothing is part of the record too: the
+    // examiner (and anyone measuring the reader) should see that it was tried.
+    final tried = <String, String>{
+      for (final e in closeups.entries)
+        if (e.key == 'closeup' || e.key == 'closeup_wide') e.key: e.value.engine,
+      'whole_photo': doc.engine,
+    };
+    final emptyAttempts = [
+      for (final e in tried.entries)
+        if (!ev.attempts.any((a) => a.variant == e.key)) ReadAttempt(reader: e.value, readerVersion: '', variant: e.key),
+    ];
     final strokes = marks?.strokes['exam_number'];
     final inkPresent = readings.isNotEmpty || (strokes ?? 0) >= 3;
     final state = policy.stateFor(
@@ -470,7 +482,7 @@ class BookletPipeline implements RecognitionOrchestrator {
         candidates: ev.candidates,
         rawConfidence: ev.candidates.isEmpty ? null : ev.candidates.first.score,
         region: region,
-        attempts: ev.attempts,
+        attempts: [...ev.attempts, ...emptyAttempts],
         warnings: [
           ...ev.warnings,
           if (ev.candidates.isEmpty && inkPresent) 'Writing was seen but could not be read. Type the number from the photo.',
