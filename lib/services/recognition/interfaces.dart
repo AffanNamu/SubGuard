@@ -49,6 +49,7 @@ class RecognitionResult {
     this.page,
     this.notes = const [],
     this.answeredLine,
+    this.straightened = false,
     this.pipelineVersion = BookletPipelineInfo.version,
   });
 
@@ -72,6 +73,11 @@ class RecognitionResult {
   /// reader that was unavailable, a stage that was skipped, and why.
   final List<String> notes;
   final String? answeredLine;
+
+  /// The page was straightened before it was read. Regions in this result are on
+  /// the original photograph either way; the printed text's boxes are on the
+  /// straightened page when this is true.
+  final bool straightened;
   final String pipelineVersion;
 
   ExtractedField? field(String key) {
@@ -95,6 +101,7 @@ class RecognitionResult {
         'page': page?.toJson(),
         'notes': notes,
         'answeredLine': answeredLine,
+        'straightened': straightened,
       };
 
   static RecognitionResult fromJson(Map<String, dynamic> j, {OcrDocument printed = OcrDocument.empty}) => RecognitionResult(
@@ -109,6 +116,7 @@ class RecognitionResult {
         page: j['page'] == null ? null : PageDetection.fromJson(j['page'] as Map<String, dynamic>),
         notes: [for (final n in (j['notes'] as List? ?? const [])) n as String],
         answeredLine: j['answeredLine'] as String?,
+        straightened: j['straightened'] as bool? ?? false,
       );
 }
 

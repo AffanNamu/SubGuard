@@ -20,6 +20,7 @@ stages on one photograph. Every stage is an interface
 | 1 | Intake guard | file exists, under 40 MB, decodes, under 12,000 px a side; decoded once at ≤ 2,400 px | `PipelineLimits` |
 | 2 | Quality assessment | blur, noise, exposure, ink contrast, shadow, glare, text size, tilt, perspective, page cropped — each with a plain message and an instruction ("retake…") | `DocumentQualityAnalyzer` → `QualityAnalyzer` |
 | 3 | Page outline | 2-means paper mask → hull → four corners; confidence and "fully visible" | `DocumentBoundaryDetector` → `PageDetector` |
+| 3b | Straightening | when the page is found with confidence, all four corners are in the picture, and it is visibly tilted (≥ 2°) or foreshortened (≥ 6°), it is warped to a rectangle and everything after reads the straightened page; regions are mapped back onto the original photograph | `PageStraightener` (`straighten.dart`) |
 | 4 | Printed text | whole-photo text with boxes | `PrintedTextRecognizer` (= `OcrEngine`) → PaddleOCR PP-OCRv6 on the phone |
 | 5 | Layout | where the exam number, marks table, total and answered line are, found from the printed labels (so tilt and zoom matter less) | `LayoutAnalyzer` → `BookletExtractor` |
 | 6 | Close-ups | the printed booklet number and the handwritten exam number re-read at higher magnification, in more than one picture variant | `RegionOcrEngine` |
@@ -27,7 +28,9 @@ stages on one photograph. Every stage is an interface
 | 8 | Validation | marks against question maxima, the mark step, the part maximum; the written total against the sum; the "questions answered" line; duplicate or unreadable rows | `ExaminationValidator` → `SchemeExaminationValidator` |
 | 9 | Field states | each field is `recognized`, `needs_review`, `unreadable` or `failed` | `FieldConfidencePolicy` → `RecognitionPolicy` |
 
-Heavy stages (2, 3, 7) run in background isolates; the platform text reader is
+Not done: the orientation of a page photographed sideways or upside down is not corrected (a phone's rotation flag is honoured when the photo is decoded), and a page cropped by the frame is read as it is, not straightened.
+
+Heavy stages (2, 3, 3b, 7) run in background isolates; the platform text reader is
 called through its own channel. Nothing blocks the UI thread. Photos are read one
 at a time on purpose: a phone cannot hold several full-size photos in memory.
 

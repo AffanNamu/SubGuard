@@ -12,6 +12,7 @@ import 'package:unimarkly/services/recognition/interfaces.dart';
 import 'package:unimarkly/services/recognition/model_registry.dart';
 import 'package:unimarkly/services/vision/photo_codec.dart';
 
+import 'package:unimarkly/services/vision/geometry.dart';
 import '../support/degrade.dart';
 import '../support/process_ocr_engine.dart';
 
@@ -38,6 +39,7 @@ void main() {
     }
     final digits = await ModelRegistry.loadDigits();
     final pipeline = BookletPipeline(ocr: ocr, digits: digits);
+    final asTaken = BookletPipeline(ocr: ocr, digits: digits, straighten: false);
     final docs = _loadDataset();
     final work = Directory.systemTemp.createTempSync('unimarkly_bench_');
     addTearDown(() {
@@ -49,9 +51,7 @@ void main() {
     var peakRss = ProcessInfo.currentRss;
     for (final doc in docs) {
       final original = (await decodePhoto(File(doc.image), maxSide: 4000)).image;
-      final variants = <(String, String, String)>[
-        ('original', doc.image, doc.qualityCategory),
-      ];
+      final variants = <_Variant>[_Variant('original', doc.image, doc.qualityCategory)];
       if (Platform.environment['BENCH_VARIANTS'] != '0') {
         final specs = <(String, String, dynamic)>[
           ('blur_mild', 'blur_mild', Degrade.blur(original, 1.2)),
@@ -64,15 +64,40 @@ void main() {
         for (final s in specs) {
           final f = File(p.join(work.path, '${doc.id}_${s.$1}.png'));
           await f.writeAsBytes(await encodeColorPng(s.$3));
-          variants.add((s.$1, f.path, s.$2));
+          variants.add(_Variant(s.$1, f.path, s.$2));
+        }
+        // The booklet photographed at an angle: placed on a desk at known corners.
+        // The annotated boxes follow it, so the ground truth stays exact.
+        const w = 1500, h = 1800;
+        final angles = <(String, List<Pt>)>[
+          ('keystone', const [Pt(330, 130), Pt(1170, 100), Pt(1420, 1690), Pt(110, 1730)]),
+          ('rotated_12deg', const [Pt(300, 120), Pt(1330, 330), Pt(1130, 1700), Pt(120, 1480)]),
+        ];
+        for (final a in angles) {
+          final placed = Degrade.place(original, w, h, a.$2);
+          final f = File(p.join(work.path, '${doc.id}_${a.$1}.png'));
+          await f.writeAsBytes(await encodeColorPng(placed.image));
+          Region map(Region b) {
+            final pts = [
+              placed.photoToCanvas.apply(Pt(b.left * original.width, b.top * original.height)),
+              placed.photoToCanvas.apply(Pt(b.right * original.width, b.top * original.height)),
+              placed.photoToCanvas.apply(Pt(b.right * original.width, b.bottom * original.height)),
+              placed.photoToCanvas.apply(Pt(b.left * original.width, b.bottom * original.height)),
+            ];
+            final xs = pts.map((q) => q.x / w), ys = pts.map((q) => q.y / h);
+            return Region(xs.reduce(math.min), ys.reduce(math.min), xs.reduce(math.max), ys.reduce(math.max));
+          }
+
+          variants.add(_Variant(a.$1, f.path, '${a.$1} (straightened)', mapBox: map));
+          variants.add(_Variant('${a.$1}_as_taken', f.path, '${a.$1} (as taken)', mapBox: map, straighten: false));
         }
       }
       for (final v in variants) {
         final sw = Stopwatch()..start();
-        final result = await pipeline.run(File(v.$2), classList: doc.classList);
+        final result = await (v.straighten ? pipeline : asTaken).run(File(v.path), classList: doc.classList);
         sw.stop();
         peakRss = math.max(peakRss, ProcessInfo.maxRss);
-        runs.add(_Run(doc, v.$1, v.$3, result, sw.elapsedMilliseconds));
+        runs.add(_Run(doc, v.name, v.category, result, sw.elapsedMilliseconds, mapBox: v.mapBox));
       }
     }
 
@@ -151,8 +176,19 @@ List<_Doc> _loadDataset() {
 
 // ---- scoring ----
 
+class _Variant {
+  _Variant(this.name, this.path, this.category, {this.mapBox, this.straighten = true});
+  final String name, path, category;
+
+  /// Where an annotated box (fractions of the original) is on this picture.
+  final Region Function(Region)? mapBox;
+  final bool straighten;
+}
+
 class _Run {
-  _Run(this.doc, this.variant, this.category, this.result, this.ms);
+  _Run(this.doc, this.variant, this.category, this.result, this.ms, {this.mapBox});
+  Region box(Region b) => mapBox == null ? b : mapBox!(b);
+  final Region Function(Region)? mapBox;
   final _Doc doc;
   final String variant, category;
   final RecognitionResult result;
@@ -235,7 +271,7 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
 
   for (final run in runs) {
     final r = run.result;
-    final cat = byCategory.putIfAbsent(run.category, () => {'reg': _Counter(), 'mark': _Counter(), 'doc': _Counter(), 'review': _Counter()});
+    final cat = byCategory.putIfAbsent(run.category, () => {'reg': _Counter(), 'mark': _Counter(), 'doc': _Counter(), 'review': _Counter(), 'rows': _Counter()});
     var docOk = true;
     final detail = <String, Object?>{};
 
@@ -280,14 +316,16 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
       for (final row in machineRows) {
         final cell = row.region;
         if (cell == null) continue;
-        final inside = t.box.centerX >= cell.left && t.box.centerX <= cell.right && t.box.centerY >= cell.top && t.box.centerY <= cell.bottom;
-        if (inside && cell.height <= t.box.height * 2.5) {
+        final tb = run.box(t.box);
+        final inside = tb.centerX >= cell.left && tb.centerX <= cell.right && tb.centerY >= cell.top && tb.centerY <= cell.bottom;
+        if (inside && cell.height <= tb.height * 2.5) {
           placed = row;
           break;
         }
       }
       final associated = placed != null;
       markAssoc.add(associated);
+      cat['rows']!.add(associated);
       final qOk = associated && int.tryParse(placed.question ?? '') == t.question;
       markQuestion.add(qOk);
       final byQuestion = machineRows.where((row) => int.tryParse(row.question ?? '') == t.question).firstOrNull;
@@ -393,6 +431,7 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
         e.key: {
           'runs': e.value['doc']!.total,
           'registration_number_exact': e.value['reg']!.json,
+          'mark_rows_found_at_right_place': e.value['rows']!.json,
           'mark_exact': e.value['mark']!.json,
           'document_exact': e.value['doc']!.json,
           'needing_review': e.value['review']!.json,
@@ -433,10 +472,10 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
     ..writeln()
     ..writeln('## By picture quality')
     ..writeln()
-    ..writeln('| category | runs | registration no. exact | marks exact | document exact | needing review |')
-    ..writeln('|---|---|---|---|---|---|');
+    ..writeln('| category | runs | registration no. exact | mark rows found at the right place | marks exact | document exact | needing review |')
+    ..writeln('|---|---|---|---|---|---|---|');
   for (final e in byCategory.entries) {
-    md.writeln('| ${e.key} | ${e.value['doc']!.total} | ${e.value['reg']!.text} | ${e.value['mark']!.text} | ${e.value['doc']!.text} | ${e.value['review']!.text} |');
+    md.writeln('| ${e.key} | ${e.value['doc']!.total} | ${e.value['reg']!.text} | ${e.value['rows']!.text} | ${e.value['mark']!.text} | ${e.value['doc']!.text} | ${e.value['review']!.text} |');
   }
   return _Report(json, md.toString());
 }

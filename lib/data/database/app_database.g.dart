@@ -8237,9 +8237,10 @@ class FieldReviewRow extends DataClass implements Insertable<FieldReviewRow> {
   /// What the examiner confirmed; null for a field they left blank or rejected.
   final String? finalValue;
 
-  /// `accepted` (the machine's value, confirmed), `edited` (changed from it),
-  /// `entered` (typed with no machine value), `rejected` (the machine's value
-  /// was dismissed) or `blank`.
+  /// `accepted` (the machine's value, confirmed), `suggestion` (another of the
+  /// machine's candidates, tapped by the examiner), `edited` (changed from the
+  /// machine's value), `entered` (typed with no machine value), `rejected` (the
+  /// machine's value was dismissed) or `blank`.
   final String decision;
 
   /// Where on the photo, "left,top,right,bottom" as fractions.

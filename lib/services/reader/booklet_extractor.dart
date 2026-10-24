@@ -62,6 +62,26 @@ class BookletReading {
   /// All the printed labels the layout depends on were found.
   bool get layoutRecognised => missingAnchors.isEmpty;
 
+  /// The same reading with every region moved by [f]; used to put regions found
+  /// on a straightened page back onto the photograph the examiner sees.
+  BookletReading mapRegions(Region Function(Region) f) => BookletReading(
+        serialNo: serialNo,
+        serialConfidence: serialConfidence,
+        examNumberSuggestion: examNumberSuggestion,
+        examNumberConfidence: examNumberConfidence,
+        examNumberOnClassList: examNumberOnClassList,
+        questionsAnsweredText: questionsAnsweredText,
+        institution: institution,
+        examNumberRegion: examNumberRegion == null ? null : f(examNumberRegion!),
+        questionColumnRegion: questionColumnRegion == null ? null : f(questionColumnRegion!),
+        marksRegion: marksRegion == null ? null : f(marksRegion!),
+        totalRegion: totalRegion == null ? null : f(totalRegion!),
+        answeredRegion: answeredRegion == null ? null : f(answeredRegion!),
+        foundAnchors: foundAnchors,
+        missingAnchors: missingAnchors,
+        warnings: warnings,
+      );
+
   /// Rebuilds a reading from what [toJson] stored.
   factory BookletReading.fromJson(Map<String, dynamic> j) {
     Region? region(String key) {

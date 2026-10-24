@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'ink.dart';
 import 'raster.dart';
 
 /// A horizontal band of writing: one row of a marks table.
@@ -27,8 +28,8 @@ class TableRows {
   /// [ink] is an ink-strength map of the column (0..255).
   static List<RowBand> find(Raster ink, {double minRowShare = 0.04}) {
     if (ink.width == 0 || ink.height == 0) return const [];
-    final strong = ink.percentile(0.995);
-    if (strong < 28) return const [];
+    final strong = inkLevel(ink);
+    if (strong == 0) return const [];
     final thr = math.max(14, (strong * 0.5).round());
 
     final profile = List<int>.filled(ink.height, 0);

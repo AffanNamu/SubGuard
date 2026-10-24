@@ -80,7 +80,16 @@ Each of these was invisible until a test or a picture exposed it.
    level is now a median-held blur.
 5. **The strike-through also made the Total box "read" a 5.** Lines are now found
    over the whole table at once, so a line is removed at its full length everywhere.
-6. **Handing a background isolate the pipeline hands it the platform text reader**
+6. **The large blurs were wrong, and only large pictures showed it.** `Raster.boxBlur`
+   kept row sums in a 16-bit buffer, which overflows once the radius passes 128. Ink
+   maps and lighting correction estimate the paper with very wide blurs, so on any
+   crop larger than about 500 px the paper level was garbage and "no ink was found".
+   The 810 × 1080 development photograph never reached that size; a full-resolution
+   phone photograph does. Found when a straightened page (1298 × 1581) read no marks
+   at all although they were plainly there. Fixed (32-bit buffer), with a regression
+   test that fails on the old code. After the fix, finding the rows on the damaged
+   variants improved (for example under-exposed 0/4 → 3/4).
+7. **Handing a background isolate the pipeline hands it the platform text reader**
    (not sendable). Isolate entry points are static and take plain data.
 
 ## Where the engine stands on the real photograph
@@ -88,8 +97,10 @@ Each of these was invisible until a test or a picture exposed it.
 The same one photograph; read it as a smoke test, not a result.
 
 * Picture quality: correctly flagged `text_small` and `cropped`.
-* Page outline: not rectifiable (the page is cropped by the frame), so the photo is
-  read as it is.
+* Page outline: not straightened (the page is cropped by the frame, so its corners
+  are not real), so the photo is read as it is. Pages photographed at an angle *are*
+  straightened before reading: on known transforms of this photograph, finding the
+  mark rows went from 0/4 to 4/4 (keystone) and 1/4 to 4/4 (rotated 12°).
 * Printed booklet number: read as 292011, at 0.76 confidence, therefore
   `needs_review` (the policy accepts printed numbers only at 0.90 with two
   agreeing variants).

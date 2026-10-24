@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "generated": "2026-10-24T20:17:48.834013Z",
+ "generated": "2026-10-24T20:38:21.756459Z",
  "pipeline_version": "1.0.0",
  "environment": {
   "platform": "linux",
@@ -18,9 +18,9 @@
  "data": {
   "documents": 1,
   "independent_photographs": 1,
-  "runs": 7,
+  "runs": 11,
   "original_runs": 1,
-  "degraded_runs": 6,
+  "degraded_runs": 10,
   "splits": {
    "booklet-001": "dev"
   },
@@ -29,85 +29,85 @@
  "metrics": {
   "registration_number_exact_raw": {
    "right": 0,
-   "of": 7,
+   "of": 11,
    "rate": 0.0
   },
   "registration_number_read_at_all": {
    "right": 0,
-   "of": 7,
+   "of": 11,
    "rate": 0.0
   },
   "registration_number_in_candidates": {
-   "right": 1,
-   "of": 7,
-   "rate": 0.14285714285714285
+   "right": 3,
+   "of": 11,
+   "rate": 0.2727272727272727
   },
   "registration_number_top_candidate_exact_with_class_list": {
-   "right": 1,
-   "of": 7,
-   "rate": 0.14285714285714285
+   "right": 3,
+   "of": 11,
+   "rate": 0.2727272727272727
   },
   "registration_number_character_error_rate": {
-   "edits": 84,
-   "chars": 84,
+   "edits": 132,
+   "chars": 132,
    "rate": 1.0
   },
   "mark_exact_with_question_assigned": {
-   "right": 2,
-   "of": 28,
-   "rate": 0.07142857142857142
+   "right": 1,
+   "of": 44,
+   "rate": 0.022727272727272728
   },
   "mark_in_candidates_with_question": {
-   "right": 2,
-   "of": 28,
-   "rate": 0.07142857142857142
+   "right": 1,
+   "of": 44,
+   "rate": 0.022727272727272728
   },
   "mark_row_found_at_right_place": {
-   "right": 15,
-   "of": 28,
-   "rate": 0.5357142857142857
+   "right": 30,
+   "of": 44,
+   "rate": 0.6818181818181818
   },
   "mark_row_question_label_correct": {
-   "right": 11,
-   "of": 28,
-   "rate": 0.39285714285714285
+   "right": 19,
+   "of": 44,
+   "rate": 0.4318181818181818
   },
   "printed_serial_exact": {
-   "right": 5,
-   "of": 7,
-   "rate": 0.7142857142857143
+   "right": 9,
+   "of": 11,
+   "rate": 0.8181818181818182
   },
   "written_total_correct_including_blank": {
-   "right": 5,
-   "of": 7,
-   "rate": 0.7142857142857143
+   "right": 10,
+   "of": 11,
+   "rate": 0.9090909090909091
   },
   "document_exact": {
    "right": 0,
-   "of": 7,
+   "of": 11,
    "rate": 0.0
   },
   "documents_needing_review": {
-   "right": 7,
-   "of": 7,
+   "right": 11,
+   "of": 11,
    "rate": 1.0
   },
   "fields_needing_review": {
-   "right": 61,
-   "of": 66,
-   "rate": 0.9242424242424242
+   "right": 118,
+   "of": 128,
+   "rate": 0.921875
   },
   "false_acceptance": {
-   "accepted_fields_with_ground_truth": 5,
+   "accepted_fields_with_ground_truth": 10,
    "accepted_and_wrong": 0,
    "rate": 0.0
   },
   "time_per_page_ms": {
-   "median": 5724,
-   "min": 1007,
-   "max": 6570
+   "median": 6505,
+   "min": 1026,
+   "max": 10448
   },
-  "peak_resident_memory_mb": 217,
+  "peak_resident_memory_mb": 316,
   "batch_reliability": {
    "inputs": 6,
    "completed": 2,
@@ -128,6 +128,11 @@
     "right": 0,
     "of": 1,
     "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 4,
+    "of": 4,
+    "rate": 1.0
    },
    "mark_exact": {
     "right": 1,
@@ -152,6 +157,11 @@
     "of": 1,
     "rate": 0.0
    },
+   "mark_rows_found_at_right_place": {
+    "right": 4,
+    "of": 4,
+    "rate": 1.0
+   },
    "mark_exact": {
     "right": 0,
     "of": 4,
@@ -173,6 +183,11 @@
    "registration_number_exact": {
     "right": 0,
     "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 0,
+    "of": 4,
     "rate": 0.0
    },
    "mark_exact": {
@@ -198,6 +213,11 @@
     "of": 1,
     "rate": 0.0
    },
+   "mark_rows_found_at_right_place": {
+    "right": 3,
+    "of": 4,
+    "rate": 0.75
+   },
    "mark_exact": {
     "right": 0,
     "of": 4,
@@ -220,6 +240,11 @@
     "right": 0,
     "of": 1,
     "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 3,
+    "of": 4,
+    "rate": 0.75
    },
    "mark_exact": {
     "right": 0,
@@ -244,6 +269,11 @@
     "of": 1,
     "rate": 0.0
    },
+   "mark_rows_found_at_right_place": {
+    "right": 3,
+    "of": 4,
+    "rate": 0.75
+   },
    "mark_exact": {
     "right": 0,
     "of": 4,
@@ -267,10 +297,127 @@
     "of": 1,
     "rate": 0.0
    },
+   "mark_rows_found_at_right_place": {
+    "right": 4,
+    "of": 4,
+    "rate": 1.0
+   },
    "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "keystone (straightened)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 4,
+    "of": 4,
+    "rate": 1.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "keystone (as taken)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "rotated_12deg (straightened)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 4,
+    "of": 4,
+    "rate": 1.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "rotated_12deg (as taken)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
     "right": 1,
     "of": 4,
     "rate": 0.25
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
    },
    "document_exact": {
     "right": 0,
@@ -295,14 +442,14 @@
     "text_small",
     "cropped"
    ],
-   "ms": 6570,
+   "ms": 6957,
    "stage_ms": {
-    "decode": 33,
-    "quality": 832,
-    "printed_text": 1588,
-    "closeups": 3340,
-    "marks": 750,
-    "validation": 18
+    "decode": 31,
+    "quality": 1133,
+    "printed_text": 1674,
+    "closeups": 3248,
+    "marks": 844,
+    "validation": 13
    },
    "document_exact": false,
    "fields": {
@@ -323,7 +470,7 @@
      {
       "question": 1,
       "truth": "1.0",
-      "machine": "140",
+      "machine": "147",
       "row_found": true,
       "question_read": "1",
       "exact": false
@@ -339,9 +486,9 @@
      {
       "question": 4,
       "truth": "2.0",
-      "machine": null,
+      "machine": "2.61",
       "row_found": true,
-      "question_read": "0",
+      "question_read": "4",
       "exact": false
      },
      {
@@ -372,14 +519,14 @@
     "text_small",
     "cropped"
    ],
-   "ms": 2485,
+   "ms": 2886,
    "stage_ms": {
-    "decode": 38,
-    "quality": 718,
-    "printed_text": 1384,
-    "closeups": 7,
-    "marks": 333,
-    "validation": 1
+    "decode": 51,
+    "quality": 912,
+    "printed_text": 1565,
+    "closeups": 2,
+    "marks": 353,
+    "validation": 0
    },
    "document_exact": false,
    "fields": {
@@ -400,9 +547,9 @@
      {
       "question": 1,
       "truth": "1.0",
-      "machine": "980",
+      "machine": null,
       "row_found": true,
-      "question_read": "1",
+      "question_read": "96",
       "exact": false
      },
      {
@@ -416,7 +563,7 @@
      {
       "question": 4,
       "truth": "2.0",
-      "machine": "2.61",
+      "machine": "2461",
       "row_found": true,
       "question_read": "4",
       "exact": false
@@ -450,11 +597,11 @@
     "text_small",
     "cropped"
    ],
-   "ms": 1007,
+   "ms": 1026,
    "stage_ms": {
-    "decode": 55,
-    "quality": 581,
-    "printed_text": 369,
+    "decode": 34,
+    "quality": 520,
+    "printed_text": 471,
     "closeups": 0,
     "marks": 0,
     "validation": 0
@@ -528,14 +675,14 @@
     "text_small",
     "page_not_found"
    ],
-   "ms": 5861,
+   "ms": 5709,
    "stage_ms": {
-    "decode": 42,
-    "quality": 539,
-    "printed_text": 1307,
-    "closeups": 3539,
-    "marks": 429,
-    "validation": 2
+    "decode": 53,
+    "quality": 590,
+    "printed_text": 1335,
+    "closeups": 3464,
+    "marks": 260,
+    "validation": 4
    },
    "document_exact": false,
    "fields": {
@@ -557,8 +704,8 @@
       "question": 1,
       "truth": "1.0",
       "machine": null,
-      "row_found": false,
-      "question_read": null,
+      "row_found": true,
+      "question_read": "6",
       "exact": false
      },
      {
@@ -573,15 +720,15 @@
       "question": 4,
       "truth": "2.0",
       "machine": null,
-      "row_found": false,
-      "question_read": null,
+      "row_found": true,
+      "question_read": "4",
       "exact": false
      },
      {
       "question": 5,
       "truth": "5.5",
       "machine": null,
-      "row_found": false,
+      "row_found": true,
       "question_read": null,
       "exact": false
      }
@@ -606,13 +753,13 @@
     "text_small",
     "cropped"
    ],
-   "ms": 2894,
+   "ms": 2960,
    "stage_ms": {
-    "decode": 34,
-    "quality": 498,
-    "printed_text": 1502,
-    "closeups": 581,
-    "marks": 276,
+    "decode": 44,
+    "quality": 580,
+    "printed_text": 1434,
+    "closeups": 604,
+    "marks": 295,
     "validation": 0
    },
    "document_exact": false,
@@ -683,14 +830,14 @@
     "text_small",
     "page_not_found"
    ],
-   "ms": 5742,
+   "ms": 6505,
    "stage_ms": {
-    "decode": 47,
-    "quality": 551,
-    "printed_text": 1346,
-    "closeups": 3404,
-    "marks": 386,
-    "validation": 4
+    "decode": 50,
+    "quality": 686,
+    "printed_text": 1390,
+    "closeups": 4070,
+    "marks": 304,
+    "validation": 3
    },
    "document_exact": false,
    "fields": {
@@ -698,6 +845,236 @@
      "truth": "FWM/24U/0538",
      "raw": null,
      "top_candidate": "FwA/2001053X",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": true,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": true,
+      "question_read": "4",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": true,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "shadow",
+   "category": "shadow",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "uneven_light",
+    "text_small",
+    "cropped"
+   ],
+   "ms": 6066,
+   "stage_ms": {
+    "decode": 34,
+    "quality": 360,
+    "printed_text": 1744,
+    "closeups": 3432,
+    "marks": 489,
+    "validation": 5
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "w/200/053x",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": "147",
+      "row_found": true,
+      "question_read": "1",
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": true,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": "211.",
+      "row_found": true,
+      "question_read": "4",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": true,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "keystone",
+   "category": "keystone (straightened)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "uneven_light",
+    "text_small"
+   ],
+   "ms": 10448,
+   "stage_ms": {
+    "decode": 143,
+    "quality": 1032,
+    "straighten": 1702,
+    "printed_text": 2698,
+    "closeups": 4229,
+    "marks": 633,
+    "validation": 3
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "1070538",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": "140",
+      "row_found": true,
+      "question_read": "1",
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": "1111",
+      "row_found": true,
+      "question_read": "2",
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": "2.67",
+      "row_found": true,
+      "question_read": "4",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": "515.",
+      "row_found": true,
+      "question_read": "5",
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "keystone_as_taken",
+   "category": "keystone (as taken)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "uneven_light",
+    "text_small"
+   ],
+   "ms": 9705,
+   "stage_ms": {
+    "decode": 125,
+    "quality": 950,
+    "printed_text": 3208,
+    "closeups": 4697,
+    "marks": 718,
+    "validation": 5
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "FWM/24U/0538",
      "state": "needs_review",
      "exact": false
     },
@@ -743,30 +1120,31 @@
     ],
     "total_written": {
      "truth": null,
-     "machine": ".88..?2",
-     "state": "needs_review",
-     "correct": false
+     "machine": null,
+     "state": "recognized",
+     "correct": true
     }
    }
   },
   {
    "doc": "booklet-001",
-   "variant": "shadow",
-   "category": "shadow",
+   "variant": "rotated_12deg",
+   "category": "rotated_12deg (straightened)",
    "split": "dev",
    "quality_verdict": "usable",
    "quality_issues": [
     "uneven_light",
     "text_small",
-    "cropped"
+    "tilted"
    ],
-   "ms": 5724,
+   "ms": 9220,
    "stage_ms": {
-    "decode": 36,
-    "quality": 406,
-    "printed_text": 1369,
-    "closeups": 3643,
-    "marks": 265,
+    "decode": 93,
+    "quality": 914,
+    "straighten": 967,
+    "printed_text": 2651,
+    "closeups": 3994,
+    "marks": 595,
     "validation": 3
    },
    "document_exact": false,
@@ -774,7 +1152,7 @@
     "exam_number": {
      "truth": "FWM/24U/0538",
      "raw": null,
-     "top_candidate": "w/200/053x",
+     "top_candidate": "FWM/24U/0538",
      "state": "needs_review",
      "exact": false
     },
@@ -788,7 +1166,7 @@
      {
       "question": 1,
       "truth": "1.0",
-      "machine": "147",
+      "machine": "140",
       "row_found": true,
       "question_read": "1",
       "exact": false
@@ -796,7 +1174,7 @@
      {
       "question": 2,
       "truth": "1.0",
-      "machine": "11",
+      "machine": "1111",
       "row_found": true,
       "question_read": "2",
       "exact": false
@@ -804,7 +1182,7 @@
      {
       "question": 4,
       "truth": "2.0",
-      "machine": "2.1.",
+      "machine": "2.61",
       "row_found": true,
       "question_read": "4",
       "exact": false
@@ -812,10 +1190,87 @@
      {
       "question": 5,
       "truth": "5.5",
-      "machine": "5.5",
+      "machine": "5?133",
       "row_found": true,
       "question_read": "5",
-      "exact": true
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "rotated_12deg_as_taken",
+   "category": "rotated_12deg (as taken)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "uneven_light",
+    "text_small",
+    "tilted"
+   ],
+   "ms": 7636,
+   "stage_ms": {
+    "decode": 99,
+    "quality": 818,
+    "printed_text": 2334,
+    "closeups": 3782,
+    "marks": 592,
+    "validation": 8
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "292011",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": true,
+      "question_read": null,
+      "exact": false
      }
     ],
     "total_written": {

@@ -127,7 +127,7 @@ class ExtractedField {
   /// For marks: the question number read for the row, when there is one.
   final String? question;
 
-  ExtractedField copyWith({FieldState? state, String? value, List<FieldCandidate>? candidates, List<String>? warnings}) => ExtractedField(
+  ExtractedField copyWith({FieldState? state, String? value, List<FieldCandidate>? candidates, List<String>? warnings, Region? region}) => ExtractedField(
         key: key,
         kind: kind,
         state: state ?? this.state,
@@ -135,7 +135,7 @@ class ExtractedField {
         candidates: candidates ?? this.candidates,
         rawConfidence: rawConfidence,
         calibratedConfidence: calibratedConfidence,
-        region: region,
+        region: region ?? this.region,
         attempts: attempts,
         warnings: warnings ?? this.warnings,
         question: question,

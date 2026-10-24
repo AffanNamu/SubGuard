@@ -4,6 +4,7 @@ import '../../domain/ocr.dart';
 import '../../domain/recognition.dart';
 import '../vision/enhance.dart';
 import '../vision/geometry.dart';
+import '../vision/ink.dart';
 import '../vision/lines.dart';
 import '../vision/mark_reader.dart';
 import '../vision/raster.dart';
@@ -254,8 +255,8 @@ int _strokesIn(ColorRaster photo, ({int l, int t, int r, int b}) box) {
 /// How many separate pieces of ink there are in an ink map, ignoring specks.
 /// Zero means nothing is written there.
 int strokeCount(Raster ink) {
-  final strong = ink.percentile(0.995);
-  if (strong < 28) return 0;
+  final strong = inkLevel(ink);
+  if (strong == 0) return 0;
   final mask = Raster(ink.width, ink.height);
   final thr = math.max(14, (strong * 0.5).round());
   for (var i = 0; i < ink.data.length; i++) {
@@ -292,8 +293,8 @@ Raster _ink(ColorRaster color, String variant, [List<({int left, int top, int ri
 /// like a "1": on the development photo the diagonal strike-through was read as
 /// "1" with 100% confidence before this rule.
 Raster _withoutLongStrokes(Raster ink, List<({int left, int top, int right, int bottom})>? removed) {
-  final strong = ink.percentile(0.995);
-  if (strong < 28) return ink;
+  final strong = inkLevel(ink);
+  if (strong == 0) return ink;
   final mask = Raster(ink.width, ink.height);
   final thr = math.max(14, (strong * 0.5).round());
   for (var i = 0; i < ink.data.length; i++) {

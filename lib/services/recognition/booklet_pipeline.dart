@@ -16,6 +16,7 @@ import '../vision/raster.dart';
 import 'interfaces.dart';
 import 'marks_stage.dart';
 import 'model_registry.dart';
+import 'straighten.dart';
 import 'validation.dart';
 
 /// Limits that keep one bad photograph from using up the phone.
@@ -64,6 +65,7 @@ class BookletPipeline implements RecognitionOrchestrator {
     this.layout = const BookletExtractor(),
     this.policy = RecognitionPolicy.conservative,
     this.limits = const PipelineLimits(),
+    this.straighten = true,
   });
 
   final PrintedTextRecognizer ocr;
@@ -79,6 +81,10 @@ class BookletPipeline implements RecognitionOrchestrator {
   final FieldConfidencePolicy policy;
   final PipelineLimits limits;
 
+  /// Straighten a tilted or foreshortened page before reading it (see
+  /// [PageStraightener.worthIt] for when). Off, the photograph is read as taken.
+  final bool straighten;
+
   /// [classList] is the course's registration numbers (suggestions only);
   /// [validator] checks marks against the course's rules, when there is a course.
   @override
@@ -88,6 +94,27 @@ class BookletPipeline implements RecognitionOrchestrator {
     ExaminationValidator? validator,
     bool Function()? isCancelled,
   }) async {
+    // A straightened copy of the page is written to a temporary folder for the
+    // text reader; it is removed however the run ends.
+    final scratch = <Directory>[];
+    try {
+      return await _run(photo, classList, validator, isCancelled, scratch);
+    } finally {
+      for (final d in scratch) {
+        try {
+          await d.delete(recursive: true);
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<RecognitionResult> _run(
+    File photo,
+    List<String> classList,
+    ExaminationValidator? validator,
+    bool Function()? isCancelled,
+    List<Directory> scratch,
+  ) async {
     final timings = <String, int>{};
     final notes = <String>[];
     final watch = Stopwatch()..start();
@@ -134,11 +161,41 @@ class BookletPipeline implements RecognitionOrchestrator {
     lap('quality');
     checkCancelled();
 
+    // ---- 2b. straighten a tilted page ----
+    // From here on the stages read `source`: the photograph itself, or a
+    // straightened copy of the page. Regions are put back on the photograph at the end.
+    var source = _Source(
+      file: photo,
+      image: decoded.image,
+      width: decoded.originalWidth,
+      height: decoded.originalHeight,
+      toPhoto: (r) => r,
+    );
+    var straightened = false;
+    if (straighten && page != null && report != null && PageStraightener.worthIt(page, report.metrics)) {
+      try {
+        final s = await _straightenInIsolate(decoded.image, page);
+        if (s != null) {
+          final dir = await Directory.systemTemp.createTemp('unimarkly_page_');
+          scratch.add(dir);
+          final file = File('${dir.path}/page.png');
+          await file.writeAsBytes(await encodeColorPng(s.image));
+          source = _Source(file: file, image: s.image, width: s.image.width, height: s.image.height, toPhoto: s.toPhoto);
+          straightened = true;
+          notes.add('The page was tilted in the photo, so it was straightened before reading.');
+        }
+      } catch (e) {
+        notes.add('The page could not be straightened ($e), so the photo was read as taken.');
+      }
+      lap('straighten');
+      checkCancelled();
+    }
+
     // ---- 3. printed text, layout ----
     var doc = OcrDocument.empty;
     String? ocrFailure;
     try {
-      doc = await ocr.recognize(photo, width: decoded.originalWidth, height: decoded.originalHeight).timeout(limits.ocrTimeout);
+      doc = await ocr.recognize(source.file, width: source.width, height: source.height).timeout(limits.ocrTimeout);
     } catch (e) {
       ocrFailure = e is TimeoutException ? 'Reading the printed text took too long.' : 'The text reader failed.';
       notes.add('$ocrFailure The values must be entered from the photo.');
@@ -162,7 +219,7 @@ class BookletPipeline implements RecognitionOrchestrator {
     Future<void> closeup(String variant, Region region) async {
       if (engine is! RegionOcrEngine) return;
       try {
-        final d = await engine.recognizeRegion(photo, region).timeout(limits.ocrTimeout);
+        final d = await engine.recognizeRegion(source.file, region).timeout(limits.ocrTimeout);
         closeups[variant] = d;
         // A weaker reader taking over is said once, never silently.
         if (d.note != null && !notes.contains(d.note)) notes.add(d.note!);
@@ -189,7 +246,7 @@ class BookletPipeline implements RecognitionOrchestrator {
     final model = digits;
     if (marksRegion != null && model != null) {
       try {
-        marks = await _readMarks(decoded.image, reading, model);
+        marks = await _readMarks(source.image, reading, model);
       } catch (e) {
         marksFailure = 'Reading the marks failed ($e).';
         notes.add('$marksFailure Enter the marks from the photo.');
@@ -227,6 +284,13 @@ class BookletPipeline implements RecognitionOrchestrator {
     }
     lap('validation');
 
+    // Regions found on a straightened page are put back on the photograph, which
+    // is what the examiner is shown.
+    final located = straightened
+        ? [for (final f in withWarnings) f.region == null ? f : f.copyWith(region: source.toPhoto(f.region!))]
+        : withWarnings;
+    final layoutOnPhoto = straightened ? reading.mapRegions(source.toPhoto) : reading;
+
     final models = <Map<String, String>>[
       {'id': 'ocr', 'name': doc.engine == 'none' ? ocr.name : doc.engine, 'role': 'printed text; close-up readings of the exam number'},
       if (model != null) {...model.info.toJson(), 'role': 'handwritten digits in the marks table'},
@@ -235,16 +299,17 @@ class BookletPipeline implements RecognitionOrchestrator {
     if (qualityWarnings.isNotEmpty) notes.addAll(qualityWarnings.map((m) => 'Picture: $m'));
 
     return RecognitionResult(
-      fields: withWarnings,
+      fields: located,
       quality: report,
       findings: findings,
-      layout: reading,
+      layout: layoutOnPhoto,
       models: models,
       timingsMs: timings,
       printed: doc,
       page: page,
       notes: notes,
       answeredLine: reading.questionsAnsweredText,
+      straightened: straightened,
     );
   }
 
@@ -267,6 +332,8 @@ class BookletPipeline implements RecognitionOrchestrator {
       return readMarksTable(image, marks: marks, questions: questions, total: total, probes: probes, reader: reader);
     });
   }
+
+  static Future<StraightenedPage?> _straightenInIsolate(ColorRaster image, PageDetection page) => Isolate.run(() => PageStraightener.straighten(image, page));
 
   static Future<(QualityReport, PageDetection)> _analyseInIsolate(
     ColorRaster image,
@@ -558,4 +625,15 @@ class _NoRules implements ExaminationValidator {
   final page = boundary.detect(image);
   final report = quality.analyze(image, originalWidth: originalWidth, originalHeight: originalHeight, page: page);
   return (report, page);
+}
+
+/// What the reading stages read: the photograph itself, or a straightened copy of
+/// the page, with how to put a region of it back on the photograph.
+class _Source {
+  const _Source({required this.file, required this.image, required this.width, required this.height, required this.toPhoto});
+
+  final File file;
+  final ColorRaster image;
+  final int width, height;
+  final Region Function(Region) toPhoto;
 }

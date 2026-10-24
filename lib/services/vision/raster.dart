@@ -77,7 +77,10 @@ class Raster {
   /// Box blur with the given radius, edges clamped.
   Raster boxBlur(int radius) {
     if (radius <= 0) return copy();
-    final tmp = Uint16List(width * height);
+    // 32 bits: a row sum is up to (2r+1) x 255, which overflows 16 bits once
+    // the radius passes 128, and the large blurs used to estimate paper and
+    // lighting are far wider than that on a real photograph.
+    final tmp = Int32List(width * height);
     final w = 2 * radius + 1;
     // horizontal
     for (var y = 0; y < height; y++) {

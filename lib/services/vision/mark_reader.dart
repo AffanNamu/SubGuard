@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'digit_model.dart';
 import 'geometry.dart';
+import 'ink.dart';
 import 'raster.dart';
 
 /// One character found in a cell: a digit, a decimal point, or something that
@@ -88,8 +89,8 @@ class MarkReader implements HandwritingRecognizer {
   @override
   MarkReading read(Raster ink) {
     final warnings = <String>[];
-    final strong = ink.percentile(0.995);
-    if (strong < 28) return const MarkReading(chars: [], candidates: [], blank: true, warnings: []);
+    final strong = inkLevel(ink);
+    if (strong == 0) return const MarkReading(chars: [], candidates: [], blank: true, warnings: []);
 
     // Binary ink mask. A fixed share of the strongest ink, so a faint cell is
     // judged against its own pen, not against a global level.
