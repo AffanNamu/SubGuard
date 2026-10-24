@@ -4,14 +4,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/database/app_database.dart';
 import '../data/repositories/course_repository.dart';
+import '../data/repositories/booklet_repository.dart';
+import '../data/repositories/scan_repository.dart';
 import '../data/repositories/score_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/repositories/student_repository.dart';
 import '../domain/defaults.dart';
 import '../domain/flags.dart';
 import '../domain/models.dart';
+import '../domain/scan.dart';
 import '../domain/scheme.dart';
 import '../domain/scoring.dart';
+import '../services/reader/ocr_engine.dart';
+import '../services/reader/scan_processor.dart';
+import '../services/scan/image_source.dart';
+import '../services/scan/intake_service.dart';
+import '../services/scan/scan_files.dart';
 
 // ---- infrastructure (overridden in main() and in tests) ----
 
@@ -29,6 +37,34 @@ final studentRepositoryProvider =
     Provider((ref) => StudentRepository(ref.watch(databaseProvider)));
 final scoreRepositoryProvider =
     Provider((ref) => ScoreRepository(ref.watch(databaseProvider)));
+final scanRepositoryProvider = Provider(
+    (ref) => ScanRepository(ref.watch(databaseProvider), ref.watch(courseRepositoryProvider)));
+
+final bookletRepositoryProvider = Provider(
+    (ref) => BookletRepository(ref.watch(databaseProvider), ref.watch(scoreRepositoryProvider)));
+
+/// What reads the text in photos. Tests replace it.
+final ocrEngineProvider = Provider<OcrEngine>((ref) => defaultOcrEngine());
+
+final scanProcessorProvider = Provider((ref) => ScanProcessor(
+      scans: ref.watch(scanRepositoryProvider),
+      booklets: ref.watch(bookletRepositoryProvider),
+      files: ref.watch(scanFilesProvider),
+      engine: ref.watch(ocrEngineProvider),
+      students: ref.watch(studentRepositoryProvider),
+    ));
+
+/// Where the original photos are kept. Overridden in main() and in tests.
+final scanFilesProvider = Provider<ScanFiles>((ref) {
+  throw UnimplementedError('scanFilesProvider must be overridden');
+});
+
+/// Where photos come from: the camera and the phone's storage. Tests replace it.
+final imageSourceProvider = Provider<ImageSource>((ref) => DeviceImageSource());
+
+final intakeServiceProvider = Provider(
+    (ref) => IntakeService(ref.watch(scanRepositoryProvider), ref.watch(scanFilesProvider)));
+
 final settingsRepositoryProvider =
     Provider((ref) => SettingsRepository(ref.watch(sharedPreferencesProvider)));
 
@@ -86,6 +122,108 @@ final allTemplatesProvider = Provider<List<SchemeTemplate>>((ref) {
   final saved = ref.watch(templatesProvider).valueOrNull ?? const [];
   return [Defaults.builtInTemplate(), ...saved];
 });
+
+// ---- uploads ----
+
+final batchesProvider = StreamProvider<List<BatchSummary>>(
+    (ref) => ref.watch(scanRepositoryProvider).watchBatches());
+
+/// Counted from stored records, never typed in.
+final scanStatsProvider = Provider<ScanStats>((ref) {
+  final list = ref.watch(batchesProvider).valueOrNull ?? const <BatchSummary>[];
+  var records = 0, confirmed = 0, review = 0;
+  for (final b in list) {
+    records += b.counts.records;
+    confirmed += b.counts.confirmed;
+    review += b.counts.needsReview;
+  }
+  return ScanStats(batches: list.length, records: records, confirmed: confirmed, needReview: review);
+});
+
+final batchProvider = Provider.family<BatchSummary?, String>((ref, id) {
+  for (final b in ref.watch(batchesProvider).valueOrNull ?? const <BatchSummary>[]) {
+    if (b.id == id) return b;
+  }
+  return null;
+});
+
+final batchScansProvider = StreamProvider.family<List<ScanItem>, String>(
+    (ref, batchId) => ref.watch(scanRepositoryProvider).watchScans(batchId));
+
+final reviewQueueProvider = StreamProvider<List<ScanItem>>(
+    (ref) => ref.watch(scanRepositoryProvider).watchNeedingReview());
+
+/// Bytes used by the stored booklet photos. Re-counted when an upload is
+/// added or deleted, so Settings shows the real figure.
+final storageUsedProvider = FutureProvider<int>((ref) {
+  ref.watch(batchesProvider);
+  return ref.watch(scanFilesProvider).bytesUsed();
+});
+
+// ---- reading ----
+
+class ProcessingState {
+  const ProcessingState({this.batchId, this.done = 0, this.total = 0, this.paused = false});
+
+  /// The batch being read now; null when idle.
+  final String? batchId;
+  final int done;
+  final int total;
+  final bool paused;
+
+  bool get running => batchId != null;
+  double get progress => total == 0 ? 0 : done / total;
+}
+
+/// Runs the reader over a batch in the background and reports real progress.
+/// One batch at a time; the screen stays responsive because each photo is read
+/// and stored before the next begins.
+class ProcessingController extends Notifier<ProcessingState> {
+  bool _stop = false;
+
+  @override
+  ProcessingState build() => const ProcessingState();
+
+  Future<void> start(String batchId) async {
+    if (state.running) return;
+    _stop = false;
+    state = ProcessingState(batchId: batchId);
+    try {
+      await ref.read(scanProcessorProvider).processBatch(
+            batchId,
+            shouldStop: () => _stop,
+            onProgress: (done, total) => state = ProcessingState(batchId: batchId, done: done, total: total, paused: _stop),
+          );
+    } finally {
+      state = const ProcessingState();
+    }
+  }
+
+  /// Stops after the photo being read; the rest stay queued.
+  void pause() {
+    _stop = true;
+    if (state.running) {
+      state = ProcessingState(batchId: state.batchId, done: state.done, total: state.total, paused: true);
+    }
+  }
+
+  /// Reads whatever is still queued in every batch, oldest first, when
+  /// "Read photos when added" is on. Used when the app opens, after photos left
+  /// half-read by a closed app were re-queued.
+  Future<void> resumeAll() async {
+    final repo = ref.read(scanRepositoryProvider);
+    await repo.requeueInterrupted();
+    // Photos the examiner chose not to read automatically stay queued until
+    // they press Read.
+    if (!ref.read(settingsProvider).readAutomatically) return;
+    for (final batch in (await repo.batches()).reversed) {
+      if (batch.counts.queued > 0) await start(batch.id);
+    }
+  }
+}
+
+final processingProvider =
+    NotifierProvider<ProcessingController, ProcessingState>(ProcessingController.new);
 
 // ---- the score grid ----
 

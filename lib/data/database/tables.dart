@@ -117,8 +117,26 @@ class Students extends Table with SyncColumns {
   IntColumn get position => integer().withDefault(const Constant(0))();
 }
 
+/// One upload session: a set of booklet photos for one course.
+@DataClassName('BatchRow')
+@TableIndex(name: 'upload_batch_course', columns: {#courseId})
+class Batches extends Table with SyncColumns {
+  @override
+  String get tableName => 'upload_batch';
+
+  TextColumn get courseId => text().references(Courses, #id)();
+
+  /// Optional name the examiner gave it. Shown as "Batch of 12 Oct" when empty.
+  TextColumn get title => text().nullable()();
+
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
+}
+
 @DataClassName('ScanRow')
 @TableIndex(name: 'scan_course', columns: {#courseId})
+@TableIndex(name: 'scan_batch', columns: {#batchId})
+@TableIndex(name: 'scan_hash', columns: {#courseId, #contentHash})
 class Scans extends Table with SyncColumns {
   @override
   String get tableName => 'scan';
@@ -132,6 +150,20 @@ class Scans extends Table with SyncColumns {
   TextColumn get status => text().withDefault(const Constant('scanned'))();
   DateTimeColumn get createdAt =>
       dateTime().clientDefault(() => DateTime.now().toUtc())();
+
+  // Added in schema version 2 (intake).
+  TextColumn get batchId => text().nullable().references(Batches, #id)();
+
+  /// The file name the examiner's phone gave the image.
+  TextColumn get originalName => text().nullable()();
+
+  /// SHA-256 of the image bytes, to catch the same photo added twice.
+  TextColumn get contentHash => text().nullable()();
+  IntColumn get width => integer().nullable()();
+  IntColumn get height => integer().nullable()();
+
+  /// Why reading failed, in words the examiner can act on.
+  TextColumn get errorMessage => text().nullable()();
 }
 
 @DataClassName('BookletRow')
@@ -146,7 +178,7 @@ class Booklets extends Table with SyncColumns {
   TextColumn get serialNo => text().nullable()();
   TextColumn get readJson => text().nullable()();
 
-  /// `scanned`, `needs_review` or `confirmed`.
+  /// `needs_review` until the examiner confirms it; then `confirmed`.
   TextColumn get status => text().withDefault(const Constant('scanned'))();
   DateTimeColumn get confirmedAt => dateTime().nullable()();
 }
@@ -212,6 +244,11 @@ class Corrections extends Table with SyncColumns {
   TextColumn get field => text()();
   TextColumn get readValue => text().nullable()();
   TextColumn get confirmedValue => text().nullable()();
+
+  /// Where on the photo the value was, as "left,top,right,bottom" fractions
+  /// (added in schema version 2). With [cropPath] this is enough to cut the
+  /// crop again later when training the digit model.
+  TextColumn get region => text().nullable()();
 }
 
 @DataClassName('AccountRow')

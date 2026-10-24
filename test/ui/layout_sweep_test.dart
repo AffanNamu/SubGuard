@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unimarkly/core/widgets/score_keypad.dart';
 import 'package:unimarkly/domain/models.dart';
+import 'package:unimarkly/domain/scan.dart';
 
 import 'harness.dart';
 
@@ -111,7 +112,7 @@ void main() {
       await back();
 
       // Export (tab and screen)
-      await h.tapText(tester, 'Export');
+      await h.tapText(tester, 'Exports');
       await h.tapText(tester, '(FWM) AGR 114');
       await h.tapText(tester, 'Choose columns and export');
       await h.reveal(tester, find.text('Preview'));
@@ -129,4 +130,104 @@ void main() {
       await h.stop(tester);
     });
   }
+
+  for (final entry in configs.entries) {
+    testWidgets('scan screens fit: ${entry.key}', (tester) async {
+      final (size, scale) = entry.value;
+      final previous = FlutterError.onError;
+      FlutterError.onError = (details) {
+        _reports.add(details.toString());
+        previous?.call(details);
+      };
+      addTearDown(() => FlutterError.onError = previous);
+
+      await h.start(tester, size: size, textScale: scale, tab: null, prefsValues: {'header_examiner': 'Ada Okafor'}, seed: () async {
+        final course = await h.createCourse(code: 'AGR 114', regNos: const ['FWM/24U/0538', 'FWM/24U/0539']);
+        final other = await h.createCourse(code: 'BIO 201', department: 'FST', regNos: const ['FST/24U/0101']);
+        await h.seedBatch(course, title: 'A very long upload name that has to wrap or be cut off safely', states: [
+          ScanStatus.confirmed,
+          ScanStatus.needsReview,
+          ScanStatus.failed,
+          ScanStatus.queued,
+        ]);
+        await h.seedBatch(other, states: [ScanStatus.confirmed, ScanStatus.confirmed]);
+        for (var i = 0; i < 4; i++) {
+          await h.seedBatch(course, states: [ScanStatus.confirmed]);
+        }
+      });
+
+      Future<void> back() async {
+        await tester.pageBack();
+        await h.settle(tester);
+      }
+
+      // Home, top to bottom.
+      final list = find.byWidgetPredicate((w) => w is Scrollable && w.axis == Axis.vertical);
+      expect(find.text('Start Scanning\nExam Scripts'), findsOneWidget);
+      for (var i = 0; i < 12; i++) {
+        await tester.drag(list.first, const Offset(0, -300), warnIfMissed: false);
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await h.settle(tester);
+      noErrors(tester);
+
+      // View all batches, then one batch.
+      await h.tapText(tester, 'View All');
+      expect(find.text('Recent batches'), findsOneWidget);
+      await h.tapText(tester, 'All courses');
+      await h.tapText(tester, 'AGR 114');
+      // The long-named upload is the one with a photo in every state.
+      await h.tapText(tester, 'A very long upload name that has to wrap or be cut off safely');
+      expect(find.text('Scan & Extract'), findsWidgets);
+      for (var i = 0; i < 6; i++) {
+        await tester.drag(find.byType(ListView).first, const Offset(0, -300), warnIfMissed: false);
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await h.settle(tester);
+      noErrors(tester);
+
+      // Review: the screen, a number pad, the whole photo.
+      await h.tapText(tester, 'Next: Review Results');
+      await h.tapText(tester, 'Q-1');
+      expect(find.text('Save'), findsOneWidget);
+      await tester.tapAt(const Offset(4, 4));
+      await h.settle(tester);
+      for (var i = 0; i < 8; i++) {
+        await tester.drag(find.byType(ListView).first, const Offset(0, -300), warnIfMissed: false);
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await h.settle(tester);
+      await tester.tap(find.byTooltip('See the whole photo'));
+      await h.settle(tester);
+      noErrors(tester);
+      await back(); // photo
+      await back(); // review
+      await h.tapText(tester, 'Previous'); // Scan & Extract has its own bar
+      await back(); // all batches
+
+      // The raised upload button, the review queue and the settings group.
+      await tester.tap(find.bySemanticsLabel('Add exam images').first, warnIfMissed: false);
+      await h.settle(tester);
+      noErrors(tester);
+      await tester.tapAt(const Offset(4, 4));
+      await h.settle(tester);
+      await h.tapText(tester, 'Settings');
+      await h.reveal(tester, find.text('Scanning & reading'));
+      expect(find.text('Photo quality'), findsOneWidget);
+      noErrors(tester);
+
+      await h.stop(tester);
+    });
+  }
 }
+
+/// Fails with the full report (which widget, how far it overflows) rather than
+/// just the one-line message.
+void noErrors(WidgetTester tester) {
+  final e = tester.takeException();
+  expect(e, isNull, reason: _reports.isEmpty ? '$e' : _reports.join('\n---\n'));
+  _reports.clear();
+}
+
+final _reports = <String>[];
+

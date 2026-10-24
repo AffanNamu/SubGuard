@@ -24,6 +24,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>UniMarkLy uses the camera to photograph exam booklet covers so their marks can be read and checked.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>UniMarkLy reads the exam booklet photos you choose from your library. They are kept on this phone.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

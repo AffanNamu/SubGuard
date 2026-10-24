@@ -176,7 +176,7 @@ void main() {
       await h.setMarks(course, s, {0: 9.5});
     });
 
-    await h.tapText(tester, 'Export'); // bottom navigation
+    await h.tapText(tester, 'Exports'); // bottom navigation
     await h.tapText(tester, '(FWM) AGR 114');
     await h.tapText(tester, 'Choose columns and export');
 

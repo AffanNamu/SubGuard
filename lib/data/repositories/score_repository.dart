@@ -54,6 +54,18 @@ class ScoreRepository {
     return out;
   }
 
+  /// The stored value of one cell and where it came from (`typed`, `scanned` or
+  /// `imported`), or null if the cell is empty.
+  Future<({double? value, ScoreStatus status, String source})?> cell(
+      String studentId, String partId) async {
+    final r = await (_db.select(_db.partScores)
+          ..where((s) => s.studentId.equals(studentId) & s.partId.equals(partId) & s.deletedAt.isNull())
+          ..limit(1))
+        .getSingleOrNull();
+    if (r == null) return null;
+    return (value: r.value, status: ScoreStatus.fromDb(r.status), source: r.source);
+  }
+
   /// Writes one cell. A cell with no value and a `missing` status is cleared.
   Future<void> set(String courseId, ScoreWrite w) =>
       _db.transaction(() => _write(courseId, w, _now));

@@ -3182,6 +3182,414 @@ class StudentsCompanion extends UpdateCompanion<StudentRow> {
   }
 }
 
+class $BatchesTable extends Batches with TableInfo<$BatchesTable, BatchRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BatchesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: newId,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now().toUtc(),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _courseIdMeta = const VerificationMeta(
+    'courseId',
+  );
+  @override
+  late final GeneratedColumn<String> courseId = GeneratedColumn<String>(
+    'course_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES course (id)',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now().toUtc(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    updatedAt,
+    deletedAt,
+    courseId,
+    title,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'upload_batch';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BatchRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('course_id')) {
+      context.handle(
+        _courseIdMeta,
+        courseId.isAcceptableOrUnknown(data['course_id']!, _courseIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_courseIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BatchRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BatchRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      courseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}course_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BatchesTable createAlias(String alias) {
+    return $BatchesTable(attachedDatabase, alias);
+  }
+}
+
+class BatchRow extends DataClass implements Insertable<BatchRow> {
+  final String id;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String courseId;
+
+  /// Optional name the examiner gave it. Shown as "Batch of 12 Oct" when empty.
+  final String? title;
+  final DateTime createdAt;
+  const BatchRow({
+    required this.id,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.courseId,
+    this.title,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['course_id'] = Variable<String>(courseId);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  BatchesCompanion toCompanion(bool nullToAbsent) {
+    return BatchesCompanion(
+      id: Value(id),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      courseId: Value(courseId),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory BatchRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BatchRow(
+      id: serializer.fromJson<String>(json['id']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      courseId: serializer.fromJson<String>(json['courseId']),
+      title: serializer.fromJson<String?>(json['title']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'courseId': serializer.toJson<String>(courseId),
+      'title': serializer.toJson<String?>(title),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  BatchRow copyWith({
+    String? id,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? courseId,
+    Value<String?> title = const Value.absent(),
+    DateTime? createdAt,
+  }) => BatchRow(
+    id: id ?? this.id,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    courseId: courseId ?? this.courseId,
+    title: title.present ? title.value : this.title,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  BatchRow copyWithCompanion(BatchesCompanion data) {
+    return BatchRow(
+      id: data.id.present ? data.id.value : this.id,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      courseId: data.courseId.present ? data.courseId.value : this.courseId,
+      title: data.title.present ? data.title.value : this.title,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BatchRow(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('courseId: $courseId, ')
+          ..write('title: $title, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, updatedAt, deletedAt, courseId, title, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BatchRow &&
+          other.id == this.id &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.courseId == this.courseId &&
+          other.title == this.title &&
+          other.createdAt == this.createdAt);
+}
+
+class BatchesCompanion extends UpdateCompanion<BatchRow> {
+  final Value<String> id;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> courseId;
+  final Value<String?> title;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const BatchesCompanion({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.courseId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BatchesCompanion.insert({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required String courseId,
+    this.title = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : courseId = Value(courseId);
+  static Insertable<BatchRow> custom({
+    Expression<String>? id,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? courseId,
+    Expression<String>? title,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (courseId != null) 'course_id': courseId,
+      if (title != null) 'title': title,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BatchesCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? courseId,
+    Value<String?>? title,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return BatchesCompanion(
+      id: id ?? this.id,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      courseId: courseId ?? this.courseId,
+      title: title ?? this.title,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (courseId.present) {
+      map['course_id'] = Variable<String>(courseId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BatchesCompanion(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('courseId: $courseId, ')
+          ..write('title: $title, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ScansTable extends Scans with TableInfo<$ScansTable, ScanRow> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -3286,6 +3694,71 @@ class $ScansTable extends Scans with TableInfo<$ScansTable, ScanRow> {
     requiredDuringInsert: false,
     clientDefault: () => DateTime.now().toUtc(),
   );
+  static const VerificationMeta _batchIdMeta = const VerificationMeta(
+    'batchId',
+  );
+  @override
+  late final GeneratedColumn<String> batchId = GeneratedColumn<String>(
+    'batch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES upload_batch (id)',
+    ),
+  );
+  static const VerificationMeta _originalNameMeta = const VerificationMeta(
+    'originalName',
+  );
+  @override
+  late final GeneratedColumn<String> originalName = GeneratedColumn<String>(
+    'original_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _contentHashMeta = const VerificationMeta(
+    'contentHash',
+  );
+  @override
+  late final GeneratedColumn<String> contentHash = GeneratedColumn<String>(
+    'content_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _widthMeta = const VerificationMeta('width');
+  @override
+  late final GeneratedColumn<int> width = GeneratedColumn<int>(
+    'width',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _heightMeta = const VerificationMeta('height');
+  @override
+  late final GeneratedColumn<int> height = GeneratedColumn<int>(
+    'height',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _errorMessageMeta = const VerificationMeta(
+    'errorMessage',
+  );
+  @override
+  late final GeneratedColumn<String> errorMessage = GeneratedColumn<String>(
+    'error_message',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3297,6 +3770,12 @@ class $ScansTable extends Scans with TableInfo<$ScansTable, ScanRow> {
     pageNo,
     status,
     createdAt,
+    batchId,
+    originalName,
+    contentHash,
+    width,
+    height,
+    errorMessage,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3365,6 +3844,51 @@ class $ScansTable extends Scans with TableInfo<$ScansTable, ScanRow> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('batch_id')) {
+      context.handle(
+        _batchIdMeta,
+        batchId.isAcceptableOrUnknown(data['batch_id']!, _batchIdMeta),
+      );
+    }
+    if (data.containsKey('original_name')) {
+      context.handle(
+        _originalNameMeta,
+        originalName.isAcceptableOrUnknown(
+          data['original_name']!,
+          _originalNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('content_hash')) {
+      context.handle(
+        _contentHashMeta,
+        contentHash.isAcceptableOrUnknown(
+          data['content_hash']!,
+          _contentHashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('width')) {
+      context.handle(
+        _widthMeta,
+        width.isAcceptableOrUnknown(data['width']!, _widthMeta),
+      );
+    }
+    if (data.containsKey('height')) {
+      context.handle(
+        _heightMeta,
+        height.isAcceptableOrUnknown(data['height']!, _heightMeta),
+      );
+    }
+    if (data.containsKey('error_message')) {
+      context.handle(
+        _errorMessageMeta,
+        errorMessage.isAcceptableOrUnknown(
+          data['error_message']!,
+          _errorMessageMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3410,6 +3934,30 @@ class $ScansTable extends Scans with TableInfo<$ScansTable, ScanRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      batchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}batch_id'],
+      ),
+      originalName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_name'],
+      ),
+      contentHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_hash'],
+      ),
+      width: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}width'],
+      ),
+      height: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}height'],
+      ),
+      errorMessage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}error_message'],
+      ),
     );
   }
 
@@ -3431,6 +3979,18 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
   final int pageNo;
   final String status;
   final DateTime createdAt;
+  final String? batchId;
+
+  /// The file name the examiner's phone gave the image.
+  final String? originalName;
+
+  /// SHA-256 of the image bytes, to catch the same photo added twice.
+  final String? contentHash;
+  final int? width;
+  final int? height;
+
+  /// Why reading failed, in words the examiner can act on.
+  final String? errorMessage;
   const ScanRow({
     required this.id,
     required this.updatedAt,
@@ -3441,6 +4001,12 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
     required this.pageNo,
     required this.status,
     required this.createdAt,
+    this.batchId,
+    this.originalName,
+    this.contentHash,
+    this.width,
+    this.height,
+    this.errorMessage,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3458,6 +4024,24 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
     map['page_no'] = Variable<int>(pageNo);
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || batchId != null) {
+      map['batch_id'] = Variable<String>(batchId);
+    }
+    if (!nullToAbsent || originalName != null) {
+      map['original_name'] = Variable<String>(originalName);
+    }
+    if (!nullToAbsent || contentHash != null) {
+      map['content_hash'] = Variable<String>(contentHash);
+    }
+    if (!nullToAbsent || width != null) {
+      map['width'] = Variable<int>(width);
+    }
+    if (!nullToAbsent || height != null) {
+      map['height'] = Variable<int>(height);
+    }
+    if (!nullToAbsent || errorMessage != null) {
+      map['error_message'] = Variable<String>(errorMessage);
+    }
     return map;
   }
 
@@ -3476,6 +4060,24 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
       pageNo: Value(pageNo),
       status: Value(status),
       createdAt: Value(createdAt),
+      batchId: batchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(batchId),
+      originalName: originalName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalName),
+      contentHash: contentHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contentHash),
+      width: width == null && nullToAbsent
+          ? const Value.absent()
+          : Value(width),
+      height: height == null && nullToAbsent
+          ? const Value.absent()
+          : Value(height),
+      errorMessage: errorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(errorMessage),
     );
   }
 
@@ -3494,6 +4096,12 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
       pageNo: serializer.fromJson<int>(json['pageNo']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      batchId: serializer.fromJson<String?>(json['batchId']),
+      originalName: serializer.fromJson<String?>(json['originalName']),
+      contentHash: serializer.fromJson<String?>(json['contentHash']),
+      width: serializer.fromJson<int?>(json['width']),
+      height: serializer.fromJson<int?>(json['height']),
+      errorMessage: serializer.fromJson<String?>(json['errorMessage']),
     );
   }
   @override
@@ -3509,6 +4117,12 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
       'pageNo': serializer.toJson<int>(pageNo),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'batchId': serializer.toJson<String?>(batchId),
+      'originalName': serializer.toJson<String?>(originalName),
+      'contentHash': serializer.toJson<String?>(contentHash),
+      'width': serializer.toJson<int?>(width),
+      'height': serializer.toJson<int?>(height),
+      'errorMessage': serializer.toJson<String?>(errorMessage),
     };
   }
 
@@ -3522,6 +4136,12 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
     int? pageNo,
     String? status,
     DateTime? createdAt,
+    Value<String?> batchId = const Value.absent(),
+    Value<String?> originalName = const Value.absent(),
+    Value<String?> contentHash = const Value.absent(),
+    Value<int?> width = const Value.absent(),
+    Value<int?> height = const Value.absent(),
+    Value<String?> errorMessage = const Value.absent(),
   }) => ScanRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -3532,6 +4152,12 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
     pageNo: pageNo ?? this.pageNo,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
+    batchId: batchId.present ? batchId.value : this.batchId,
+    originalName: originalName.present ? originalName.value : this.originalName,
+    contentHash: contentHash.present ? contentHash.value : this.contentHash,
+    width: width.present ? width.value : this.width,
+    height: height.present ? height.value : this.height,
+    errorMessage: errorMessage.present ? errorMessage.value : this.errorMessage,
   );
   ScanRow copyWithCompanion(ScansCompanion data) {
     return ScanRow(
@@ -3544,6 +4170,18 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
       pageNo: data.pageNo.present ? data.pageNo.value : this.pageNo,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      batchId: data.batchId.present ? data.batchId.value : this.batchId,
+      originalName: data.originalName.present
+          ? data.originalName.value
+          : this.originalName,
+      contentHash: data.contentHash.present
+          ? data.contentHash.value
+          : this.contentHash,
+      width: data.width.present ? data.width.value : this.width,
+      height: data.height.present ? data.height.value : this.height,
+      errorMessage: data.errorMessage.present
+          ? data.errorMessage.value
+          : this.errorMessage,
     );
   }
 
@@ -3558,7 +4196,13 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
           ..write('photoPath: $photoPath, ')
           ..write('pageNo: $pageNo, ')
           ..write('status: $status, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('batchId: $batchId, ')
+          ..write('originalName: $originalName, ')
+          ..write('contentHash: $contentHash, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('errorMessage: $errorMessage')
           ..write(')'))
         .toString();
   }
@@ -3574,6 +4218,12 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
     pageNo,
     status,
     createdAt,
+    batchId,
+    originalName,
+    contentHash,
+    width,
+    height,
+    errorMessage,
   );
   @override
   bool operator ==(Object other) =>
@@ -3587,7 +4237,13 @@ class ScanRow extends DataClass implements Insertable<ScanRow> {
           other.photoPath == this.photoPath &&
           other.pageNo == this.pageNo &&
           other.status == this.status &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.batchId == this.batchId &&
+          other.originalName == this.originalName &&
+          other.contentHash == this.contentHash &&
+          other.width == this.width &&
+          other.height == this.height &&
+          other.errorMessage == this.errorMessage);
 }
 
 class ScansCompanion extends UpdateCompanion<ScanRow> {
@@ -3600,6 +4256,12 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
   final Value<int> pageNo;
   final Value<String> status;
   final Value<DateTime> createdAt;
+  final Value<String?> batchId;
+  final Value<String?> originalName;
+  final Value<String?> contentHash;
+  final Value<int?> width;
+  final Value<int?> height;
+  final Value<String?> errorMessage;
   final Value<int> rowid;
   const ScansCompanion({
     this.id = const Value.absent(),
@@ -3611,6 +4273,12 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
     this.pageNo = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.batchId = const Value.absent(),
+    this.originalName = const Value.absent(),
+    this.contentHash = const Value.absent(),
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    this.errorMessage = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ScansCompanion.insert({
@@ -3623,6 +4291,12 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
     this.pageNo = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.batchId = const Value.absent(),
+    this.originalName = const Value.absent(),
+    this.contentHash = const Value.absent(),
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    this.errorMessage = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : courseId = Value(courseId),
        kind = Value(kind);
@@ -3636,6 +4310,12 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
     Expression<int>? pageNo,
     Expression<String>? status,
     Expression<DateTime>? createdAt,
+    Expression<String>? batchId,
+    Expression<String>? originalName,
+    Expression<String>? contentHash,
+    Expression<int>? width,
+    Expression<int>? height,
+    Expression<String>? errorMessage,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3648,6 +4328,12 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
       if (pageNo != null) 'page_no': pageNo,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
+      if (batchId != null) 'batch_id': batchId,
+      if (originalName != null) 'original_name': originalName,
+      if (contentHash != null) 'content_hash': contentHash,
+      if (width != null) 'width': width,
+      if (height != null) 'height': height,
+      if (errorMessage != null) 'error_message': errorMessage,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3662,6 +4348,12 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
     Value<int>? pageNo,
     Value<String>? status,
     Value<DateTime>? createdAt,
+    Value<String?>? batchId,
+    Value<String?>? originalName,
+    Value<String?>? contentHash,
+    Value<int?>? width,
+    Value<int?>? height,
+    Value<String?>? errorMessage,
     Value<int>? rowid,
   }) {
     return ScansCompanion(
@@ -3674,6 +4366,12 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
       pageNo: pageNo ?? this.pageNo,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      batchId: batchId ?? this.batchId,
+      originalName: originalName ?? this.originalName,
+      contentHash: contentHash ?? this.contentHash,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      errorMessage: errorMessage ?? this.errorMessage,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3708,6 +4406,24 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (batchId.present) {
+      map['batch_id'] = Variable<String>(batchId.value);
+    }
+    if (originalName.present) {
+      map['original_name'] = Variable<String>(originalName.value);
+    }
+    if (contentHash.present) {
+      map['content_hash'] = Variable<String>(contentHash.value);
+    }
+    if (width.present) {
+      map['width'] = Variable<int>(width.value);
+    }
+    if (height.present) {
+      map['height'] = Variable<int>(height.value);
+    }
+    if (errorMessage.present) {
+      map['error_message'] = Variable<String>(errorMessage.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3726,6 +4442,12 @@ class ScansCompanion extends UpdateCompanion<ScanRow> {
           ..write('pageNo: $pageNo, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
+          ..write('batchId: $batchId, ')
+          ..write('originalName: $originalName, ')
+          ..write('contentHash: $contentHash, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('errorMessage: $errorMessage, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4009,7 +4731,7 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
   final String? serialNo;
   final String? readJson;
 
-  /// `scanned`, `needs_review` or `confirmed`.
+  /// `needs_review` until the examiner confirms it; then `confirmed`.
   final String status;
   final DateTime? confirmedAt;
   const BookletRow({
@@ -6209,6 +6931,15 @@ class $CorrectionsTable extends Corrections
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _regionMeta = const VerificationMeta('region');
+  @override
+  late final GeneratedColumn<String> region = GeneratedColumn<String>(
+    'region',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6218,6 +6949,7 @@ class $CorrectionsTable extends Corrections
     field,
     readValue,
     confirmedValue,
+    region,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6277,6 +7009,12 @@ class $CorrectionsTable extends Corrections
         ),
       );
     }
+    if (data.containsKey('region')) {
+      context.handle(
+        _regionMeta,
+        region.isAcceptableOrUnknown(data['region']!, _regionMeta),
+      );
+    }
     return context;
   }
 
@@ -6314,6 +7052,10 @@ class $CorrectionsTable extends Corrections
         DriftSqlType.string,
         data['${effectivePrefix}confirmed_value'],
       ),
+      region: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}region'],
+      ),
     );
   }
 
@@ -6331,6 +7073,11 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
   final String field;
   final String? readValue;
   final String? confirmedValue;
+
+  /// Where on the photo the value was, as "left,top,right,bottom" fractions
+  /// (added in schema version 2). With [cropPath] this is enough to cut the
+  /// crop again later when training the digit model.
+  final String? region;
   const CorrectionRow({
     required this.id,
     required this.updatedAt,
@@ -6339,6 +7086,7 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
     required this.field,
     this.readValue,
     this.confirmedValue,
+    this.region,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6355,6 +7103,9 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
     }
     if (!nullToAbsent || confirmedValue != null) {
       map['confirmed_value'] = Variable<String>(confirmedValue);
+    }
+    if (!nullToAbsent || region != null) {
+      map['region'] = Variable<String>(region);
     }
     return map;
   }
@@ -6374,6 +7125,9 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
       confirmedValue: confirmedValue == null && nullToAbsent
           ? const Value.absent()
           : Value(confirmedValue),
+      region: region == null && nullToAbsent
+          ? const Value.absent()
+          : Value(region),
     );
   }
 
@@ -6390,6 +7144,7 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
       field: serializer.fromJson<String>(json['field']),
       readValue: serializer.fromJson<String?>(json['readValue']),
       confirmedValue: serializer.fromJson<String?>(json['confirmedValue']),
+      region: serializer.fromJson<String?>(json['region']),
     );
   }
   @override
@@ -6403,6 +7158,7 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
       'field': serializer.toJson<String>(field),
       'readValue': serializer.toJson<String?>(readValue),
       'confirmedValue': serializer.toJson<String?>(confirmedValue),
+      'region': serializer.toJson<String?>(region),
     };
   }
 
@@ -6414,6 +7170,7 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
     String? field,
     Value<String?> readValue = const Value.absent(),
     Value<String?> confirmedValue = const Value.absent(),
+    Value<String?> region = const Value.absent(),
   }) => CorrectionRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -6424,6 +7181,7 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
     confirmedValue: confirmedValue.present
         ? confirmedValue.value
         : this.confirmedValue,
+    region: region.present ? region.value : this.region,
   );
   CorrectionRow copyWithCompanion(CorrectionsCompanion data) {
     return CorrectionRow(
@@ -6436,6 +7194,7 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
       confirmedValue: data.confirmedValue.present
           ? data.confirmedValue.value
           : this.confirmedValue,
+      region: data.region.present ? data.region.value : this.region,
     );
   }
 
@@ -6448,7 +7207,8 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
           ..write('cropPath: $cropPath, ')
           ..write('field: $field, ')
           ..write('readValue: $readValue, ')
-          ..write('confirmedValue: $confirmedValue')
+          ..write('confirmedValue: $confirmedValue, ')
+          ..write('region: $region')
           ..write(')'))
         .toString();
   }
@@ -6462,6 +7222,7 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
     field,
     readValue,
     confirmedValue,
+    region,
   );
   @override
   bool operator ==(Object other) =>
@@ -6473,7 +7234,8 @@ class CorrectionRow extends DataClass implements Insertable<CorrectionRow> {
           other.cropPath == this.cropPath &&
           other.field == this.field &&
           other.readValue == this.readValue &&
-          other.confirmedValue == this.confirmedValue);
+          other.confirmedValue == this.confirmedValue &&
+          other.region == this.region);
 }
 
 class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
@@ -6484,6 +7246,7 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
   final Value<String> field;
   final Value<String?> readValue;
   final Value<String?> confirmedValue;
+  final Value<String?> region;
   final Value<int> rowid;
   const CorrectionsCompanion({
     this.id = const Value.absent(),
@@ -6493,6 +7256,7 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
     this.field = const Value.absent(),
     this.readValue = const Value.absent(),
     this.confirmedValue = const Value.absent(),
+    this.region = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CorrectionsCompanion.insert({
@@ -6503,6 +7267,7 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
     required String field,
     this.readValue = const Value.absent(),
     this.confirmedValue = const Value.absent(),
+    this.region = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : cropPath = Value(cropPath),
        field = Value(field);
@@ -6514,6 +7279,7 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
     Expression<String>? field,
     Expression<String>? readValue,
     Expression<String>? confirmedValue,
+    Expression<String>? region,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6524,6 +7290,7 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
       if (field != null) 'field': field,
       if (readValue != null) 'read_value': readValue,
       if (confirmedValue != null) 'confirmed_value': confirmedValue,
+      if (region != null) 'region': region,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6536,6 +7303,7 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
     Value<String>? field,
     Value<String?>? readValue,
     Value<String?>? confirmedValue,
+    Value<String?>? region,
     Value<int>? rowid,
   }) {
     return CorrectionsCompanion(
@@ -6546,6 +7314,7 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
       field: field ?? this.field,
       readValue: readValue ?? this.readValue,
       confirmedValue: confirmedValue ?? this.confirmedValue,
+      region: region ?? this.region,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6574,6 +7343,9 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
     if (confirmedValue.present) {
       map['confirmed_value'] = Variable<String>(confirmedValue.value);
     }
+    if (region.present) {
+      map['region'] = Variable<String>(region.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6590,6 +7362,7 @@ class CorrectionsCompanion extends UpdateCompanion<CorrectionRow> {
           ..write('field: $field, ')
           ..write('readValue: $readValue, ')
           ..write('confirmedValue: $confirmedValue, ')
+          ..write('region: $region, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7489,6 +8262,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $StudentsTable students = $StudentsTable(this);
+  late final $BatchesTable batches = $BatchesTable(this);
   late final $ScansTable scans = $ScansTable(this);
   late final $BookletsTable booklets = $BookletsTable(this);
   late final $QuestionMarksTable questionMarks = $QuestionMarksTable(this);
@@ -7521,9 +8295,21 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'student_reg_no',
     'CREATE INDEX student_reg_no ON student (course_id, reg_no)',
   );
+  late final Index uploadBatchCourse = Index(
+    'upload_batch_course',
+    'CREATE INDEX upload_batch_course ON upload_batch (course_id)',
+  );
   late final Index scanCourse = Index(
     'scan_course',
     'CREATE INDEX scan_course ON scan (course_id)',
+  );
+  late final Index scanBatch = Index(
+    'scan_batch',
+    'CREATE INDEX scan_batch ON scan (batch_id)',
+  );
+  late final Index scanHash = Index(
+    'scan_hash',
+    'CREATE INDEX scan_hash ON scan (course_id, content_hash)',
   );
   late final Index bookletCourse = Index(
     'booklet_course',
@@ -7556,6 +8342,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     gradeScales,
     schemeTemplates,
     students,
+    batches,
     scans,
     booklets,
     questionMarks,
@@ -7570,7 +8357,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     gradeScaleCourse,
     studentCourse,
     studentRegNo,
+    uploadBatchCourse,
     scanCourse,
+    scanBatch,
+    scanHash,
     bookletCourse,
     questionMarkBooklet,
     rowReadScan,
@@ -7682,6 +8472,25 @@ final class $$CoursesTableReferences
     ).filter((f) => f.courseId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_studentsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$BatchesTable, List<BatchRow>> _batchesRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.batches,
+    aliasName: $_aliasNameGenerator(db.courses.id, db.batches.courseId),
+  );
+
+  $$BatchesTableProcessedTableManager get batchesRefs {
+    final manager = $$BatchesTableTableManager(
+      $_db,
+      $_db.batches,
+    ).filter((f) => f.courseId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_batchesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -7893,6 +8702,31 @@ class $$CoursesTableFilterComposer
           }) => $$StudentsTableFilterComposer(
             $db: $db,
             $table: $db.students,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> batchesRefs(
+    Expression<bool> Function($$BatchesTableFilterComposer f) f,
+  ) {
+    final $$BatchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.batches,
+      getReferencedColumn: (t) => t.courseId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BatchesTableFilterComposer(
+            $db: $db,
+            $table: $db.batches,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -8181,6 +9015,31 @@ class $$CoursesTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> batchesRefs<T extends Object>(
+    Expression<T> Function($$BatchesTableAnnotationComposer a) f,
+  ) {
+    final $$BatchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.batches,
+      getReferencedColumn: (t) => t.courseId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BatchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.batches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> scansRefs<T extends Object>(
     Expression<T> Function($$ScansTableAnnotationComposer a) f,
   ) {
@@ -8275,6 +9134,7 @@ class $$CoursesTableTableManager
             bool examQuestionsRefs,
             bool gradeScalesRefs,
             bool studentsRefs,
+            bool batchesRefs,
             bool scansRefs,
             bool bookletsRefs,
             bool partScoresRefs,
@@ -8357,6 +9217,7 @@ class $$CoursesTableTableManager
                 examQuestionsRefs = false,
                 gradeScalesRefs = false,
                 studentsRefs = false,
+                batchesRefs = false,
                 scansRefs = false,
                 bookletsRefs = false,
                 partScoresRefs = false,
@@ -8368,6 +9229,7 @@ class $$CoursesTableTableManager
                     if (examQuestionsRefs) db.examQuestions,
                     if (gradeScalesRefs) db.gradeScales,
                     if (studentsRefs) db.students,
+                    if (batchesRefs) db.batches,
                     if (scansRefs) db.scans,
                     if (bookletsRefs) db.booklets,
                     if (partScoresRefs) db.partScores,
@@ -8459,6 +9321,27 @@ class $$CoursesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (batchesRefs)
+                        await $_getPrefetchedData<
+                          CourseRow,
+                          $CoursesTable,
+                          BatchRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CoursesTableReferences
+                              ._batchesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CoursesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).batchesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.courseId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                       if (scansRefs)
                         await $_getPrefetchedData<
                           CourseRow,
@@ -8543,6 +9426,7 @@ typedef $$CoursesTableProcessedTableManager =
         bool examQuestionsRefs,
         bool gradeScalesRefs,
         bool studentsRefs,
+        bool batchesRefs,
         bool scansRefs,
         bool bookletsRefs,
         bool partScoresRefs,
@@ -10828,6 +11712,424 @@ typedef $$StudentsTableProcessedTableManager =
         bool partScoresRefs,
       })
     >;
+typedef $$BatchesTableCreateCompanionBuilder =
+    BatchesCompanion Function({
+      Value<String> id,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      required String courseId,
+      Value<String?> title,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$BatchesTableUpdateCompanionBuilder =
+    BatchesCompanion Function({
+      Value<String> id,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> courseId,
+      Value<String?> title,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$BatchesTableReferences
+    extends BaseReferences<_$AppDatabase, $BatchesTable, BatchRow> {
+  $$BatchesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CoursesTable _courseIdTable(_$AppDatabase db) => db.courses
+      .createAlias($_aliasNameGenerator(db.batches.courseId, db.courses.id));
+
+  $$CoursesTableProcessedTableManager get courseId {
+    final $_column = $_itemColumn<String>('course_id')!;
+
+    final manager = $$CoursesTableTableManager(
+      $_db,
+      $_db.courses,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_courseIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$ScansTable, List<ScanRow>> _scansRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.scans,
+    aliasName: $_aliasNameGenerator(db.batches.id, db.scans.batchId),
+  );
+
+  $$ScansTableProcessedTableManager get scansRefs {
+    final manager = $$ScansTableTableManager(
+      $_db,
+      $_db.scans,
+    ).filter((f) => f.batchId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_scansRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$BatchesTableFilterComposer
+    extends Composer<_$AppDatabase, $BatchesTable> {
+  $$BatchesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CoursesTableFilterComposer get courseId {
+    final $$CoursesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.courseId,
+      referencedTable: $db.courses,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CoursesTableFilterComposer(
+            $db: $db,
+            $table: $db.courses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> scansRefs(
+    Expression<bool> Function($$ScansTableFilterComposer f) f,
+  ) {
+    final $$ScansTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.batchId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableFilterComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$BatchesTableOrderingComposer
+    extends Composer<_$AppDatabase, $BatchesTable> {
+  $$BatchesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CoursesTableOrderingComposer get courseId {
+    final $$CoursesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.courseId,
+      referencedTable: $db.courses,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CoursesTableOrderingComposer(
+            $db: $db,
+            $table: $db.courses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BatchesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BatchesTable> {
+  $$BatchesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$CoursesTableAnnotationComposer get courseId {
+    final $$CoursesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.courseId,
+      referencedTable: $db.courses,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CoursesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.courses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> scansRefs<T extends Object>(
+    Expression<T> Function($$ScansTableAnnotationComposer a) f,
+  ) {
+    final $$ScansTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.batchId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableAnnotationComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$BatchesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BatchesTable,
+          BatchRow,
+          $$BatchesTableFilterComposer,
+          $$BatchesTableOrderingComposer,
+          $$BatchesTableAnnotationComposer,
+          $$BatchesTableCreateCompanionBuilder,
+          $$BatchesTableUpdateCompanionBuilder,
+          (BatchRow, $$BatchesTableReferences),
+          BatchRow,
+          PrefetchHooks Function({bool courseId, bool scansRefs})
+        > {
+  $$BatchesTableTableManager(_$AppDatabase db, $BatchesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BatchesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BatchesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BatchesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> courseId = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BatchesCompanion(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                courseId: courseId,
+                title: title,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String courseId,
+                Value<String?> title = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BatchesCompanion.insert(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                courseId: courseId,
+                title: title,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$BatchesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({courseId = false, scansRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (scansRefs) db.scans],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (courseId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.courseId,
+                                referencedTable: $$BatchesTableReferences
+                                    ._courseIdTable(db),
+                                referencedColumn: $$BatchesTableReferences
+                                    ._courseIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (scansRefs)
+                    await $_getPrefetchedData<BatchRow, $BatchesTable, ScanRow>(
+                      currentTable: table,
+                      referencedTable: $$BatchesTableReferences._scansRefsTable(
+                        db,
+                      ),
+                      managerFromTypedResult: (p0) =>
+                          $$BatchesTableReferences(db, table, p0).scansRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.batchId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$BatchesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BatchesTable,
+      BatchRow,
+      $$BatchesTableFilterComposer,
+      $$BatchesTableOrderingComposer,
+      $$BatchesTableAnnotationComposer,
+      $$BatchesTableCreateCompanionBuilder,
+      $$BatchesTableUpdateCompanionBuilder,
+      (BatchRow, $$BatchesTableReferences),
+      BatchRow,
+      PrefetchHooks Function({bool courseId, bool scansRefs})
+    >;
 typedef $$ScansTableCreateCompanionBuilder =
     ScansCompanion Function({
       Value<String> id,
@@ -10839,6 +12141,12 @@ typedef $$ScansTableCreateCompanionBuilder =
       Value<int> pageNo,
       Value<String> status,
       Value<DateTime> createdAt,
+      Value<String?> batchId,
+      Value<String?> originalName,
+      Value<String?> contentHash,
+      Value<int?> width,
+      Value<int?> height,
+      Value<String?> errorMessage,
       Value<int> rowid,
     });
 typedef $$ScansTableUpdateCompanionBuilder =
@@ -10852,6 +12160,12 @@ typedef $$ScansTableUpdateCompanionBuilder =
       Value<int> pageNo,
       Value<String> status,
       Value<DateTime> createdAt,
+      Value<String?> batchId,
+      Value<String?> originalName,
+      Value<String?> contentHash,
+      Value<int?> width,
+      Value<int?> height,
+      Value<String?> errorMessage,
       Value<int> rowid,
     });
 
@@ -10870,6 +12184,23 @@ final class $$ScansTableReferences
       $_db.courses,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_courseIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $BatchesTable _batchIdTable(_$AppDatabase db) => db.batches
+      .createAlias($_aliasNameGenerator(db.scans.batchId, db.batches.id));
+
+  $$BatchesTableProcessedTableManager? get batchId {
+    final $_column = $_itemColumn<String>('batch_id');
+    if ($_column == null) return null;
+    final manager = $$BatchesTableTableManager(
+      $_db,
+      $_db.batches,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_batchIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -10961,6 +12292,31 @@ class $$ScansTableFilterComposer extends Composer<_$AppDatabase, $ScansTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get originalName => $composableBuilder(
+    column: $table.originalName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get width => $composableBuilder(
+    column: $table.width,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get height => $composableBuilder(
+    column: $table.height,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get errorMessage => $composableBuilder(
+    column: $table.errorMessage,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CoursesTableFilterComposer get courseId {
     final $$CoursesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -10975,6 +12331,29 @@ class $$ScansTableFilterComposer extends Composer<_$AppDatabase, $ScansTable> {
           }) => $$CoursesTableFilterComposer(
             $db: $db,
             $table: $db.courses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$BatchesTableFilterComposer get batchId {
+    final $$BatchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.batchId,
+      referencedTable: $db.batches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BatchesTableFilterComposer(
+            $db: $db,
+            $table: $db.batches,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -11084,6 +12463,31 @@ class $$ScansTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get originalName => $composableBuilder(
+    column: $table.originalName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get width => $composableBuilder(
+    column: $table.width,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get height => $composableBuilder(
+    column: $table.height,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get errorMessage => $composableBuilder(
+    column: $table.errorMessage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CoursesTableOrderingComposer get courseId {
     final $$CoursesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -11098,6 +12502,29 @@ class $$ScansTableOrderingComposer
           }) => $$CoursesTableOrderingComposer(
             $db: $db,
             $table: $db.courses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$BatchesTableOrderingComposer get batchId {
+    final $$BatchesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.batchId,
+      referencedTable: $db.batches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BatchesTableOrderingComposer(
+            $db: $db,
+            $table: $db.batches,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -11141,6 +12568,27 @@ class $$ScansTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<String> get originalName => $composableBuilder(
+    column: $table.originalName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get width =>
+      $composableBuilder(column: $table.width, builder: (column) => column);
+
+  GeneratedColumn<int> get height =>
+      $composableBuilder(column: $table.height, builder: (column) => column);
+
+  GeneratedColumn<String> get errorMessage => $composableBuilder(
+    column: $table.errorMessage,
+    builder: (column) => column,
+  );
+
   $$CoursesTableAnnotationComposer get courseId {
     final $$CoursesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -11155,6 +12603,29 @@ class $$ScansTableAnnotationComposer
           }) => $$CoursesTableAnnotationComposer(
             $db: $db,
             $table: $db.courses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$BatchesTableAnnotationComposer get batchId {
+    final $$BatchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.batchId,
+      referencedTable: $db.batches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BatchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.batches,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -11230,6 +12701,7 @@ class $$ScansTableTableManager
           ScanRow,
           PrefetchHooks Function({
             bool courseId,
+            bool batchId,
             bool bookletsRefs,
             bool rowReadsRefs,
           })
@@ -11256,6 +12728,12 @@ class $$ScansTableTableManager
                 Value<int> pageNo = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> batchId = const Value.absent(),
+                Value<String?> originalName = const Value.absent(),
+                Value<String?> contentHash = const Value.absent(),
+                Value<int?> width = const Value.absent(),
+                Value<int?> height = const Value.absent(),
+                Value<String?> errorMessage = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ScansCompanion(
                 id: id,
@@ -11267,6 +12745,12 @@ class $$ScansTableTableManager
                 pageNo: pageNo,
                 status: status,
                 createdAt: createdAt,
+                batchId: batchId,
+                originalName: originalName,
+                contentHash: contentHash,
+                width: width,
+                height: height,
+                errorMessage: errorMessage,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11280,6 +12764,12 @@ class $$ScansTableTableManager
                 Value<int> pageNo = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> batchId = const Value.absent(),
+                Value<String?> originalName = const Value.absent(),
+                Value<String?> contentHash = const Value.absent(),
+                Value<int?> width = const Value.absent(),
+                Value<int?> height = const Value.absent(),
+                Value<String?> errorMessage = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ScansCompanion.insert(
                 id: id,
@@ -11291,6 +12781,12 @@ class $$ScansTableTableManager
                 pageNo: pageNo,
                 status: status,
                 createdAt: createdAt,
+                batchId: batchId,
+                originalName: originalName,
+                contentHash: contentHash,
+                width: width,
+                height: height,
+                errorMessage: errorMessage,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -11300,7 +12796,12 @@ class $$ScansTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({courseId = false, bookletsRefs = false, rowReadsRefs = false}) {
+              ({
+                courseId = false,
+                batchId = false,
+                bookletsRefs = false,
+                rowReadsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
@@ -11332,6 +12833,19 @@ class $$ScansTableTableManager
                                         ._courseIdTable(db),
                                     referencedColumn: $$ScansTableReferences
                                         ._courseIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (batchId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.batchId,
+                                    referencedTable: $$ScansTableReferences
+                                        ._batchIdTable(db),
+                                    referencedColumn: $$ScansTableReferences
+                                        ._batchIdTable(db)
                                         .id,
                                   )
                                   as T;
@@ -11405,6 +12919,7 @@ typedef $$ScansTableProcessedTableManager =
       ScanRow,
       PrefetchHooks Function({
         bool courseId,
+        bool batchId,
         bool bookletsRefs,
         bool rowReadsRefs,
       })
@@ -13695,6 +15210,7 @@ typedef $$CorrectionsTableCreateCompanionBuilder =
       required String field,
       Value<String?> readValue,
       Value<String?> confirmedValue,
+      Value<String?> region,
       Value<int> rowid,
     });
 typedef $$CorrectionsTableUpdateCompanionBuilder =
@@ -13706,6 +15222,7 @@ typedef $$CorrectionsTableUpdateCompanionBuilder =
       Value<String> field,
       Value<String?> readValue,
       Value<String?> confirmedValue,
+      Value<String?> region,
       Value<int> rowid,
     });
 
@@ -13750,6 +15267,11 @@ class $$CorrectionsTableFilterComposer
 
   ColumnFilters<String> get confirmedValue => $composableBuilder(
     column: $table.confirmedValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get region => $composableBuilder(
+    column: $table.region,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -13797,6 +15319,11 @@ class $$CorrectionsTableOrderingComposer
     column: $table.confirmedValue,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get region => $composableBuilder(
+    column: $table.region,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CorrectionsTableAnnotationComposer
@@ -13830,6 +15357,9 @@ class $$CorrectionsTableAnnotationComposer
     column: $table.confirmedValue,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get region =>
+      $composableBuilder(column: $table.region, builder: (column) => column);
 }
 
 class $$CorrectionsTableTableManager
@@ -13870,6 +15400,7 @@ class $$CorrectionsTableTableManager
                 Value<String> field = const Value.absent(),
                 Value<String?> readValue = const Value.absent(),
                 Value<String?> confirmedValue = const Value.absent(),
+                Value<String?> region = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CorrectionsCompanion(
                 id: id,
@@ -13879,6 +15410,7 @@ class $$CorrectionsTableTableManager
                 field: field,
                 readValue: readValue,
                 confirmedValue: confirmedValue,
+                region: region,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -13890,6 +15422,7 @@ class $$CorrectionsTableTableManager
                 required String field,
                 Value<String?> readValue = const Value.absent(),
                 Value<String?> confirmedValue = const Value.absent(),
+                Value<String?> region = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CorrectionsCompanion.insert(
                 id: id,
@@ -13899,6 +15432,7 @@ class $$CorrectionsTableTableManager
                 field: field,
                 readValue: readValue,
                 confirmedValue: confirmedValue,
+                region: region,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -14402,6 +15936,8 @@ class $AppDatabaseManager {
       $$SchemeTemplatesTableTableManager(_db, _db.schemeTemplates);
   $$StudentsTableTableManager get students =>
       $$StudentsTableTableManager(_db, _db.students);
+  $$BatchesTableTableManager get batches =>
+      $$BatchesTableTableManager(_db, _db.batches);
   $$ScansTableTableManager get scans =>
       $$ScansTableTableManager(_db, _db.scans);
   $$BookletsTableTableManager get booklets =>

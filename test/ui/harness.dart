@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -6,13 +9,47 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:unimarkly/app.dart';
 import 'package:unimarkly/data/database/app_database.dart';
+import 'package:path/path.dart' as p;
 import 'package:unimarkly/data/repositories/course_repository.dart';
+import 'package:unimarkly/data/repositories/scan_repository.dart';
 import 'package:unimarkly/data/repositories/score_repository.dart';
 import 'package:unimarkly/data/repositories/student_repository.dart';
 import 'package:unimarkly/domain/defaults.dart';
 import 'package:unimarkly/domain/ids.dart';
 import 'package:unimarkly/domain/models.dart';
+import 'package:unimarkly/domain/scan.dart';
 import 'package:unimarkly/providers/providers.dart';
+import 'package:unimarkly/services/reader/ocr_engine.dart';
+import 'package:unimarkly/services/scan/image_source.dart';
+import 'package:unimarkly/services/scan/intake_service.dart';
+import 'package:unimarkly/services/scan/scan_files.dart';
+
+import '../support/images.dart';
+
+/// Photos the buttons "pick" in a test, or an error such as a refused
+/// camera permission.
+class FakeImageSource implements ImageSource {
+  List<PickedImage> next = [];
+  Object? error;
+  final calls = <String>[];
+
+  Future<List<PickedImage>> _pick(String how) async {
+    calls.add(how);
+    if (error != null) throw error!;
+    final out = next;
+    next = [];
+    return out;
+  }
+
+  @override
+  Future<List<PickedImage>> takePhoto(PhotoQuality quality) => _pick('camera');
+
+  @override
+  Future<List<PickedImage>> chooseImages(PhotoQuality quality) => _pick('gallery');
+
+  @override
+  Future<List<PickedImage>> chooseFiles() => _pick('files');
+}
 
 /// Runs the real app on an in-memory database.
 ///
@@ -23,10 +60,16 @@ import 'package:unimarkly/providers/providers.dart';
 class AppHarness {
   late AppDatabase db;
   late SharedPreferences prefs;
+  late Directory work;
+  late ScanFiles scanFiles;
+
+  /// What the Take photo / Choose images buttons return in a test.
+  final FakeImageSource imageSource = FakeImageSource();
 
   CourseRepository get courses => CourseRepository(db);
   StudentRepository get students => StudentRepository(db);
   ScoreRepository get scores => ScoreRepository(db);
+  ScanRepository get scans => ScanRepository(db, courses);
 
   Future<void> start(
     WidgetTester tester, {
@@ -34,11 +77,16 @@ class AppHarness {
     double textScale = 1.0,
     Map<String, Object> prefsValues = const {},
     Future<void> Function()? seed,
+
+    /// The bottom-bar tab to open first. Most tests are about courses.
+    String? tab = 'Courses',
   }) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     SharedPreferences.setMockInitialValues(prefsValues);
     prefs = await SharedPreferences.getInstance();
     db = AppDatabase(NativeDatabase.memory());
+    work = Directory.systemTemp.createTempSync('unimarkly_ui_');
+    scanFiles = ScanFiles(Directory(p.join(work.path, 'scans')));
 
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
@@ -55,10 +103,15 @@ class AppHarness {
       overrides: [
         databaseProvider.overrideWithValue(db),
         sharedPreferencesProvider.overrideWithValue(prefs),
+        scanFilesProvider.overrideWithValue(scanFiles),
+        // No real reader in widget tests: photos wait for the examiner.
+        ocrEngineProvider.overrideWithValue(const UnavailableOcrEngine()),
+        imageSourceProvider.overrideWithValue(imageSource),
       ],
       child: const UniMarkLyApp(),
     ));
     await settle(tester);
+    if (tab != null) await tapText(tester, tab);
   }
 
   /// Lets database streams deliver and animations finish.
@@ -87,6 +140,9 @@ class AppHarness {
     await tester.pump(const Duration(seconds: 1));
     await tester.runAsync(() => db.close().timeout(const Duration(seconds: 5), onTimeout: () {}));
     await tester.pump(const Duration(seconds: 1));
+    try {
+      work.deleteSync(recursive: true);
+    } catch (_) {}
   }
 
   /// Scrolls the top screen's vertical list, down and then back up, until
@@ -151,5 +207,36 @@ class AppHarness {
         ScoreWrite(studentId: student.id, partId: course.scheme.parts[e.key].id, value: e.value),
       );
     }
+  }
+
+  int _seeded = 0;
+
+  /// Stores real photo files as one upload of [course], in the given states.
+  /// Returns the batch id. Run from `seed`.
+  Future<String> seedBatch(
+    Course course, {
+    String? title,
+    List<ScanStatus> states = const [ScanStatus.needsReview],
+    int width = 300,
+    int height = 400,
+  }) async {
+    final batchId = await scans.createBatch(course.id, title: title);
+    final intake = IntakeService(scans, scanFiles);
+    for (var i = 0; i < states.length; i++) {
+      final f = File(p.join(work.path, 'seed_${batchId}_$i.png'));
+      f.parent.createSync(recursive: true);
+      // A different shade each time, so the photos are not duplicates.
+      await f.writeAsBytes(await makePng(width + _seeded, height, ui.Color(0xFF203040 + (_seeded++) * 0x050309)));
+      final report = await intake.addImages(
+        courseId: course.id,
+        batchId: batchId,
+        images: [PickedImage(name: 'IMG_${1000 + i}.png', path: f.path)],
+      );
+      if (report.added.length != 1) {
+        throw StateError('seedBatch: photo not added: ${report.rejected} ${report.duplicates}');
+      }
+      await scans.setStatus(report.added.single.id, states[i]);
+    }
+    return batchId;
   }
 }

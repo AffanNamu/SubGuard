@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../../providers/providers.dart';
+import '../../services/scan/image_source.dart';
 import 'bin_screen.dart';
 import 'defaults_screen.dart';
 import 'header_settings_screen.dart';
@@ -84,6 +85,59 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            const SectionHeading('Scanning & reading'),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconBadge(icon: Icons.photo_camera_rounded, color: c.tileBlue),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Photo quality', style: text.titleMedium),
+                              Text(settings.photoQuality.description,
+                                  style: text.bodyMedium?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<PhotoQuality>(
+                        showSelectedIcon: false,
+                        segments: [
+                          for (final q in PhotoQuality.values) ButtonSegment(value: q, label: Text(q.label)),
+                        ],
+                        selected: {settings.photoQuality},
+                        onSelectionChanged: (s) => ref
+                            .read(settingsProvider.notifier)
+                            .update((v) => v.copyWith(photoQuality: s.first)),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Read photos when added'),
+                      subtitle: const Text(
+                          'Reads the printed text on this phone. You check every mark before it is saved.'),
+                      value: settings.readAutomatically,
+                      onChanged: (v) => ref
+                          .read(settingsProvider.notifier)
+                          .update((s) => s.copyWith(readAutomatically: v)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SectionHeading('Results'),
             Card(
               clipBehavior: Clip.antiAlias,
@@ -133,11 +187,22 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: () => open(const BinScreen()),
                   ),
                   const Divider(indent: 76),
-                  const NavTile(
+                  NavTile(
                     icon: Icons.phone_android_rounded,
                     color: Brand.blue,
                     title: 'Stored on this phone',
-                    subtitle: 'Courses, students and scores work offline and stay on this phone.',
+                    subtitle: switch (ref.watch(storageUsedProvider)) {
+                      AsyncData(:final value) =>
+                        'Booklet photos use ${formatBytes(value)}. Courses, students and scores work offline.',
+                      _ => 'Courses, students and scores work offline and stay on this phone.',
+                    },
+                  ),
+                  const Divider(indent: 76),
+                  const NavTile(
+                    icon: Icons.cloud_off_rounded,
+                    color: Brand.purple,
+                    title: 'Backup & sync',
+                    subtitle: 'Not available yet. Your data stays on this phone.',
                   ),
                 ],
               ),
@@ -156,6 +221,14 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// "12.4 MB", for the storage row.
+String formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
 }
 
 extension on String {

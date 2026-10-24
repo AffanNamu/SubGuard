@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/export/result_table.dart';
+import '../../services/scan/image_source.dart';
 
 /// Per-phone preferences. Course data lives in the database; this holds only
 /// the theme, the document header and the defaults for new courses.
@@ -12,6 +13,8 @@ class AppSettings {
     this.defaultSession = '',
     this.defaultSemester = '',
     this.seenWelcome = false,
+    this.photoQuality = PhotoQuality.high,
+    this.readAutomatically = true,
   });
 
   final ThemeMode themeMode;
@@ -20,12 +23,20 @@ class AppSettings {
   final String defaultSemester;
   final bool seenWelcome;
 
+  /// How much photos are shrunk when picked.
+  final PhotoQuality photoQuality;
+
+  /// Start reading booklets as soon as they are added.
+  final bool readAutomatically;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     ExportHeader? header,
     String? defaultSession,
     String? defaultSemester,
     bool? seenWelcome,
+    PhotoQuality? photoQuality,
+    bool? readAutomatically,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -33,6 +44,8 @@ class AppSettings {
         defaultSession: defaultSession ?? this.defaultSession,
         defaultSemester: defaultSemester ?? this.defaultSemester,
         seenWelcome: seenWelcome ?? this.seenWelcome,
+        photoQuality: photoQuality ?? this.photoQuality,
+        readAutomatically: readAutomatically ?? this.readAutomatically,
       );
 }
 
@@ -50,6 +63,8 @@ class SettingsRepository {
   static const _defaultSession = 'default_session';
   static const _defaultSemester = 'default_semester';
   static const _seenWelcome = 'seen_welcome';
+  static const _photoQuality = 'photo_quality';
+  static const _readAutomatically = 'read_automatically';
 
   AppSettings load() => AppSettings(
         themeMode: switch (_prefs.getString(_theme)) {
@@ -67,6 +82,8 @@ class SettingsRepository {
         defaultSession: _prefs.getString(_defaultSession) ?? '',
         defaultSemester: _prefs.getString(_defaultSemester) ?? '',
         seenWelcome: _prefs.getBool(_seenWelcome) ?? false,
+        photoQuality: PhotoQuality.fromName(_prefs.getString(_photoQuality)),
+        readAutomatically: _prefs.getBool(_readAutomatically) ?? true,
       );
 
   Future<void> save(AppSettings s) async {
@@ -83,5 +100,7 @@ class SettingsRepository {
     await _prefs.setString(_defaultSession, s.defaultSession);
     await _prefs.setString(_defaultSemester, s.defaultSemester);
     await _prefs.setBool(_seenWelcome, s.seenWelcome);
+    await _prefs.setString(_photoQuality, s.photoQuality.name);
+    await _prefs.setBool(_readAutomatically, s.readAutomatically);
   }
 }

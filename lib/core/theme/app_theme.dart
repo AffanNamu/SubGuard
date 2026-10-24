@@ -11,6 +11,9 @@ class Brand {
   static const blue = Color(0xFF3B82F6);
   static const purple = Color(0xFF8B5CF6);
   static const amber = Color(0xFFF5A524);
+
+  /// The lime of the primary buttons, left to right.
+  static const limeGradient = [Color(0xFFB9F53C), Color(0xFF6BE43A)];
 }
 
 /// Colours the Material scheme has no slot for: status colours and the tinted

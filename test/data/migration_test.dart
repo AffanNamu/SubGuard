@@ -1,8 +1,7 @@
-import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unimarkly/data/database/app_database.dart';
-import 'package:unimarkly/data/database/migrations.dart';
 import 'package:unimarkly/data/repositories/course_repository.dart';
 import 'package:unimarkly/data/repositories/score_repository.dart';
 import 'package:unimarkly/data/repositories/student_repository.dart';
@@ -25,7 +24,7 @@ void main() {
     await verifier.migrateAndValidate(db, latestSchemaVersion);
   });
 
-  test('version 1 data survives opening with the current code', () async {
+  test('a version 1 database upgrades to the latest and keeps its data', () async {
     final schema = await verifier.schemaAt(1);
 
     // An "old copy of the data": written with plain SQL at schema v1.
@@ -57,9 +56,37 @@ void main() {
     expect(scores['s1']!['p1']!.value, 9.5);
   });
 
-  test('every schema version up to the latest has a migration step', () {
-    for (var v = 2; v <= latestSchemaVersion; v++) {
-      expect(migrations.containsKey(v), isTrue, reason: 'missing migration for v$v');
-    }
+  test('version 2 adds batches and the intake columns without touching old scans', () async {
+    final schema = await verifier.schemaAt(1);
+    final raw = schema.rawDatabase;
+    raw.execute("INSERT INTO course (id, updated_at, code) VALUES ('c1', '2026-09-01T10:00:00.000Z', 'AGR 114')");
+    // A scan written by version 1 of the app, before batches existed.
+    raw.execute("INSERT INTO scan (id, updated_at, course_id, kind, photo_path, page_no, status, created_at) "
+        "VALUES ('sc1', '2026-09-01T10:00:00.000Z', 'c1', 'booklet_cover', 'old/photo.jpg', 1, 'scanned', '2026-09-01T10:00:00.000Z')");
+
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+    await verifier.migrateAndValidate(db, 2);
+
+    final old = await (db.select(db.scans)..where((s) => s.id.equals('sc1'))).getSingle();
+    expect(old.photoPath, 'old/photo.jpg');
+    expect(old.batchId, isNull, reason: 'a scan from before batches belongs to no batch');
+    expect(old.contentHash, isNull);
+
+    // New rows can use the new columns.
+    await db.into(db.batches).insert(BatchesCompanion.insert(courseId: 'c1', id: const Value('b1')));
+    await db.into(db.scans).insert(ScansCompanion.insert(
+          courseId: 'c1',
+          kind: 'booklet_cover',
+          id: const Value('sc2'),
+          batchId: const Value('b1'),
+          originalName: const Value('IMG_001.jpg'),
+          contentHash: const Value('abc'),
+          width: const Value(3000),
+          height: const Value(4000),
+        ));
+    final fresh = await (db.select(db.scans)..where((s) => s.id.equals('sc2'))).getSingle();
+    expect(fresh.batchId, 'b1');
+    expect(fresh.originalName, 'IMG_001.jpg');
   });
 }

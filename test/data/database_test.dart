@@ -33,11 +33,11 @@ void main() {
   group('schema', () {
     const tables = [
       'course', 'course_part', 'exam_question', 'grade_scale', 'scheme_template',
-      'student', 'scan', 'booklet', 'question_mark', 'row_read', 'part_score',
+      'student', 'upload_batch', 'scan', 'booklet', 'question_mark', 'row_read', 'part_score',
       'correction', 'account', 'sync_state',
     ];
 
-    test('has the fourteen tables from the brief', () async {
+    test('has the fourteen tables from the brief, plus upload_batch', () async {
       final rows = await db
           .customSelect("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
           .get();
@@ -67,12 +67,13 @@ void main() {
       expect(await cols('grade_scale'), containsAll(['course_id', 'min_score', 'max_score', 'letter', 'points']));
       expect(await cols('scheme_template'), containsAll(['name', 'json']));
       expect(await cols('student'), containsAll(['course_id', 'reg_no', 'name']));
-      expect(await cols('scan'), containsAll(['course_id', 'kind', 'photo_path', 'page_no', 'status', 'created_at']));
+      expect(await cols('scan'), containsAll(['course_id', 'kind', 'photo_path', 'page_no', 'status', 'created_at', 'batch_id', 'original_name', 'content_hash', 'width', 'height', 'error_message']));
+      expect(await cols('upload_batch'), containsAll(['course_id', 'title']));
       expect(await cols('booklet'), containsAll(['course_id', 'student_id', 'scan_id', 'serial_no', 'read_json', 'status', 'confirmed_at']));
       expect(await cols('question_mark'), containsAll(['booklet_id', 'q_no', 'mark', 'confidence', 'edited']));
       expect(await cols('row_read'), containsAll(['scan_id', 'row_no', 'raw_id', 'raw_value', 'student_id', 'part_id', 'value', 'confidence', 'status']));
       expect(await cols('part_score'), containsAll(['course_id', 'student_id', 'part_id', 'value', 'status', 'source']));
-      expect(await cols('correction'), containsAll(['crop_path', 'field', 'read_value', 'confirmed_value']));
+      expect(await cols('correction'), containsAll(['crop_path', 'field', 'read_value', 'confirmed_value', 'region']));
       expect(await cols('account'), containsAll(['user_id', 'email', 'plan', 'plan_valid_until']));
       expect(await cols('sync_state'), containsAll(['table_name', 'last_pull_at', 'last_push_at']));
     });

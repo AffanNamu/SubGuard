@@ -4,9 +4,11 @@ Exam scores, added up for you. UniMarkLy turns a class list and a set of marks i
 result table per course, and exports it as Word, Excel, PDF or CSV. It works offline and
 keeps everything on the phone.
 
-This is build steps 1 and 2 of the Exam Score Scanner brief: **courses, grading scheme, class
-list, typed score grid, and export**. Scanning booklet covers and list sheets, accounts, sync
-and payments come later; the code is laid out so they can be added (see below).
+Build steps 1 and 2 of the Exam Score Scanner brief (courses, grading scheme, class list, typed
+score grid, export) are done, and the **photo workflow** is in: upload booklet photos, read the
+printed parts on the phone, check every value against the photo, confirm, and the exam score
+lands in the grid and the exports. Handwriting is **not** read automatically yet (see
+"What it does not do").
 
 ## What works now
 
@@ -33,8 +35,33 @@ and payments come later; the code is laid out so they can be added (see below).
 - **Export** to `.docx`, `.xlsx`, `.pdf` and `.csv` with a column chooser and three presets
   (Exam sheet, Continuous assessment sheet, Full result). Several courses can be exported
   at once, one file each, through the phone's share sheet.
+- **Home** with real numbers counted from stored uploads (batches, students extracted,
+  completed, need review), recent batches with a course filter, and a raised upload button.
+- **Scan & Extract**: take a photo, choose several, or pick image files (JPG, PNG, WebP, HEIC).
+  Originals are kept untouched in the app folder with a content fingerprint; the same photo
+  twice is caught and you are asked. A progress screen shows each photo's real state, with
+  pause, and photos left half-read when the app closes are picked up again.
+- **Review**: for each booklet the photo's exam-number crop, marks crop and total crop sit
+  beside the fields. Nothing reaches the score grid until you press Confirm; confirming a
+  second booklet for the same student, or the same booklet number again, needs an explicit OK.
+  Marks above a question's maximum, a written total that disagrees with the marks, and an
+  exam number that is not on the class list are all shown. Confirmed records are never
+  overwritten by a later re-read, and corrections are logged for training.
 - Light and dark themes, with a switch in Settings.
 - Undo for deletes, and a bin for deleted courses.
+
+## What it does not do (yet)
+
+- It does **not** read handwriting. The reader (Google ML Kit text recognition, on the phone,
+  no internet) finds the printed labels and the printed booklet number and works out where the
+  handwritten exam number and marks are, but those are typed in by the examiner from the photo
+  crops. A handwriting model is the next step; until then nothing handwritten is ever filled
+  in for you, and anything the reader does suggest is marked with its confidence and needs
+  your tap.
+- PDF input is not supported.
+- Accounts, sync and purchases do not exist; Settings says so.
+- The ML Kit reader, camera and gallery pickers have only been exercised through the test
+  doubles in CI. They need a run on a real phone.
 
 ## Running it
 
@@ -54,10 +81,12 @@ lib/
   domain/        Pure Dart: the grading scheme, totals, grades, registration numbers, checks.
                  No Flutter and no database, so it is easy to test.
   data/
-    database/    drift (SQLite) schema, numbered migrations
+    database/    drift (SQLite) schema, step-by-step migrations (see drift_schemas/)
     repositories/  the only code that reads and writes the database
   services/
     import/      CSV, Excel and paste readers; column guessing; import planning
+    scan/        picking, storing and fingerprinting photos
+    reader/      the OCR engine interface, the booklet extractor, the processing queue
     export/      one ResultTable model, rendered by four writers (docx, xlsx, pdf, csv)
   providers/     Riverpod providers; the grid combines scheme + students + marks
   features/      one folder per screen group
@@ -69,25 +98,24 @@ docs/RELEASE.md  how the store builds are made
 
 ## Database
 
-Fourteen tables, as in the brief. Every table has a UUID `id`, `updated_at` and a soft-delete
+Fifteen tables: the fourteen in the brief plus `upload_batch`. Every table has a UUID `id`, `updated_at` and a soft-delete
 `deleted_at` from the first version, so Pro sync can be added without migrating anyone's data.
 Repositories set `updated_at` on every write and never hard-delete.
 
-Two columns were added to `student` beyond the brief: `on_class_list` (false for numbers
-added by hand that were not on the imported list) and `position` (the order added, used for
-"scan order" in exports).
+Beyond the brief: `student.on_class_list` (false for numbers added by hand that were not on
+the imported list), `student.position` (the order added, used for "scan order" in exports),
+the `upload_batch` table, and on `scan`: `batch_id`, `original_name`, `content_hash`, `width`,
+`height`, `error_message`.
 
-Changes go through numbered migrations. See `lib/data/database/migrations.dart`.
+Schema changes are step-by-step migrations checked against dumps in `drift_schemas/`
+(`tool/generate_schema.sh` regenerates them). Version 2 added the upload tables and
+columns; a test upgrades a version 1 database full of data and checks nothing is lost.
 
 ## Where the later steps plug in
 
 | Step | Where it goes |
 |---|---|
-| Capture and review | a `features/capture/` folder; the `scan`, `booklet`, `question_mark` and `row_read` tables already exist |
-| Reader | `services/reader/`, writing `question_mark` rows and `part_score` rows with `source = 'scanned'` |
+| Handwriting reading | a second `OcrEngine` in `services/reader/`; the extractor already hands it the regions and keeps results as suggestions with a confidence |
 | Checks across sheets | extend `domain/flags.dart` |
 | Accounts and sync | a sync service reading `updated_at` / `deleted_at`; `account` and `sync_state` tables exist |
 | Purchases | a service behind a provider, like the repositories |
-
-The score grid already reads `part_score` regardless of where a value came from, so scanned
-marks will appear in it with no change to the screens.

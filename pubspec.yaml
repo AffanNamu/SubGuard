@@ -25,6 +25,9 @@ dependencies:
   share_plus: ^10.1.0
   collection: ^1.19.0
   package_info_plus: ^9.0.1
+  crypto: ^3.0.7
+  image_picker: ^1.2.1
+  google_mlkit_text_recognition: ^0.16.0
 
 dev_dependencies:
   flutter_test:
