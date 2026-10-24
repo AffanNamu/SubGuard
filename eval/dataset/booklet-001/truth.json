@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "doc_id": "booklet-001",
+  "image": "image.jpg",
+  "source": "Photograph supplied by the product owner for development (a scaled 810x1080 copy of a phone photo). One real candidate's booklet cover, Modibbo Adama University layout.",
+  "authorisation": "Supplied by the product owner for development of this app. Contains a real candidate registration number: confirm authorisation before sharing outside the repository.",
+  "annotator": "Engineer, from the photograph and the product brief's sample values; not independently double-annotated.",
+  "split": "dev",
+  "quality_category": "clear",
+  "layout": "modibbo_adama_booklet_v1",
+  "fields": [
+    {"key": "serial_no",    "kind": "printed_number",      "text": "292011",       "box": [0.640, 0.066, 0.742, 0.094]},
+    {"key": "exam_number",  "kind": "registration_number", "text": "FWM/24U/0538", "box": [0.435, 0.130, 0.705, 0.166]},
+    {"key": "course_no",    "kind": "handwritten_text",    "text": "AGR 114",      "box": [0.330, 0.198, 0.520, 0.230]},
+    {"key": "exam_date",    "kind": "handwritten_text",    "text": "18/9/2026",    "box": [0.260, 0.228, 0.465, 0.260]},
+    {"key": "answered",     "kind": "handwritten_text",    "text": "4, 5, 1, 2",   "box": [0.070, 0.838, 0.300, 0.878]},
+    {"key": "mark_q1",      "kind": "mark", "question": 1, "text": "1.0", "box": [0.775, 0.340, 0.880, 0.378]},
+    {"key": "mark_q2",      "kind": "mark", "question": 2, "text": "1.0", "box": [0.775, 0.384, 0.880, 0.420]},
+    {"key": "mark_q4",      "kind": "mark", "question": 4, "text": "2.0", "box": [0.775, 0.434, 0.880, 0.472]},
+    {"key": "mark_q5",      "kind": "mark", "question": 5, "text": "5.5", "box": [0.775, 0.490, 0.880, 0.532]},
+    {"key": "total_written","kind": "mark", "text": null, "box": [0.775, 0.822, 0.960, 0.870], "note": "the Total box is blank on this booklet"}
+  ],
+  "totals": {"calculated_from_marks": 9.5}
+}
