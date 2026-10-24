@@ -16,19 +16,14 @@ import 'ocr_engine.dart';
 /// could not read.
 class ScanProcessor {
   ScanProcessor({
-    required ScanRepository scans,
-    required BookletRepository booklets,
-    required ScanFiles files,
-    required OcrEngine engine,
-    StudentRepository? students,
-    BookletExtractor extractor = const BookletExtractor(),
+    required this._scans,
+    required this._booklets,
+    required this._files,
+    required this._engine,
+    this._students,
+    this._extractor = const BookletExtractor(),
     this.perPhotoTimeout = const Duration(seconds: 60),
-  })  : _scans = scans,
-        _booklets = booklets,
-        _files = files,
-        _engine = engine,
-        _students = students,
-        _extractor = extractor;
+  });
 
   final ScanRepository _scans;
   final BookletRepository _booklets;

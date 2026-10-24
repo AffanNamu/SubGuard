@@ -52,20 +52,23 @@ lands in the grid and the exports. Handwriting is **not** read automatically yet
 
 ## What it does not do (yet)
 
-- It does **not** read handwriting. The reader (Google ML Kit text recognition, on the phone,
-  no internet) finds the printed labels and the printed booklet number and works out where the
-  handwritten exam number and marks are, but those are typed in by the examiner from the photo
-  crops. A handwriting model is the next step; until then nothing handwritten is ever filled
-  in for you, and anything the reader does suggest is marked with its confidence and needs
-  your tap.
+- Handwriting is read only partly. The reader is PaddleOCR (PP-OCR) running on the phone with
+  no internet, with Google ML Kit as the fallback. It reads the printed labels and booklet
+  number, and the handwritten exam number from a close-up of its area. The number is matched to
+  the class list, mostly by its sequence number (`0538`), because the department and year in
+  handwriting are the hard part. It fills the field and says it was read automatically; when the
+  writing is unclear, or two students fit equally, it leaves the field empty. **The marks are
+  not read**: they are typed from the photo crop beside the field. A digit reader trained on
+  the examiners' own corrections is the plan for them.
 - PDF input is not supported.
 - Accounts, sync and purchases do not exist; Settings says so.
-- The ML Kit reader, camera and gallery pickers have only been exercised through the test
+- The PaddleOCR and ML Kit readers, camera and gallery pickers have only been exercised through the test
   doubles in CI. They need a run on a real phone.
 
 ## Running it
 
-Flutter 3.32 (the version the CI uses).
+Flutter 3.44 or newer (CI uses 3.44.9); the PaddleOCR package needs it. Phones: Android 8+ on a
+64-bit ARM CPU, iOS 16+ on a real device (the PaddleOCR libraries have no simulator build).
 
 ```
 flutter pub get

@@ -167,9 +167,15 @@ class AppHarness {
     final finder = find.text(text);
     if (finder.evaluate().isEmpty) await reveal(tester, finder);
     expect(finder, findsAtLeastNWidgets(1), reason: 'looking for "$text"');
-    await tester.ensureVisible(finder.first);
-    await tester.pump(); // let the scroll take effect before tapping
-    await tester.pump(const Duration(milliseconds: 100));
+    // Scroll it into view, and look again: a list that was still settling can
+    // move the widget back out of view after the first attempt.
+    for (var i = 0; i < 3; i++) {
+      await tester.ensureVisible(finder.first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final y = tester.getCenter(finder.first).dy;
+      if (y >= 0 && y <= tester.view.physicalSize.height) break;
+    }
     await tester.tap(finder.first);
     if (settleAfter) await settle(tester);
   }

@@ -339,7 +339,8 @@ class _ColumnChooser extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: DropdownButtonFormField<SerialOrder>(
-              value: options.serialOrder,
+              initialValue: options.serialOrder,
+              key: ValueKey(options.serialOrder),
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'S/N numbering'),
               onChanged: (v) {

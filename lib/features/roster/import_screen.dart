@@ -553,7 +553,8 @@ class _ColumnPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DropdownButtonFormField<int?>(
-        value: value,
+        key: ValueKey(value),
+        initialValue: value,
         isExpanded: true,
         decoration: InputDecoration(labelText: label),
         items: [

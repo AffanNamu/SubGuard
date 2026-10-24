@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart' as mlkit;
 
 import '../../domain/ocr.dart';
+import 'paddle_ocr_engine.dart';
 import 'region_crop.dart';
 
 /// Reads the text in a photo. An interface so the processor, the extractor and
@@ -134,5 +135,6 @@ class RawOcrLine {
   final double? confidence;
 }
 
-OcrEngine defaultOcrEngine() =>
-    (Platform.isAndroid || Platform.isIOS) ? const MlKitOcrEngine() : const UnavailableOcrEngine();
+OcrEngine defaultOcrEngine() => (Platform.isAndroid || Platform.isIOS)
+    ? FallbackOcrEngine(PaddleOcrEngine(), const MlKitOcrEngine())
+    : const UnavailableOcrEngine();

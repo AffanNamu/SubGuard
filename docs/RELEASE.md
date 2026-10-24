@@ -86,10 +86,11 @@ Lessons carried over from the eSportlyic workflow, which hit each of these:
 The signing and upload steps have not been run against a real Apple account. Run the workflow once
 with the secrets set and read the log, which prints the signing identities and profile identifiers.
 
-**Flutter version.** Both store workflows pin Flutter 3.32.0 (`FLUTTER_VERSION`, in all three files). The eSportlyic workflow pins 3.47.1 and
-builds with Xcode 26. Whether 3.32.0 builds cleanly with Xcode 26 is not yet known. If the iOS run
-fails while compiling, raising `FLUTTER_VERSION` in all three workflows is the first thing to try.
-Android must be rebuilt and checked at the same time.
+**Flutter version.** All three workflows pin Flutter 3.44.9 (`FLUTTER_VERSION`), the oldest line the
+`paddle_ocr_native` package supports. The eSportlyic workflow pins 3.47.1 and builds with Xcode 26.
+**Platform limits that come with PaddleOCR:** Android 8 (API 26) and `arm64-v8a` only; iOS 16 and
+static framework linkage (see `ios/Podfile`), real devices only, no simulator. If a workflow fails
+while compiling, raising `FLUTTER_VERSION` in all three is the first thing to try.
 
 ### Privacy manifest
 

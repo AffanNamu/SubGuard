@@ -183,7 +183,7 @@ class PartsStep extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           sliver: SliverReorderableList(
             itemCount: scheme.parts.length,
-            onReorder: draft.movePart,
+            onReorderItem: draft.movePart,
             proxyDecorator: (child, i, a) => Material(color: Colors.transparent, child: child),
             itemBuilder: (context, i) {
               final p = scheme.parts[i];
@@ -434,14 +434,20 @@ class ExamStep extends StatelessWidget {
               ),
             ),
           const SectionHeading('Which answers count'),
-          for (final rule in CountRule.values)
-            RadioListTile<CountRule>(
-              contentPadding: EdgeInsets.zero,
-              value: rule,
-              groupValue: scheme.countRule,
-              onChanged: (v) => draft.setCountRule(v!),
-              title: Text(rule.label),
+          RadioGroup<CountRule>(
+            groupValue: scheme.countRule,
+            onChanged: (v) => draft.setCountRule(v!),
+            child: Column(
+              children: [
+                for (final rule in CountRule.values)
+                  RadioListTile<CountRule>(
+                    contentPadding: EdgeInsets.zero,
+                    value: rule,
+                    title: Text(rule.label),
+                  ),
+              ],
             ),
+          ),
           if (scheme.countRule != CountRule.all) ...[
             const SizedBox(height: 8),
             NumberField(

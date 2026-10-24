@@ -7,8 +7,14 @@ import '../../domain/ocr.dart';
 /// Cuts [region] out of the photo and enlarges it so the writing is at least
 /// ~220 px tall. With [boostContrast] the pen strokes are darkened (helps
 /// some readers, hurts others, so the engine chooses). The stored original is
-/// never touched; the cut-out is a temporary file the caller deletes.
-Future<({File file, int width, int height})?> cropForReading(File image, Region region, {required bool boostContrast}) async {
+/// never touched; the cut-out is a temporary file the caller deletes. It is
+/// no wider than [maxWidth] pixels.
+Future<({File file, int width, int height})?> cropForReading(
+  File image,
+  Region region, {
+  required bool boostContrast,
+  int maxWidth = 2400,
+}) async {
   final codec = await ui.instantiateImageCodec(await image.readAsBytes());
   final frame = await codec.getNextFrame();
   final src = frame.image;
@@ -17,7 +23,7 @@ Future<({File file, int width, int height})?> cropForReading(File image, Region 
     final sx = r.left * src.width, sy = r.top * src.height;
     final sw = (r.right - r.left) * src.width, sh = (r.bottom - r.top) * src.height;
     if (sw < 8 || sh < 8) return null;
-    final scale = math.min(math.max(1.0, 220 / sh), 2400 / sw);
+    final scale = math.min(math.max(1.0, 220 / sh), maxWidth / sw);
     final w = (sw * scale).round(), h = (sh * scale).round();
 
     final recorder = ui.PictureRecorder();

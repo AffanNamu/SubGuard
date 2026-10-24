@@ -11,12 +11,11 @@ import '../../domain/scheme_codec.dart';
 /// on screen. Nothing is saved until the wizard's final step.
 class CourseDraftController extends ChangeNotifier {
   CourseDraftController.create({
-    required GradingScheme scheme,
+    required this._scheme,
     this.session = '',
     this.semester = '',
   })  : id = newId(),
         isNew = true,
-        _scheme = scheme,
         code = '',
         department = '';
 
@@ -87,9 +86,10 @@ class CourseDraftController extends ChangeNotifier {
   void removePart(String id) =>
       _set(_scheme.copyWith(parts: _scheme.parts.where((p) => p.id != id).toList()));
 
+  /// [newIndex] is the position after the item has been taken out, as
+  /// `onReorderItem` reports it.
   void movePart(int oldIndex, int newIndex) {
     final parts = [..._scheme.parts];
-    if (newIndex > oldIndex) newIndex -= 1;
     parts.insert(newIndex, parts.removeAt(oldIndex));
     _set(_scheme.copyWith(parts: parts));
   }
