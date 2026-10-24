@@ -1,0 +1,8 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # ISO-8601 text keeps millisecond precision and sorts correctly,
+          # which matters when "newest edit wins" is added with Pro sync.
+          store_date_time_values_as_text: true
