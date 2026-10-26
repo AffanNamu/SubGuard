@@ -81,6 +81,21 @@ Originals are never changed. The booklet's confirmed marks and the score grid ar
 written only by `BookletRepository.confirm`, in one transaction with the reviews.
 Exports read the grid, so **only confirmed values are ever exported**.
 
+### Unconfirmed entries are kept, but they are not results
+
+Schema v4 adds `review_draft` (`drift_schemas/drift_schema_v4.json`, migration tested
+from v3 with data in it): one row per booklet holding what the examiner has typed or
+chosen and not yet confirmed (exam number, serial, marks, rows they dismissed, the
+suggestion they tapped). It is written half a second after a change and when the
+screen is left, and removed when the booklet is confirmed or rejected, when the
+examiner taps **Discard them**, or when the entries are back to how the booklet began.
+Opening the booklet again restores the entries and says so, with the time.
+
+A draft is read by the review screen only. The score grid, the exports and the
+benchmark never read it, and a draft is never a labelled example. A draft that cannot
+be read is treated as no draft. Dismissed machine rows are restored only when the
+booklet has not been read again since (the rows of a newer reading are different rows).
+
 ## Failure handling
 
 * A photo that cannot be processed at all (missing, too large, not a picture) is

@@ -160,8 +160,10 @@ the `upload_batch` table, and on `scan`: `batch_id`, `original_name`, `content_h
 Schema changes are step-by-step migrations checked against dumps in `drift_schemas/`
 (`tool/generate_schema.sh` regenerates them). Version 2 added the upload tables and
 columns; version 3 added `recognition_run` (what the pipeline found, kept as produced) and
-`field_review` (what the examiner decided about each field, with when). Tests upgrade old
-databases full of data and check nothing is lost.
+`field_review` (what the examiner decided about each field, with when); version 4 added
+`review_draft` (entries typed on a booklet and not yet confirmed, so an interrupted review
+is not lost; never read by the grid or an export). Tests upgrade old databases full of data
+and check nothing is lost.
 
 ## Where the later steps plug in
 

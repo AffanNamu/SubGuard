@@ -6,6 +6,7 @@ import '../data/database/app_database.dart';
 import '../data/repositories/course_repository.dart';
 import '../data/repositories/booklet_repository.dart';
 import '../data/repositories/recognition_repository.dart';
+import '../data/repositories/review_draft_repository.dart';
 import '../data/repositories/scan_repository.dart';
 import '../data/repositories/score_repository.dart';
 import '../data/repositories/settings_repository.dart';
@@ -52,6 +53,7 @@ final bookletRepositoryProvider = Provider(
 final ocrEngineProvider = Provider<OcrEngine>((ref) => defaultOcrEngine());
 
 final recognitionRepositoryProvider = Provider((ref) => RecognitionRepository(ref.watch(databaseProvider)));
+final reviewDraftRepositoryProvider = Provider((ref) => ReviewDraftRepository(ref.watch(databaseProvider)));
 
 /// Why a photo is waiting for review, from its stored recognition run.
 final attentionProvider = FutureProvider.family<String?, String>((ref, scanId) async {

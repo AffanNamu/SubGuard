@@ -135,4 +135,29 @@ void main() {
         ));
     expect((await db.select(db.fieldReviews).getSingle()).finalValue, '5.5');
   });
+  test('version 4 adds review drafts and leaves every earlier row as it was', () async {
+    final schema = await verifier.schemaAt(3);
+    final raw = schema.rawDatabase;
+    raw.execute("INSERT INTO course (id, updated_at, code) VALUES ('c1', '2026-09-01T10:00:00.000Z', 'AGR 114')");
+    raw.execute("INSERT INTO upload_batch (id, updated_at, course_id, created_at) VALUES ('b1', '2026-09-01T10:00:00.000Z', 'c1', '2026-09-01T10:00:00.000Z')");
+    raw.execute("INSERT INTO scan (id, updated_at, course_id, kind, photo_path, page_no, status, created_at, batch_id, content_hash) "
+        "VALUES ('sc1', '2026-09-01T10:00:00.000Z', 'c1', 'booklet_cover', 'scans/a.jpg', 1, 'needs_review', '2026-09-01T10:00:00.000Z', 'b1', 'h1')");
+    raw.execute("INSERT INTO recognition_run (id, updated_at, scan_id, pipeline_version, status, result_json) "
+        "VALUES ('r1', '2026-09-01T10:00:00.000Z', 'sc1', '1.0.0', 'done', '{}')");
+    raw.execute("INSERT INTO field_review (id, updated_at, scan_id, field_key, kind, decision, reviewed_at, final_value) "
+        "VALUES ('f1', '2026-09-01T10:00:00.000Z', 'sc1', 'exam_number', 'registration_number', 'edited', '2026-09-01T11:00:00.000Z', 'FWM/24U/0538')");
+
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+    await verifier.migrateAndValidate(db, 4);
+
+    expect((await db.select(db.scans).getSingle()).status, 'needs_review');
+    expect((await db.select(db.recognitionRuns).getSingle()).pipelineVersion, '1.0.0');
+    expect((await db.select(db.fieldReviews).getSingle()).finalValue, 'FWM/24U/0538');
+
+    // The new table exists, is empty, and takes a row.
+    expect(await db.select(db.reviewDrafts).get(), isEmpty);
+    await db.into(db.reviewDrafts).insert(ReviewDraftsCompanion.insert(scanId: 'sc1', draftJson: '{"v":1}', id: const Value('d1')));
+    expect((await db.select(db.reviewDrafts).getSingle()).scanId, 'sc1');
+  });
 }

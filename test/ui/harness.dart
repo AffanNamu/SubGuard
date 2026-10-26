@@ -12,6 +12,7 @@ import 'package:unimarkly/app.dart';
 import 'package:unimarkly/data/database/app_database.dart';
 import 'package:path/path.dart' as p;
 import 'package:unimarkly/data/repositories/course_repository.dart';
+import 'package:unimarkly/data/repositories/review_draft_repository.dart';
 import 'package:unimarkly/data/repositories/scan_repository.dart';
 import 'package:unimarkly/data/repositories/score_repository.dart';
 import 'package:unimarkly/data/repositories/student_repository.dart';
@@ -137,6 +138,7 @@ class AppHarness {
   StudentRepository get students => StudentRepository(db);
   ScoreRepository get scores => ScoreRepository(db);
   ScanRepository get scans => ScanRepository(db, courses);
+  ReviewDraftRepository get drafts => ReviewDraftRepository(db);
 
   Future<void> start(
     WidgetTester tester, {

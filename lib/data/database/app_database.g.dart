@@ -8662,6 +8662,366 @@ class FieldReviewsCompanion extends UpdateCompanion<FieldReviewRow> {
   }
 }
 
+class $ReviewDraftsTable extends ReviewDrafts
+    with TableInfo<$ReviewDraftsTable, ReviewDraftRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReviewDraftsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: newId,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now().toUtc(),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scanIdMeta = const VerificationMeta('scanId');
+  @override
+  late final GeneratedColumn<String> scanId = GeneratedColumn<String>(
+    'scan_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES scan (id)',
+    ),
+  );
+  static const VerificationMeta _draftJsonMeta = const VerificationMeta(
+    'draftJson',
+  );
+  @override
+  late final GeneratedColumn<String> draftJson = GeneratedColumn<String>(
+    'draft_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    updatedAt,
+    deletedAt,
+    scanId,
+    draftJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'review_draft';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReviewDraftRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('scan_id')) {
+      context.handle(
+        _scanIdMeta,
+        scanId.isAcceptableOrUnknown(data['scan_id']!, _scanIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scanIdMeta);
+    }
+    if (data.containsKey('draft_json')) {
+      context.handle(
+        _draftJsonMeta,
+        draftJson.isAcceptableOrUnknown(data['draft_json']!, _draftJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_draftJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReviewDraftRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReviewDraftRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      scanId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scan_id'],
+      )!,
+      draftJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}draft_json'],
+      )!,
+    );
+  }
+
+  @override
+  $ReviewDraftsTable createAlias(String alias) {
+    return $ReviewDraftsTable(attachedDatabase, alias);
+  }
+}
+
+class ReviewDraftRow extends DataClass implements Insertable<ReviewDraftRow> {
+  final String id;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String scanId;
+  final String draftJson;
+  const ReviewDraftRow({
+    required this.id,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.scanId,
+    required this.draftJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['scan_id'] = Variable<String>(scanId);
+    map['draft_json'] = Variable<String>(draftJson);
+    return map;
+  }
+
+  ReviewDraftsCompanion toCompanion(bool nullToAbsent) {
+    return ReviewDraftsCompanion(
+      id: Value(id),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      scanId: Value(scanId),
+      draftJson: Value(draftJson),
+    );
+  }
+
+  factory ReviewDraftRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReviewDraftRow(
+      id: serializer.fromJson<String>(json['id']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      scanId: serializer.fromJson<String>(json['scanId']),
+      draftJson: serializer.fromJson<String>(json['draftJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'scanId': serializer.toJson<String>(scanId),
+      'draftJson': serializer.toJson<String>(draftJson),
+    };
+  }
+
+  ReviewDraftRow copyWith({
+    String? id,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? scanId,
+    String? draftJson,
+  }) => ReviewDraftRow(
+    id: id ?? this.id,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    scanId: scanId ?? this.scanId,
+    draftJson: draftJson ?? this.draftJson,
+  );
+  ReviewDraftRow copyWithCompanion(ReviewDraftsCompanion data) {
+    return ReviewDraftRow(
+      id: data.id.present ? data.id.value : this.id,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      scanId: data.scanId.present ? data.scanId.value : this.scanId,
+      draftJson: data.draftJson.present ? data.draftJson.value : this.draftJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReviewDraftRow(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('scanId: $scanId, ')
+          ..write('draftJson: $draftJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, updatedAt, deletedAt, scanId, draftJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReviewDraftRow &&
+          other.id == this.id &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.scanId == this.scanId &&
+          other.draftJson == this.draftJson);
+}
+
+class ReviewDraftsCompanion extends UpdateCompanion<ReviewDraftRow> {
+  final Value<String> id;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> scanId;
+  final Value<String> draftJson;
+  final Value<int> rowid;
+  const ReviewDraftsCompanion({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.scanId = const Value.absent(),
+    this.draftJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReviewDraftsCompanion.insert({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required String scanId,
+    required String draftJson,
+    this.rowid = const Value.absent(),
+  }) : scanId = Value(scanId),
+       draftJson = Value(draftJson);
+  static Insertable<ReviewDraftRow> custom({
+    Expression<String>? id,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? scanId,
+    Expression<String>? draftJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (scanId != null) 'scan_id': scanId,
+      if (draftJson != null) 'draft_json': draftJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReviewDraftsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? scanId,
+    Value<String>? draftJson,
+    Value<int>? rowid,
+  }) {
+    return ReviewDraftsCompanion(
+      id: id ?? this.id,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      scanId: scanId ?? this.scanId,
+      draftJson: draftJson ?? this.draftJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (scanId.present) {
+      map['scan_id'] = Variable<String>(scanId.value);
+    }
+    if (draftJson.present) {
+      map['draft_json'] = Variable<String>(draftJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReviewDraftsCompanion(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('scanId: $scanId, ')
+          ..write('draftJson: $draftJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AccountsTable extends Accounts
     with TableInfo<$AccountsTable, AccountRow> {
   @override
@@ -9566,6 +9926,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $FieldReviewsTable fieldReviews = $FieldReviewsTable(this);
+  late final $ReviewDraftsTable reviewDrafts = $ReviewDraftsTable(this);
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $SyncStatesTable syncStates = $SyncStatesTable(this);
   late final Index courseCode = Index(
@@ -9636,6 +9997,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'field_review_scan',
     'CREATE INDEX field_review_scan ON field_review (scan_id)',
   );
+  late final Index reviewDraftScan = Index(
+    'review_draft_scan',
+    'CREATE INDEX review_draft_scan ON review_draft (scan_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9656,6 +10021,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     corrections,
     recognitionRuns,
     fieldReviews,
+    reviewDrafts,
     accounts,
     syncStates,
     courseCode,
@@ -9675,6 +10041,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     partScoreCell,
     recognitionRunScan,
     fieldReviewScan,
+    reviewDraftScan,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -13589,6 +13956,24 @@ final class $$ScansTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$ReviewDraftsTable, List<ReviewDraftRow>>
+  _reviewDraftsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.reviewDrafts,
+    aliasName: $_aliasNameGenerator(db.scans.id, db.reviewDrafts.scanId),
+  );
+
+  $$ReviewDraftsTableProcessedTableManager get reviewDraftsRefs {
+    final manager = $$ReviewDraftsTableTableManager(
+      $_db,
+      $_db.reviewDrafts,
+    ).filter((f) => f.scanId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_reviewDraftsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ScansTableFilterComposer extends Composer<_$AppDatabase, $ScansTable> {
@@ -13801,6 +14186,31 @@ class $$ScansTableFilterComposer extends Composer<_$AppDatabase, $ScansTable> {
           }) => $$FieldReviewsTableFilterComposer(
             $db: $db,
             $table: $db.fieldReviews,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> reviewDraftsRefs(
+    Expression<bool> Function($$ReviewDraftsTableFilterComposer f) f,
+  ) {
+    final $$ReviewDraftsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.reviewDrafts,
+      getReferencedColumn: (t) => t.scanId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReviewDraftsTableFilterComposer(
+            $db: $db,
+            $table: $db.reviewDrafts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -14131,6 +14541,31 @@ class $$ScansTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> reviewDraftsRefs<T extends Object>(
+    Expression<T> Function($$ReviewDraftsTableAnnotationComposer a) f,
+  ) {
+    final $$ReviewDraftsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.reviewDrafts,
+      getReferencedColumn: (t) => t.scanId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReviewDraftsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.reviewDrafts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ScansTableTableManager
@@ -14153,6 +14588,7 @@ class $$ScansTableTableManager
             bool rowReadsRefs,
             bool recognitionRunsRefs,
             bool fieldReviewsRefs,
+            bool reviewDraftsRefs,
           })
         > {
   $$ScansTableTableManager(_$AppDatabase db, $ScansTable table)
@@ -14252,6 +14688,7 @@ class $$ScansTableTableManager
                 rowReadsRefs = false,
                 recognitionRunsRefs = false,
                 fieldReviewsRefs = false,
+                reviewDraftsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -14260,6 +14697,7 @@ class $$ScansTableTableManager
                     if (rowReadsRefs) db.rowReads,
                     if (recognitionRunsRefs) db.recognitionRuns,
                     if (fieldReviewsRefs) db.fieldReviews,
+                    if (reviewDraftsRefs) db.reviewDrafts,
                   ],
                   addJoins:
                       <
@@ -14392,6 +14830,27 @@ class $$ScansTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (reviewDraftsRefs)
+                        await $_getPrefetchedData<
+                          ScanRow,
+                          $ScansTable,
+                          ReviewDraftRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ScansTableReferences
+                              ._reviewDraftsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ScansTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).reviewDraftsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.scanId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -14419,6 +14878,7 @@ typedef $$ScansTableProcessedTableManager =
         bool rowReadsRefs,
         bool recognitionRunsRefs,
         bool fieldReviewsRefs,
+        bool reviewDraftsRefs,
       })
     >;
 typedef $$BookletsTableCreateCompanionBuilder =
@@ -17829,6 +18289,324 @@ typedef $$FieldReviewsTableProcessedTableManager =
       FieldReviewRow,
       PrefetchHooks Function({bool scanId})
     >;
+typedef $$ReviewDraftsTableCreateCompanionBuilder =
+    ReviewDraftsCompanion Function({
+      Value<String> id,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      required String scanId,
+      required String draftJson,
+      Value<int> rowid,
+    });
+typedef $$ReviewDraftsTableUpdateCompanionBuilder =
+    ReviewDraftsCompanion Function({
+      Value<String> id,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> scanId,
+      Value<String> draftJson,
+      Value<int> rowid,
+    });
+
+final class $$ReviewDraftsTableReferences
+    extends BaseReferences<_$AppDatabase, $ReviewDraftsTable, ReviewDraftRow> {
+  $$ReviewDraftsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ScansTable _scanIdTable(_$AppDatabase db) => db.scans.createAlias(
+    $_aliasNameGenerator(db.reviewDrafts.scanId, db.scans.id),
+  );
+
+  $$ScansTableProcessedTableManager get scanId {
+    final $_column = $_itemColumn<String>('scan_id')!;
+
+    final manager = $$ScansTableTableManager(
+      $_db,
+      $_db.scans,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_scanIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ReviewDraftsTableFilterComposer
+    extends Composer<_$AppDatabase, $ReviewDraftsTable> {
+  $$ReviewDraftsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get draftJson => $composableBuilder(
+    column: $table.draftJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ScansTableFilterComposer get scanId {
+    final $$ScansTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableFilterComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReviewDraftsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReviewDraftsTable> {
+  $$ReviewDraftsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get draftJson => $composableBuilder(
+    column: $table.draftJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ScansTableOrderingComposer get scanId {
+    final $$ScansTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableOrderingComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReviewDraftsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReviewDraftsTable> {
+  $$ReviewDraftsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get draftJson =>
+      $composableBuilder(column: $table.draftJson, builder: (column) => column);
+
+  $$ScansTableAnnotationComposer get scanId {
+    final $$ScansTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scanId,
+      referencedTable: $db.scans,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScansTableAnnotationComposer(
+            $db: $db,
+            $table: $db.scans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReviewDraftsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReviewDraftsTable,
+          ReviewDraftRow,
+          $$ReviewDraftsTableFilterComposer,
+          $$ReviewDraftsTableOrderingComposer,
+          $$ReviewDraftsTableAnnotationComposer,
+          $$ReviewDraftsTableCreateCompanionBuilder,
+          $$ReviewDraftsTableUpdateCompanionBuilder,
+          (ReviewDraftRow, $$ReviewDraftsTableReferences),
+          ReviewDraftRow,
+          PrefetchHooks Function({bool scanId})
+        > {
+  $$ReviewDraftsTableTableManager(_$AppDatabase db, $ReviewDraftsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReviewDraftsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReviewDraftsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReviewDraftsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> scanId = const Value.absent(),
+                Value<String> draftJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReviewDraftsCompanion(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                scanId: scanId,
+                draftJson: draftJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String scanId,
+                required String draftJson,
+                Value<int> rowid = const Value.absent(),
+              }) => ReviewDraftsCompanion.insert(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                scanId: scanId,
+                draftJson: draftJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ReviewDraftsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({scanId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (scanId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.scanId,
+                                referencedTable: $$ReviewDraftsTableReferences
+                                    ._scanIdTable(db),
+                                referencedColumn: $$ReviewDraftsTableReferences
+                                    ._scanIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ReviewDraftsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReviewDraftsTable,
+      ReviewDraftRow,
+      $$ReviewDraftsTableFilterComposer,
+      $$ReviewDraftsTableOrderingComposer,
+      $$ReviewDraftsTableAnnotationComposer,
+      $$ReviewDraftsTableCreateCompanionBuilder,
+      $$ReviewDraftsTableUpdateCompanionBuilder,
+      (ReviewDraftRow, $$ReviewDraftsTableReferences),
+      ReviewDraftRow,
+      PrefetchHooks Function({bool scanId})
+    >;
 typedef $$AccountsTableCreateCompanionBuilder =
     AccountsCompanion Function({
       Value<String> id,
@@ -18323,6 +19101,8 @@ class $AppDatabaseManager {
       $$RecognitionRunsTableTableManager(_db, _db.recognitionRuns);
   $$FieldReviewsTableTableManager get fieldReviews =>
       $$FieldReviewsTableTableManager(_db, _db.fieldReviews);
+  $$ReviewDraftsTableTableManager get reviewDrafts =>
+      $$ReviewDraftsTableTableManager(_db, _db.reviewDrafts);
   $$AccountsTableTableManager get accounts =>
       $$AccountsTableTableManager(_db, _db.accounts);
   $$SyncStatesTableTableManager get syncStates =>

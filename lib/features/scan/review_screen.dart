@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,11 +9,13 @@ import '../../core/widgets/number_pad_sheet.dart';
 import '../../core/widgets/ui_kit.dart';
 import '../../data/repositories/booklet_repository.dart';
 import '../../data/repositories/recognition_repository.dart';
+import '../../data/repositories/review_draft_repository.dart';
 import '../../data/repositories/student_repository.dart';
 import '../../domain/models.dart';
 import '../../domain/ocr.dart';
 import '../../domain/recognition.dart';
 import '../../domain/reg_no.dart';
+import '../../domain/review_draft.dart';
 import '../../domain/scan.dart';
 import '../../domain/scheme.dart';
 import '../../domain/scoring.dart';
@@ -74,6 +78,23 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   /// Machine rows the examiner dismissed.
   final Set<String> _dismissed = {};
 
+  // ---- unsaved entries ----
+  //
+  // What the examiner has typed or chosen and not confirmed is saved a moment
+  // after each change, so an interrupted review is not lost. It is restored when
+  // the booklet is opened again, says so, and can be discarded. Nothing here
+  // reaches the score grid.
+  late final ReviewDraftRepository _drafts;
+  Timer? _draftTimer;
+  bool _draftsOn = false;
+
+  /// The entries as they stood when the booklet was opened (nothing typed yet).
+  String? _pristine;
+  String? _lastDraft;
+
+  /// When the entries that were restored were saved; null if none were.
+  DateTime? _restoredAt;
+
   StoredBooklet? _serialClash;
   StoredBooklet? _studentClash;
   ({double? value, ScoreStatus status, String source})? _existingScore;
@@ -81,17 +102,85 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   @override
   void initState() {
     super.initState();
+    _drafts = ref.read(reviewDraftRepositoryProvider);
     _load();
   }
 
   @override
   void dispose() {
+    _draftTimer?.cancel();
+    _saveDraftNow(); // before the controllers go: the last keystrokes count
     _exam.dispose();
     _serial.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
+  /// Every change to what is on screen schedules a save of the entries.
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    if (_draftsOn) {
+      _draftTimer?.cancel();
+      _draftTimer = Timer(const Duration(milliseconds: 500), _saveDraftNow);
+    }
+  }
+
+  ReviewDraft _snapshot({String? runId}) => ReviewDraft(
+        examNumber: _exam.text,
+        serial: _serial.text,
+        marks: Map.of(_marks),
+        editedMarks: Set.of(_edited),
+        writtenTotal: _written,
+        addExtra: _addExtra,
+        allowDuplicate: _allowDuplicate,
+        dismissedRows: Set.of(_dismissed),
+        runId: runId ?? _run?.id,
+        chosenText: _examChosen?.text,
+        chosenSource: _examChosen?.source,
+        chosenNote: _examChosen?.note,
+      );
+
+  /// Writes the entries (or removes the draft when they are back to how they
+  /// began). Never throws: a draft that cannot be saved must not break the review.
+  void _saveDraftNow() {
+    if (!_draftsOn || _pristine == null) return;
+    final draft = _snapshot();
+    final json = draft.encode();
+    if (json == _lastDraft) return;
+    _lastDraft = json;
+    final id = widget.scanId;
+    final write = json == _pristine ? _drafts.delete(id) : _drafts.save(id, draft);
+    unawaited(write.catchError((_) {}));
+  }
+
+  /// The booklet is confirmed or rejected: its draft is gone for good.
+  Future<void> _dropDraft() async {
+    _draftsOn = false;
+    _draftTimer?.cancel();
+    try {
+      await _drafts.delete(widget.scanId);
+    } catch (_) {}
+  }
+
+  /// "14:05" for today, "3 Oct, 14:05" otherwise.
+  static String _when(DateTime t) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    String two(int n) => n.toString().padLeft(2, '0');
+    final now = DateTime.now();
+    final clock = '${two(t.hour)}:${two(t.minute)}';
+    final today = now.year == t.year && now.month == t.month && now.day == t.day;
+    return today ? 'today $clock' : '${t.day} ${months[t.month - 1]}, $clock';
+  }
+
+  Future<void> _discardDraft() async {
+    await _dropDraft();
+    if (!mounted) return;
+    setState(() => _loading = true);
+    await _load(restore: false);
+  }
+
+  Future<void> _load({bool restore = true}) async {
+    if (restore && _draftsOn) _saveDraftNow(); // reloading must not lose what is on screen
     try {
       final scan = await ref.read(scanRepositoryProvider).scan(widget.scanId);
       if (scan == null) throw StateError('missing');
@@ -130,6 +219,33 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         _serialFromReader = stored?.reading.serialNo != null;
       }
 
+      // Entries left unconfirmed the last time this booklet was open.
+      _pristine = _snapshot(runId: run?.id).encode();
+      _restoredAt = null;
+      final open = !(stored?.confirmed ?? false);
+      if (open && restore) {
+        final saved = await _drafts.load(widget.scanId);
+        if (saved != null && saved.draft.encode() != _pristine) {
+          final d = saved.draft;
+          _exam.text = d.examNumber;
+          _serial.text = d.serial;
+          _serialFromReader = _serial.text == (stored?.reading.serialNo ?? '') && _serialFromReader;
+          _marks
+            ..clear()
+            ..addAll(d.marks);
+          _edited
+            ..clear()
+            ..addAll(d.editedMarks);
+          _written = d.writtenTotal;
+          _addExtra = d.addExtra;
+          _allowDuplicate = d.allowDuplicate;
+          if (d.runId == run?.id) _dismissed.addAll(d.dismissedRows);
+          if (d.chosenText != null) _examChosen = FieldCandidate(d.chosenText!, 0, source: d.chosenSource ?? '', note: d.chosenNote);
+          _restoredAt = saved.savedAt.toLocal();
+        }
+      }
+      _lastDraft = _restoredAt == null ? _pristine : _snapshot(runId: run?.id).encode();
+
       setState(() {
         _scan = scan;
         _stored = stored;
@@ -140,6 +256,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         _loading = false;
         _editing = !(stored?.confirmed ?? false);
       });
+      _draftsOn = open;
       await _refreshChecks();
     } catch (_) {
       if (mounted) {
@@ -467,6 +584,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             reviews: _reviewDrafts(student, serial),
             runId: _run?.id,
           );
+      await _dropDraft();
       if (!mounted) return;
       _next(confirmedMessage: '${student.regNo}: ${exam.name} ${formatNumber(_examScore)} saved');
     } catch (_) {
@@ -538,6 +656,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     );
     if (ok != true || !mounted) return;
     await ref.read(scanRepositoryProvider).setStatus(widget.scanId, ScanStatus.failed, error: 'You rejected this photo. Take it again to read it.');
+    await _dropDraft();
     if (mounted) _next();
   }
 
@@ -585,6 +704,16 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 children: [
                   Text('${scan.displayName} · ${_course!.title}', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
                   const SizedBox(height: 8),
+                  if (!locked && _restoredAt != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InfoBanner(
+                        message: 'Your unconfirmed entries from ${_when(_restoredAt!)} were restored. Check them against the photo.',
+                        kind: BannerKind.info,
+                        action: 'Discard them',
+                        onAction: _discardDraft,
+                      ),
+                    ),
                   if (!locked && _run?.result.quality != null) QualityNotice(_run!.result.quality!),
                   if (!locked) _runNotes(),
                   if (reading != null && reading.warnings.isNotEmpty)

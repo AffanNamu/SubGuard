@@ -309,6 +309,22 @@ class FieldReviews extends Table with SyncColumns {
   DateTimeColumn get reviewedAt => dateTime()();
 }
 
+/// What the examiner has typed or chosen on a booklet and not yet confirmed, so
+/// closing the app (or being interrupted) does not lose it. One row per booklet,
+/// replaced as they work and deleted when the booklet is confirmed or rejected.
+/// It is never a record: nothing in the score grid or an export reads it.
+///
+/// Added in schema version 4.
+@DataClassName('ReviewDraftRow')
+@TableIndex(name: 'review_draft_scan', columns: {#scanId})
+class ReviewDrafts extends Table with SyncColumns {
+  @override
+  String get tableName => 'review_draft';
+
+  TextColumn get scanId => text().references(Scans, #id)();
+  TextColumn get draftJson => text()();
+}
+
 @DataClassName('AccountRow')
 class Accounts extends Table with SyncColumns {
   @override
