@@ -27,6 +27,20 @@ class MarkRowRead {
   /// 1 for the first row from the top.
   final int index;
 
+  /// The same row under another number (rows are numbered from the top after any
+  /// leftover pen stroke has been left out).
+  MarkRowRead withIndex(int i) => MarkRowRead(
+        index: i,
+        row: row,
+        markCell: markCell,
+        questionCell: questionCell,
+        mark: mark,
+        question: question,
+        questionText: questionText,
+        questionCandidates: questionCandidates,
+        inkVariant: inkVariant,
+      );
+
   /// The whole row, and its two cells, as fractions of the photograph.
   final Region row;
   final Region markCell;
@@ -211,9 +225,31 @@ MarksStageResult readMarksTable(
       inkVariant: variant,
     ));
   }
+  // A pen stroke left over below the last row (the end of a strike-through, an
+  // underline) can survive as a "row" of tiny ink. It is not a mark: its characters
+  // are a fraction of the height of every other row's. It is reported and left out,
+  // never offered as a reading.
+  final heights = [for (final r in rows) r.mark.chars.isEmpty ? 0 : r.mark.chars.map((c) => c.box.bottom - c.box.top).reduce(math.max)];
+  var kept = rows;
+  if (rows.length >= 3) {
+    final sorted = [...heights]..sort();
+    final median = sorted[sorted.length ~/ 2];
+    final keep = <MarkRowRead>[];
+    for (var i = 0; i < rows.length; i++) {
+      if (median > 0 && heights[i] < median * 0.4) {
+        crossings.add(rows[i].row);
+        notes.add('A pen stroke below row ${rows[i].index} is far smaller than the writing in the other rows, so it was ignored, not read as a mark.');
+        continue;
+      }
+      keep.add(rows[i]);
+    }
+    if (keep.length != rows.length) {
+      kept = [for (final (i, r) in keep.indexed) r.withIndex(i + 1)];
+    }
+  }
   final t = hasTotal ? _readTotal(tableColor, tpx, u, ink, reader, w, h) : null;
   return MarksStageResult(
-    rows: rows,
+    rows: kept,
     inkVariant: variant,
     notes: notes,
     strokesCrossingRows: crossings,

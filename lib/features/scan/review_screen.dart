@@ -11,11 +11,15 @@ import '../../data/repositories/booklet_repository.dart';
 import '../../data/repositories/recognition_repository.dart';
 import '../../data/repositories/review_draft_repository.dart';
 import '../../data/repositories/student_repository.dart';
+import '../../domain/exam_tally.dart';
+import '../../domain/mark_rules.dart';
+import '../../domain/mark_sheet.dart';
 import '../../domain/models.dart';
 import '../../domain/ocr.dart';
 import '../../domain/recognition.dart';
 import '../../domain/reg_no.dart';
 import '../../domain/review_draft.dart';
+import '../../domain/row_suggestions.dart';
 import '../../domain/scan.dart';
 import '../../domain/scheme.dart';
 import '../../domain/scoring.dart';
@@ -23,6 +27,7 @@ import '../../providers/providers.dart';
 import '../../services/reader/booklet_extractor.dart';
 import '../../services/recognition/validation.dart';
 import '../setup/course_setup_screen.dart';
+import 'mark_records_view.dart';
 import 'recognition_widgets.dart';
 import 'scan_widgets.dart';
 
@@ -54,8 +59,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   final _exam = TextEditingController();
   final _serial = TextEditingController();
-  final Map<int, double?> _marks = {};
-  final Set<int> _edited = {};
+
+  /// The question-mark records: one per row the machine found or question the examiner
+  /// added, each with the question number and the mark the examiner has confirmed (null
+  /// until then) and, apart from them, what the machine suggested.
+  MarkSheet _sheet = const MarkSheet([]);
   double? _written;
   Student? _picked;
   bool _addExtra = false;
@@ -71,12 +79,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   /// The suggestion the examiner tapped for the exam number, if they did.
   FieldCandidate? _examChosen;
-
-  /// Question number -> the machine row its mark was taken from.
-  final Map<int, String> _markFrom = {};
-
-  /// Machine rows the examiner dismissed.
-  final Set<String> _dismissed = {};
 
   // ---- unsaved entries ----
   //
@@ -128,12 +130,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   ReviewDraft _snapshot({String? runId}) => ReviewDraft(
         examNumber: _exam.text,
         serial: _serial.text,
-        marks: Map.of(_marks),
-        editedMarks: Set.of(_edited),
+        records: [for (final r in _sheet.records) DraftRecord(key: r.key, qNo: r.qNo, mark: r.mark, dismissed: r.dismissed, manual: r.manual)],
         writtenTotal: _written,
         addExtra: _addExtra,
         allowDuplicate: _allowDuplicate,
-        dismissedRows: Set.of(_dismissed),
         runId: runId ?? _run?.id,
         chosenText: _examChosen?.text,
         chosenSource: _examChosen?.source,
@@ -193,22 +193,21 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       final run = await recognitions.latestRun(widget.scanId);
       final reviews = stored?.confirmed == true ? await recognitions.reviewsOf(widget.scanId) : const <FieldReview>[];
 
-      _marks.clear();
-      _edited.clear();
-      _markFrom.clear();
-      _dismissed.clear();
       _examChosen = null;
       _picked = null;
       _addExtra = false;
       _allowDuplicate = false;
       _written = null;
 
-      if (stored != null && stored.confirmed) {
+      // The records start from the machine's rows with nothing confirmed, or from the
+      // marks the examiner confirmed earlier (a booklet being edited again).
+      _sheet = _buildSheet(run, stored, course.scheme);
+      if (stored != null && (stored.confirmed || stored.records.isNotEmpty)) {
         final s = students.where((s) => s.id == stored.studentId).firstOrNull;
         _exam.text = s?.regNo ?? '';
         _serial.text = stored.serialNo ?? '';
         _serialFromReader = false;
-        _marks.addAll(stored.marks);
+        _written = stored.writtenTotal;
       } else {
         // The exam number is left for the examiner: the machine's readings are
         // offered below it as suggestions to tap, never entered for them. The
@@ -230,16 +229,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           _exam.text = d.examNumber;
           _serial.text = d.serial;
           _serialFromReader = _serial.text == (stored?.reading.serialNo ?? '') && _serialFromReader;
-          _marks
-            ..clear()
-            ..addAll(d.marks);
-          _edited
-            ..clear()
-            ..addAll(d.editedMarks);
+          _sheet = _restoreRecords(_sheet, d, run);
           _written = d.writtenTotal;
           _addExtra = d.addExtra;
           _allowDuplicate = d.allowDuplicate;
-          if (d.runId == run?.id) _dismissed.addAll(d.dismissedRows);
           if (d.chosenText != null) _examChosen = FieldCandidate(d.chosenText!, 0, source: d.chosenSource ?? '', note: d.chosenNote);
           _restoredAt = saved.savedAt.toLocal();
         }
@@ -284,14 +277,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   GradingScheme get _scheme => _course!.scheme;
 
-  List<int> get _questionNumbers {
-    final nos = <int>{for (final q in _scheme.questions) q.qNo, ..._marks.keys};
-    // A course with no question list still shows the usual six rows, and
-    // keeps showing them once a mark is typed.
-    if (_scheme.questions.isEmpty) nos.addAll([1, 2, 3, 4, 5, 6]);
-    return nos.toList()..sort();
-  }
-
   QuestionSpec? _spec(int qNo) {
     for (final q in _scheme.questions) {
       if (q.qNo == qNo) return q;
@@ -299,24 +284,94 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     return null;
   }
 
-  Map<int, double> get _entered => {
-        for (final e in _marks.entries)
-          if (e.value != null) e.key: e.value!,
-      };
+  int get _highestQuestion => ref.read(settingsProvider).maxQuestionNumber;
 
-  double get _examScore => ScoreCalculator.examScoreFromQuestions(_scheme, _entered);
+  /// The records the review starts from. Machine rows come with their suggestions and
+  /// nothing confirmed. When the booklet was confirmed before, each earlier mark is
+  /// matched to its machine row by where it was on the photograph (a mark confirmed
+  /// before that was recorded has no place, so it is an added question); machine rows
+  /// that no earlier mark came from were left out by the examiner, and stay left out.
+  MarkSheet _buildSheet(StoredRun? run, StoredBooklet? stored, GradingScheme scheme) {
+    final rows = RowSuggestions.allOf(
+      run?.result.fields ?? const <ExtractedField>[],
+      marksFor: (q) => MarkRules.forScheme(scheme, qNo: q),
+      questionRules: QuestionRules(highest: _highestQuestion),
+    );
+    final fresh = MarkSheet.fromRows(rows);
+    final earlier = stored?.records ?? const <ConfirmedMark>[];
+    if (earlier.isEmpty) return fresh;
 
-  /// Things the examiner should look at. They guide; only the same booklet
-  /// twice needs an explicit OK. The rules are the same ones the pipeline
-  /// applies to what it read.
+    final used = <String>{};
+    final matched = <String, ConfirmedMark>{};
+    final manual = <ConfirmedMark>[];
+    for (final r in earlier) {
+      final here = r.region?.encode();
+      final row = here == null ? null : rows.where((x) => !used.contains(x.markKey) && x.markRegion?.encode() == here).firstOrNull;
+      if (row == null) {
+        manual.add(r);
+      } else {
+        used.add(row.markKey);
+        matched[row.markKey] = r;
+      }
+    }
+    return MarkSheet([
+      for (final row in rows)
+        if (matched[row.markKey] case final r?)
+          MarkRecord(key: row.markKey, qNo: r.qNo, mark: r.mark, suggestions: row)
+        else
+          MarkRecord(key: row.markKey, suggestions: row, dismissed: true),
+      for (final (i, r) in manual.indexed) MarkRecord(key: 'manual-${i + 1}', qNo: r.qNo, mark: r.mark, manual: true),
+    ]);
+  }
+
+  /// Puts the examiner's unsaved entries back on [base]. A version 1 draft (before the
+  /// records existed) comes back as added questions. A row is restored only when the
+  /// booklet has not been read again since the draft was made.
+  MarkSheet _restoreRecords(MarkSheet base, ReviewDraft d, StoredRun? run) {
+    var sheet = base;
+    if (d.records.isEmpty) {
+      for (final e in d.marks.entries) {
+        sheet = sheet.addManual(qNo: e.key, mark: e.value);
+      }
+      return sheet;
+    }
+    for (final r in d.records) {
+      if (r.manual) {
+        sheet = sheet.addManual(qNo: r.qNo, mark: r.mark);
+      } else if (d.runId == run?.id && sheet.byKey(r.key) != null) {
+        sheet = sheet.setQuestion(r.key, r.qNo).setMark(r.key, r.mark);
+        if (r.dismissed) sheet = sheet.dismiss(r.key);
+      }
+    }
+    return sheet;
+  }
+
+  ExamTally get _tally => _sheet.tally(_scheme);
+
+  /// The score calculated from the confirmed marks; 0 when none is confirmed.
+  double get _examScore => _tally.calculated ?? 0;
+
+  List<RecordProblem> get _problems => _sheet.problems(_scheme, label: _labelOf);
+
+  String _labelOf(MarkRecord r) {
+    if (!r.manual) return 'Row ${r.suggestions?.index ?? ''}'.trim();
+    return r.qNo == null ? 'An added question' : 'Question ${r.qNo} (added)';
+  }
+
+  /// The comparisons the paper's own rules make over the confirmed marks that are not
+  /// about one record: the exam score against the exam's maximum, and the "questions
+  /// answered" line against the questions that have marks. The written total is compared
+  /// with the calculated one separately, and the marks themselves per record.
   List<({BannerKind kind, String message})> get _issues {
+    final marks = {for (final m in _sheet.confirmedMarks) m.qNo: m.mark};
     final findings = SchemeExaminationValidator(_scheme).validate(ExamSnapshot(
-      marks: _entered,
-      writtenTotal: _written,
+      marks: marks,
       answeredLine: _stored?.reading.questionsAnsweredText,
     ));
     return [
-      for (final f in findings) (kind: f.severity == FindingSeverity.danger ? BannerKind.danger : BannerKind.warning, message: f.message),
+      for (final f in findings)
+        if (const {'exam_above_max', 'answered_mismatch'}.contains(f.code))
+          (kind: f.severity == FindingSeverity.danger ? BannerKind.danger : BannerKind.warning, message: f.message),
     ];
   }
 
@@ -325,7 +380,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   String? get _blocker {
     if (_scheme.examPart == null) return 'This course has no part filled from scanned booklets.';
     if (_matched == null && !(_addExtra && _typed.canonical.isNotEmpty)) return 'Enter the exam number from the photo.';
-    if (_entered.isEmpty) return 'Enter at least one mark from the photo.';
+    if (_sheet.confirmedMarks.isEmpty && !_problems.any((p) => p.blocks)) return 'Confirm at least one question and its mark from the photo.';
+    final blocking = _problems.where((p) => p.blocks).toList();
+    if (blocking.isNotEmpty) {
+      return blocking.length == 1 ? blocking.first.message : '${blocking.first.message} (${blocking.length - 1} more to check)';
+    }
     if (_duplicateNeedsOk && !_allowDuplicate) return 'Tick the box to confirm this booklet again.';
     return null;
   }
@@ -356,11 +415,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   ExtractedField? _field(String key) => _run?.result.field(key);
 
-  List<ExtractedField> get _markRows => [
-        for (final f in _run?.result.fields ?? const <ExtractedField>[])
-          if (f.key.startsWith('mark_row_')) f,
-      ];
-
   static double? _numeric(String? v) => (v == null || v.contains('?')) ? null : double.tryParse(v);
 
   FieldReview? _reviewOf(String key) {
@@ -382,19 +436,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         _addExtra = false;
         _refreshChecks();
       });
-
-  void _useMark(ExtractedField row, int? q, FieldCandidate c) {
-    final v = double.tryParse(c.text);
-    if (q == null || v == null) {
-      showMessage(context, 'The question number for this row is not clear. Type the mark under the right question.');
-      return;
-    }
-    setState(() {
-      _marks[q] = v;
-      _edited.remove(q);
-      _markFrom[q] = row.key;
-    });
-  }
 
   void _useWritten(FieldCandidate c) {
     final v = double.tryParse(c.text);
@@ -451,38 +492,45 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       ));
     }
 
-    final rowsByQuestion = <int, ExtractedField>{};
-    for (final r in _markRows) {
-      final q = int.tryParse(r.question ?? '');
-      if (q != null) rowsByQuestion.putIfAbsent(q, () => r);
-    }
-    final used = <String>{};
-    for (final e in _entered.entries) {
-      final row = rowsByQuestion[e.key];
-      if (row != null) used.add(row.key);
-      final machine = row?.value;
-      final fin = formatNumber(e.value);
-      final same = machine != null && _numeric(machine) != null && (_numeric(machine)! - e.value).abs() < 1e-9;
+    // One mark review and one question review for each record the examiner confirmed,
+    // each measured against what the machine read for that cell; a row the examiner left
+    // out is "rejected".
+    for (final r in _sheet.records) {
+      final sug = r.suggestions;
+      if (r.dismissed) {
+        if (sug?.rawMark != null) {
+          out.add(FieldReviewDraft(
+            fieldKey: sug!.markKey,
+            kind: FieldKind.mark.dbValue,
+            machineValue: sug.rawMark,
+            machineState: _field(sug.markKey)?.state.dbValue,
+            decision: 'rejected',
+            region: sug.markRegion,
+          ));
+        }
+        continue;
+      }
+      if (!r.complete) continue;
       out.add(FieldReviewDraft(
-        fieldKey: 'mark_q${e.key}',
+        fieldKey: 'mark_q${r.qNo}',
         kind: FieldKind.mark.dbValue,
-        machineValue: machine,
-        machineState: row?.state.dbValue,
-        finalValue: fin,
-        decision: machine == null ? 'entered' : (same ? 'accepted' : 'edited'),
-        region: row?.region,
+        machineValue: sug?.rawMark,
+        machineState: sug == null ? null : _field(sug.markKey)?.state.dbValue,
+        finalValue: formatNumber(r.mark!),
+        decision: _markDecision(r),
+        region: sug?.markRegion,
       ));
-    }
-    for (final r in _markRows) {
-      if (used.contains(r.key) || r.value == null) continue;
-      out.add(FieldReviewDraft(
-        fieldKey: r.key,
-        kind: FieldKind.mark.dbValue,
-        machineValue: r.value,
-        machineState: r.state.dbValue,
-        decision: 'rejected',
-        region: r.region,
-      ));
+      if (sug != null) {
+        out.add(FieldReviewDraft(
+          fieldKey: 'question_q${r.qNo}',
+          kind: FieldKind.questionNumber.dbValue,
+          machineValue: sug.rawQuestion,
+          machineState: _field(sug.questionKey)?.state.dbValue,
+          finalValue: '${r.qNo}',
+          decision: _questionDecision(r),
+          region: sug.questionRegion,
+        ));
+      }
     }
 
     final total = _field('total_written');
@@ -505,22 +553,108 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   // ---- actions ----
 
-  Future<void> _enterMark(int qNo) async {
-    final spec = _spec(qNo);
-    final step = _scheme.examPart?.step ?? 0.5;
+  /// How the examiner arrived at a record's mark, against what the machine read:
+  /// `accepted` (the machine's own reading), `suggestion` (another of its readings,
+  /// tapped), `edited` (typed over a reading) or `entered` (typed, nothing was read).
+  String _markDecision(MarkRecord r) {
+    final sug = r.suggestions;
+    if (sug == null) return 'entered';
+    bool same(String? text) {
+      final v = double.tryParse(text ?? '');
+      return v != null && (v - r.mark!).abs() < 1e-9;
+    }
+
+    if (same(sug.rawMark)) return 'accepted';
+    if (sug.markAlternatives.any((c) => same(c.text))) return 'suggestion';
+    return sug.rawMark == null ? 'entered' : 'edited';
+  }
+
+  String _questionDecision(MarkRecord r) {
+    final sug = r.suggestions;
+    if (sug == null) return 'entered';
+    bool same(String? text) => int.tryParse(text ?? '') == r.qNo;
+    if (same(sug.rawQuestion)) return 'accepted';
+    if (sug.questionAlternatives.any((c) => same(c.text))) return 'suggestion';
+    return sug.rawQuestion == null ? 'entered' : 'edited';
+  }
+
+  Future<void> _enterQuestion(String key) async {
+    final r = _sheet.byKey(key);
     final result = await showNumberPad(
       context,
-      title: 'Question $qNo mark',
-      hint: spec == null ? 'As written in the Marks column' : 'Out of ${formatNumber(spec.max)}',
-      initial: _marks[qNo],
-      max: spec?.max,
-      step: step,
+      title: 'Question number',
+      hint: 'As written in the Question column',
+      initial: r?.qNo?.toDouble(),
+      max: _highestQuestion.toDouble(),
+      step: 1,
     );
-    if (result == null) return;
+    if (result == null || !mounted) return;
+    final v = result.value;
+    if (v == null) {
+      setState(() => _sheet = _sheet.setQuestion(key, null));
+      return;
+    }
+    final q = v.round();
+    if (q < 1 || q > _highestQuestion) {
+      showMessage(context, 'Question numbers go from 1 to $_highestQuestion. You can change that limit in Settings.');
+      return;
+    }
+    setState(() => _sheet = _sheet.setQuestion(key, q));
+  }
+
+  Future<void> _enterMarkFor(String key) async {
+    final r = _sheet.byKey(key);
+    final spec = r?.qNo == null ? null : _spec(r!.qNo!);
+    final result = await showNumberPad(
+      context,
+      title: r?.qNo == null ? 'Mark' : 'Question ${r!.qNo} mark',
+      hint: spec == null ? 'As written in the Marks column' : 'Out of ${formatNumber(spec.max)}',
+      initial: r?.mark,
+      max: spec?.max ?? _scheme.examPart?.max,
+      step: _scheme.examPart?.step ?? 0.5,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _sheet = _sheet.setMark(key, result.value));
+  }
+
+  void _useQuestion(String key, int q) => setState(() => _sheet = _sheet.setQuestion(key, q));
+  void _useMark(String key, double m) => setState(() => _sheet = _sheet.setMark(key, m));
+
+  /// Confirms the top suggestion for each field of a row that is not yet confirmed. The
+  /// examiner chose to; nothing does it for them.
+  void _useBoth(String key) {
+    final r = _sheet.byKey(key);
+    final sug = r?.suggestions;
+    if (r == null || sug == null) return;
     setState(() {
-      _marks[qNo] = result.value;
-      _edited.add(qNo);
+      if (!r.hasQuestion && sug.questionAlternatives.isNotEmpty) _sheet = _sheet.setQuestion(key, int.parse(sug.questionAlternatives.first.text));
+      if (!r.hasMark && sug.markAlternatives.isNotEmpty) _sheet = _sheet.setMark(key, double.parse(sug.markAlternatives.first.text));
     });
+  }
+
+  /// Adds a question the machine did not find, with a number the examiner gives.
+  Future<void> _addQuestion({int? qNo}) async {
+    var q = qNo;
+    if (q == null) {
+      final result = await showNumberPad(
+        context,
+        title: 'Add a question',
+        hint: 'The question number, from 1 to $_highestQuestion',
+        max: _highestQuestion.toDouble(),
+        step: 1,
+      );
+      if (result == null || result.value == null || !mounted) return;
+      q = result.value!.round();
+    }
+    if (q < 1 || q > _highestQuestion) {
+      showMessage(context, 'Question numbers go from 1 to $_highestQuestion. You can change that limit in Settings.');
+      return;
+    }
+    if (_sheet.live.any((r) => r.qNo == q)) {
+      showMessage(context, 'Q$q is already on a row below.');
+      return;
+    }
+    setState(() => _sheet = _sheet.addManual(qNo: q));
   }
 
   Future<void> _enterWritten() async {
@@ -575,14 +709,36 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             courseId: course.id,
             studentId: student.id,
             serialNo: serial,
-            marks: _entered,
-            editedMarks: _edited.intersection(_entered.keys.toSet()),
+            marks: {for (final m in _sheet.confirmedMarks) m.qNo: m.mark},
+            editedMarks: {
+              for (final r in _sheet.live)
+                if (r.complete && const {'edited', 'entered'}.contains(_markDecision(r))) r.qNo!,
+            },
             examScore: _examScore,
             examPartId: exam.id,
             photoPath: _scan!.relativePath,
             corrections: corrections,
             reviews: _reviewDrafts(student, serial),
             runId: _run?.id,
+            records: [
+              for (final r in _sheet.live)
+                if (r.complete)
+                  ConfirmedMark(
+                    qNo: r.qNo!,
+                    mark: r.mark!,
+                    edited: const {'edited', 'entered'}.contains(_markDecision(r)),
+                    status: _markDecision(r),
+                    recognisedMark: r.suggestions?.rawMark,
+                    recognisedQuestion: r.suggestions?.rawQuestion,
+                    maxMark: _spec(r.qNo!)?.max,
+                    region: r.suggestions?.markRegion,
+                    questionRegion: r.suggestions?.questionRegion,
+                  ),
+            ],
+            calculatedTotal: _tally.calculated,
+            writtenTotal: _written,
+            maxTotal: _tally.maxPossible,
+            totalNotes: _tally.assumptions,
           );
       await _dropDraft();
       if (!mounted) return;
@@ -836,7 +992,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   _Section(
                     icon: Icons.edit_note_rounded,
                     color: context.colors.tileGreen,
-                    title: 'Marks',
+                    title: 'Question marks',
                     trailing: locked ? const FieldStateChip(FieldState.recognized, confirmed: true) : null,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -847,20 +1003,50 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                           maxHeight: 240,
                           onTap: () => _openPhoto(highlight: _marksRegion(reading), label: 'marks'),
                         ),
-                        const SizedBox(height: 4),
-                        Text('Skip a question that has a line through it or no mark.',
-                            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                        const SizedBox(height: 6),
+                        Text(
+                          locked
+                              ? 'The marks you confirmed, one for each question.'
+                              : 'One card for each row of the examiner\'s table. The question number and the mark are confirmed separately, '
+                                  'and a suggestion is not a value until you tap it.',
+                          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
                         const SizedBox(height: 8),
-                        if (!locked) _machineMarks(),
-                        for (final q in _questionNumbers) _markRow(q, locked),
+                        if (!locked) _marksFailure(),
+                        if (_sheet.records.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              locked ? 'No marks were recorded.' : 'No rows were found on the photo. Add each question and its mark from the photo.',
+                              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                          ),
+                        for (final r in _sheet.records)
+                          MarkRecordCard(
+                            record: r,
+                            label: _labelOf(r),
+                            scan: scan,
+                            problems: [for (final p in _problems) if (p.key == r.key) p],
+                            locked: locked,
+                            maxMark: r.qNo == null ? null : _spec(r.qNo!)?.max,
+                            onEnterQuestion: () => _enterQuestion(r.key),
+                            onEnterMark: () => _enterMarkFor(r.key),
+                            onUseQuestion: (q) => _useQuestion(r.key, q),
+                            onUseMark: (m) => _useMark(r.key, m),
+                            onUseBoth: () => _useBoth(r.key),
+                            onShow: r.suggestions == null
+                                ? null
+                                : () => _openPhoto(highlight: r.suggestions!.markRegion ?? r.suggestions!.questionRegion, label: _labelOf(r).toLowerCase()),
+                            onDismiss: () => setState(() => _sheet = _sheet.dismiss(r.key)),
+                            onRestore: () => setState(() => _sheet = _sheet.restore(r.key)),
+                            onRemove: () => setState(() => _sheet = _sheet.remove(r.key)),
+                          ),
+                        if (!locked) _notMarked(),
                         if (!locked)
                           Align(
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
-                              onPressed: () => setState(() {
-                                final next = (_questionNumbers.isEmpty ? 0 : _questionNumbers.last) + 1;
-                                _marks[next] = null;
-                              }),
+                              onPressed: () => _addQuestion(),
                               icon: const Icon(Icons.add_rounded),
                               label: const Text('Add a question'),
                             ),
@@ -875,50 +1061,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                     icon: Icons.functions_rounded,
                     color: context.colors.tileAmber,
                     title: 'Exam score',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(_entered.isEmpty ? '—' : formatNumber(_examScore), style: text.displaySmall?.copyWith(fontWeight: FontWeight.w800)),
-                            const SizedBox(width: 8),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text('of ${formatNumber(_scheme.examPart?.max ?? 0)}', style: text.titleMedium?.copyWith(color: scheme.onSurfaceVariant)),
-                            ),
-                          ],
-                        ),
-                        Text('Counting rule: ${_scheme.countRule.label}${_scheme.countN == null ? '' : ' (${_scheme.countN})'}',
-                            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-                        const SizedBox(height: 10),
-                        _PhotoPart(
-                          scan: scan,
-                          region: reading?.totalRegion,
-                          maxHeight: 70,
-                          onTap: () => _openPhoto(highlight: reading?.totalRegion, label: "examiner's total"),
-                        ),
-                        const SizedBox(height: 8),
-                        if (!locked) _machineTotal(),
-                        OutlinedButton(
-                          onPressed: locked ? null : _enterWritten,
-                          child: Text(_written == null ? "Add the examiner's written total (optional)" : "Examiner's total: ${formatNumber(_written!)}"),
-                        ),
-                        if (!locked)
-                          for (final issue in _issues)
-                            Padding(padding: const EdgeInsets.only(top: 8), child: InfoBanner(message: issue.message, kind: issue.kind)),
-                        if (!locked && _existingScore != null && _existingScore!.value != null && _matched != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: InfoBanner(
-                              message:
-                                  '${_matched!.regNo} already has ${_scheme.examPart?.name ?? 'Exam'} ${formatNumber(_existingScore!.value!)} in the score grid '
-                                  '(${_existingScore!.source == 'typed' ? 'typed in' : _existingScore!.source}). Confirming replaces it.',
-                              kind: BannerKind.warning,
-                            ),
-                          ),
-                      ],
-                    ),
+                    child: _totalCard(scan: scan, reading: reading, locked: locked),
                   ),
                   if (_duplicateNeedsOk && !locked) ...[
                     const SizedBox(height: 12),
@@ -1074,98 +1217,146 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     return Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(msg, style: text.bodyMedium?.copyWith(color: muted)));
   }
 
-  /// One card per row of the marks table the machine found, each a suggestion
-  /// the examiner can use, dismiss, or look at on the photo.
-  Widget _machineMarks() {
-    final run = _run;
-    if (run == null) return const SizedBox.shrink();
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+  /// Shown when the marks table could not be read at all.
+  Widget _marksFailure() {
     final failed = _field('mark_rows');
-    if (failed != null) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: InfoBanner(message: failed.warnings.isEmpty ? 'The marks could not be read by machine.' : failed.warnings.first, kind: BannerKind.warning),
-      );
-    }
-    final rows = [for (final r in _markRows) if (!_dismissed.contains(r.key)) r];
-    final notes = [
-      for (final f in run.result.findings)
-        if (const {'mark_unclear', 'question_unclear', 'duplicate_question'}.contains(f.code)) f.message,
-    ];
-    if (rows.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Text(_markRows.isEmpty ? 'No marks were found by machine. Enter them from the photo.' : 'All machine readings were dismissed.',
-            style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-      );
-    }
+    if (failed == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
+      child: InfoBanner(message: failed.warnings.isEmpty ? 'The marks could not be read by machine.' : failed.warnings.first, kind: BannerKind.warning),
+    );
+  }
+
+  /// Questions on the course's list that have no record. Tapping one adds a record for
+  /// it; they are never added on their own.
+  Widget _notMarked() {
+    final have = {for (final r in _sheet.live) if (r.qNo != null) r.qNo!};
+    final missing = [for (final q in _scheme.questions) if (!have.contains(q.qNo)) q.qNo]..sort();
+    if (missing.isEmpty) return const SizedBox.shrink();
+    final text = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Machine readings of the marks table. Handwriting is read imperfectly: check each against the photo before using it.',
-              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-          const SizedBox(height: 8),
-          for (final row in rows) _markCard(row),
-          for (final n in notes)
-            Padding(padding: const EdgeInsets.only(bottom: 6), child: InfoBanner(message: n, kind: BannerKind.info)),
+          Text(
+            _scheme.unmarked == UnmarkedRule.ask
+                ? 'On this paper and not marked yet. Each needs a mark (0 if none was given):'
+                : 'On this paper and not marked. They count as zero. Tap one to add its mark:',
+            style: text.bodySmall?.copyWith(color: muted),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final q in missing) ActionChip(key: ValueKey('unmarked-$q'), label: Text('Q$q'), onPressed: () => _addQuestion(qNo: q)),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _markCard(ExtractedField row) {
+  /// The exam score: calculated from the confirmed marks, the total the examiner wrote
+  /// (if any) beside it, how they compare, and what is still to be decided.
+  Widget _totalCard({required ScanItem scan, required BookletReading? reading, required bool locked}) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final q = int.tryParse(row.question ?? '');
-    final partial = row.value != null && row.value!.contains('?');
-    final numeric = [for (final c in row.candidates) if (_numeric(c.text) != null) c];
-    final index = row.key.replaceFirst('mark_row_', '');
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 4),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text('Row $index${q == null ? ' · question not clear' : ' · reads as Q$q'}', style: text.titleSmall)),
-              FieldStateChip(row.state),
-            ],
-          ),
-          const SizedBox(height: 6),
-          if (row.value == null)
-            Text('Nothing readable in this cell.', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant))
-          else if (partial || numeric.isEmpty)
-            Text('Partly read: "${row.value}". Type the mark from the photo.', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant))
-          else
-            CandidateChips(candidates: numeric, onUse: (c) => _useMark(row, q, c)),
-          if (row.warnings.isNotEmpty)
+    final tally = _tally;
+    final calculated = tally.calculated;
+    final part = _scheme.examPart;
+    final blocking = [for (final p in _problems) if (p.blocks) p];
+    final comparison = TotalComparison.of(calculated: calculated, written: _written);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Calculated total', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(calculated == null ? '—' : formatNumber(calculated),
+                key: const ValueKey('calculated-total'), style: text.displaySmall?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(width: 8),
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(row.warnings.first, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('of ${formatNumber(part?.max ?? 0)}', style: text.titleMedium?.copyWith(color: scheme.onSurfaceVariant)),
             ),
-          Wrap(
-            children: [
-              TextButton(
-                onPressed: () => _openPhoto(highlight: row.region, label: 'mark in row $index'),
-                child: const Text('Show on photo'),
-              ),
-              TextButton(
-                onPressed: () => setState(() => _dismissed.add(row.key)),
-                child: const Text('Dismiss'),
-              ),
-            ],
+          ],
+        ),
+        Text(
+          calculated == null
+              ? 'Worked out from the marks you confirm. Nothing is confirmed yet.'
+              : 'Worked out from the ${_sheet.confirmedMarks.length == 1 ? 'mark' : '${_sheet.confirmedMarks.length} marks'} you confirmed. It changes as you change them.',
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        Text(
+          'Counting rule: ${_scheme.countRule.label}${_scheme.countN == null ? '' : ' (${_scheme.countN})'}'
+          '${tally.maxPossible == null ? '' : '. The questions can add up to at most ${formatNumber(tally.maxPossible!)}.'}',
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        if (!locked && blocking.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: InfoBanner(
+              key: const ValueKey('unresolved'),
+              message: blocking.length == 1
+                  ? '1 thing still needs you before this can be confirmed: ${blocking.first.message}'
+                  : '${blocking.length} things still need you before this can be confirmed. The total leaves them out until they are confirmed.',
+              kind: BannerKind.warning,
+            ),
           ),
-        ],
-      ),
+        for (final a in tally.assumptions)
+          Padding(padding: const EdgeInsets.only(top: 4), child: Text(a, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant))),
+        const Divider(height: 24),
+        Text("Examiner's written total", style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+        const SizedBox(height: 6),
+        _PhotoPart(
+          scan: scan,
+          region: reading?.totalRegion,
+          maxHeight: 70,
+          onTap: () => _openPhoto(highlight: reading?.totalRegion, label: "examiner's total"),
+        ),
+        const SizedBox(height: 8),
+        if (!locked) _machineTotal(),
+        OutlinedButton(
+          key: const ValueKey('written-total'),
+          onPressed: locked ? null : _enterWritten,
+          child: Text(_written == null ? (locked ? 'No total was written' : "Record the examiner's written total (optional)") : "Examiner's written total: ${formatNumber(_written!)}"),
+        ),
+        if (_written == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text('A blank Total box is normal. The calculated total above is what is used.', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+          )
+        else if (comparison.agreement == TotalAgreement.agree)
+          const Padding(padding: EdgeInsets.only(top: 8), child: InfoBanner(message: 'The written total matches the calculated total.', kind: BannerKind.success))
+        else if (comparison.agreement == TotalAgreement.disagree)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: InfoBanner(
+              key: const ValueKey('total-mismatch'),
+              message: 'The examiner wrote ${formatNumber(_written!)}, but the confirmed marks add up to ${formatNumber(calculated!)} '
+                  '(${formatNumber(comparison.difference!.abs())} ${comparison.difference! > 0 ? 'more' : 'less'}). '
+                  'Neither has been changed. Check the marks against the photo.',
+              kind: BannerKind.warning,
+            ),
+          ),
+        if (!locked)
+          for (final issue in _issues)
+            Padding(padding: const EdgeInsets.only(top: 8), child: InfoBanner(message: issue.message, kind: issue.kind)),
+        if (!locked && _existingScore != null && _existingScore!.value != null && _matched != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: InfoBanner(
+              message:
+                  '${_matched!.regNo} already has ${_scheme.examPart?.name ?? 'Exam'} ${formatNumber(_existingScore!.value!)} in the score grid '
+                  '(${_existingScore!.source == 'typed' ? 'typed in' : _existingScore!.source}). Confirming replaces it.',
+              kind: BannerKind.warning,
+            ),
+          ),
+      ],
     );
   }
 
@@ -1256,59 +1447,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           onChanged: (v) => setState(() => _addExtra = v),
         ),
       ],
-    );
-  }
-
-  Widget _markRow(int qNo, bool locked) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final value = _marks[qNo];
-    final spec = _spec(qNo);
-    final bad = value != null && spec != null && value > spec.max + 1e-9;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Semantics(
-        button: !locked,
-        label: 'Question $qNo, ${value == null ? 'no mark' : 'mark ${formatNumber(value)}'}${spec == null ? '' : ', out of ${formatNumber(spec.max)}'}',
-        excludeSemantics: true,
-        child: Material(
-          color: bad ? context.colors.dangerContainer : scheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: locked ? null : () => _enterMark(qNo),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 56),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: Row(
-                  children: [
-                    SizedBox(width: 56, child: Text('Q-$qNo', style: text.titleMedium)),
-                    Expanded(
-                      child: Text(
-                        value == null ? (locked ? '—' : 'Tap to enter') : formatNumber(value),
-                        style: value == null
-                            ? text.bodyLarge?.copyWith(color: scheme.outline)
-                            : text.titleLarge?.copyWith(color: bad ? context.colors.danger : null),
-                      ),
-                    ),
-                    if (spec != null) Text('/ ${formatNumber(spec.max)}', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-                    if (!locked && value != null)
-                      IconButton(
-                        tooltip: 'Clear Q$qNo',
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () => setState(() {
-                          _marks[qNo] = null;
-                          _edited.add(qNo);
-                        }),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

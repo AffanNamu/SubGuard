@@ -253,7 +253,9 @@ void main() {
 
       // Review: the screen, a number pad, the whole photo.
       await h.tapText(tester, 'Next: Review Results');
-      await h.tapText(tester, 'Q-1');
+      await h.reveal(tester, find.text('Add a question'));
+      await tester.tap(find.text('Add a question'));
+      await h.settle(tester);
       expect(find.text('Save'), findsOneWidget);
       await tester.tapAt(const Offset(4, 4));
       await h.settle(tester);

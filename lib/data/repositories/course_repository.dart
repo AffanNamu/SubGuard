@@ -86,6 +86,7 @@ class CourseRepository {
             totalExpected: r.totalExpected,
             countRule: CountRule.fromDb(r.countRule),
             countN: r.countN,
+            unmarked: UnmarkedRule.fromDb(r.unmarkedRule),
             parts: [
               for (final p in parts.where((p) => p.courseId == r.id))
                 PartSpec(
@@ -104,7 +105,7 @@ class CourseRepository {
             questions: [
               for (final q in questions.where((q) => q.courseId == r.id))
                 QuestionSpec(
-                    id: q.id, qNo: q.qNo, max: q.max, compulsory: q.compulsory)
+                    id: q.id, qNo: q.qNo, max: q.max, compulsory: q.compulsory, weight: q.weight)
             ],
             bands: [
               for (final b in bands.where((b) => b.courseId == r.id))
@@ -139,6 +140,7 @@ class CourseRepository {
               totalExpected: Value(scheme.totalExpected),
               countRule: Value(scheme.countRule.dbValue),
               countN: Value(scheme.countN),
+              unmarkedRule: Value(scheme.unmarked.dbValue),
               updatedAt: Value(now),
               deletedAt: const Value(null),
             ));
@@ -190,6 +192,7 @@ class CourseRepository {
             qNo: Value(q.qNo),
             max: Value(q.max),
             compulsory: Value(q.compulsory),
+            weight: Value(q.weight),
             updatedAt: Value(now),
             deletedAt: const Value(null),
           ));

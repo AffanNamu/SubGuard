@@ -55,6 +55,15 @@ lands in the grid and the exports. Handwriting is **not** read automatically yet
   beside what you confirmed, are never overwritten by a later re-read, and every decision is
   stored with its time as a labelled example. **Settings → Training examples** counts them
   and, only when you say the people concerned agree, packs them into a file to share.
+- **Question numbers and marks are separate, and the total is calculated from what you confirm.**
+  Each row of the marks table is one card: the question number and the mark are confirmed
+  separately, the machine's suggestions sit apart from them and count for nothing until tapped,
+  and a reading that cannot be a mark (such as `147` for a handwritten `1.0`) is never offered.
+  The exam score is worked out from the confirmed marks under the course's rules (all, best N,
+  compulsory plus best N, weights, what an unmarked question means), shown beside the total the
+  examiner wrote (often blank) with any difference flagged. No list of questions is made up: only
+  the rows found and the questions you add, up to a highest question number you set in Settings.
+  See `docs/recognition/QUESTION_MARKS.md`.
 - **Unconfirmed entries are kept**: what you typed on a booklet and have not confirmed comes back,
   with a notice and a "Discard them" button, if you leave the booklet or the app closes. A draft
   is never a result; only Confirm reaches the score grid.
@@ -174,7 +183,9 @@ Schema changes are step-by-step migrations checked against dumps in `drift_schem
 columns; version 3 added `recognition_run` (what the pipeline found, kept as produced) and
 `field_review` (what the examiner decided about each field, with when); version 4 added
 `review_draft` (entries typed on a booklet and not yet confirmed, so an interrupted review
-is not lost; never read by the grid or an export). Tests upgrade old databases full of data
+is not lost; never read by the grid or an export); version 5 added the question-mark record's
+parts (what was read, the maximum, status, place), the calculated and written totals, question
+weights and the unmarked-question rule. Tests upgrade old databases full of data
 and check nothing is lost.
 
 ## Where the later steps plug in

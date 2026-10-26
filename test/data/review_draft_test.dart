@@ -52,7 +52,7 @@ void main() {
       expect(ReviewDraft.decode(''), isNull);
       expect(ReviewDraft.decode('{not json'), isNull);
       expect(ReviewDraft.decode('[]'), isNull);
-      expect(ReviewDraft.decode('{"v":2,"examNumber":"X"}'), isNull);
+      expect(ReviewDraft.decode('{"v":3,"examNumber":"X"}'), isNull);
       expect(ReviewDraft.decode('{"v":1,"marks":{"one":3}}'), isNull);
     });
   });

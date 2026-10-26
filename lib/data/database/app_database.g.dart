@@ -119,6 +119,18 @@ class $CoursesTable extends Courses with TableInfo<$CoursesTable, CourseRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _unmarkedRuleMeta = const VerificationMeta(
+    'unmarkedRule',
+  );
+  @override
+  late final GeneratedColumn<String> unmarkedRule = GeneratedColumn<String>(
+    'unmarked_rule',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('zero'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -131,6 +143,7 @@ class $CoursesTable extends Courses with TableInfo<$CoursesTable, CourseRow> {
     totalExpected,
     countRule,
     countN,
+    unmarkedRule,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -206,6 +219,15 @@ class $CoursesTable extends Courses with TableInfo<$CoursesTable, CourseRow> {
         countN.isAcceptableOrUnknown(data['count_n']!, _countNMeta),
       );
     }
+    if (data.containsKey('unmarked_rule')) {
+      context.handle(
+        _unmarkedRuleMeta,
+        unmarkedRule.isAcceptableOrUnknown(
+          data['unmarked_rule']!,
+          _unmarkedRuleMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -255,6 +277,10 @@ class $CoursesTable extends Courses with TableInfo<$CoursesTable, CourseRow> {
         DriftSqlType.int,
         data['${effectivePrefix}count_n'],
       ),
+      unmarkedRule: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unmarked_rule'],
+      )!,
     );
   }
 
@@ -279,6 +305,11 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
   /// `all`, `best_n` or `compulsory_plus_best_n`.
   final String countRule;
   final int? countN;
+
+  /// What a question on the list with no mark means: `zero` (counts as zero) or
+  /// `ask` (each one must be dealt with before a booklet is confirmed).
+  /// Added in schema version 5.
+  final String unmarkedRule;
   const CourseRow({
     required this.id,
     required this.updatedAt,
@@ -290,6 +321,7 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
     required this.totalExpected,
     required this.countRule,
     this.countN,
+    required this.unmarkedRule,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -308,6 +340,7 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
     if (!nullToAbsent || countN != null) {
       map['count_n'] = Variable<int>(countN);
     }
+    map['unmarked_rule'] = Variable<String>(unmarkedRule);
     return map;
   }
 
@@ -327,6 +360,7 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
       countN: countN == null && nullToAbsent
           ? const Value.absent()
           : Value(countN),
+      unmarkedRule: Value(unmarkedRule),
     );
   }
 
@@ -346,6 +380,7 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
       totalExpected: serializer.fromJson<double>(json['totalExpected']),
       countRule: serializer.fromJson<String>(json['countRule']),
       countN: serializer.fromJson<int?>(json['countN']),
+      unmarkedRule: serializer.fromJson<String>(json['unmarkedRule']),
     );
   }
   @override
@@ -362,6 +397,7 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
       'totalExpected': serializer.toJson<double>(totalExpected),
       'countRule': serializer.toJson<String>(countRule),
       'countN': serializer.toJson<int?>(countN),
+      'unmarkedRule': serializer.toJson<String>(unmarkedRule),
     };
   }
 
@@ -376,6 +412,7 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
     double? totalExpected,
     String? countRule,
     Value<int?> countN = const Value.absent(),
+    String? unmarkedRule,
   }) => CourseRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -387,6 +424,7 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
     totalExpected: totalExpected ?? this.totalExpected,
     countRule: countRule ?? this.countRule,
     countN: countN.present ? countN.value : this.countN,
+    unmarkedRule: unmarkedRule ?? this.unmarkedRule,
   );
   CourseRow copyWithCompanion(CoursesCompanion data) {
     return CourseRow(
@@ -404,6 +442,9 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
           : this.totalExpected,
       countRule: data.countRule.present ? data.countRule.value : this.countRule,
       countN: data.countN.present ? data.countN.value : this.countN,
+      unmarkedRule: data.unmarkedRule.present
+          ? data.unmarkedRule.value
+          : this.unmarkedRule,
     );
   }
 
@@ -419,7 +460,8 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
           ..write('semester: $semester, ')
           ..write('totalExpected: $totalExpected, ')
           ..write('countRule: $countRule, ')
-          ..write('countN: $countN')
+          ..write('countN: $countN, ')
+          ..write('unmarkedRule: $unmarkedRule')
           ..write(')'))
         .toString();
   }
@@ -436,6 +478,7 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
     totalExpected,
     countRule,
     countN,
+    unmarkedRule,
   );
   @override
   bool operator ==(Object other) =>
@@ -450,7 +493,8 @@ class CourseRow extends DataClass implements Insertable<CourseRow> {
           other.semester == this.semester &&
           other.totalExpected == this.totalExpected &&
           other.countRule == this.countRule &&
-          other.countN == this.countN);
+          other.countN == this.countN &&
+          other.unmarkedRule == this.unmarkedRule);
 }
 
 class CoursesCompanion extends UpdateCompanion<CourseRow> {
@@ -464,6 +508,7 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
   final Value<double> totalExpected;
   final Value<String> countRule;
   final Value<int?> countN;
+  final Value<String> unmarkedRule;
   final Value<int> rowid;
   const CoursesCompanion({
     this.id = const Value.absent(),
@@ -476,6 +521,7 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
     this.totalExpected = const Value.absent(),
     this.countRule = const Value.absent(),
     this.countN = const Value.absent(),
+    this.unmarkedRule = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CoursesCompanion.insert({
@@ -489,6 +535,7 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
     this.totalExpected = const Value.absent(),
     this.countRule = const Value.absent(),
     this.countN = const Value.absent(),
+    this.unmarkedRule = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : code = Value(code);
   static Insertable<CourseRow> custom({
@@ -502,6 +549,7 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
     Expression<double>? totalExpected,
     Expression<String>? countRule,
     Expression<int>? countN,
+    Expression<String>? unmarkedRule,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -515,6 +563,7 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
       if (totalExpected != null) 'total_expected': totalExpected,
       if (countRule != null) 'count_rule': countRule,
       if (countN != null) 'count_n': countN,
+      if (unmarkedRule != null) 'unmarked_rule': unmarkedRule,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -530,6 +579,7 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
     Value<double>? totalExpected,
     Value<String>? countRule,
     Value<int?>? countN,
+    Value<String>? unmarkedRule,
     Value<int>? rowid,
   }) {
     return CoursesCompanion(
@@ -543,6 +593,7 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
       totalExpected: totalExpected ?? this.totalExpected,
       countRule: countRule ?? this.countRule,
       countN: countN ?? this.countN,
+      unmarkedRule: unmarkedRule ?? this.unmarkedRule,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -580,6 +631,9 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
     if (countN.present) {
       map['count_n'] = Variable<int>(countN.value);
     }
+    if (unmarkedRule.present) {
+      map['unmarked_rule'] = Variable<String>(unmarkedRule.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -599,6 +653,7 @@ class CoursesCompanion extends UpdateCompanion<CourseRow> {
           ..write('totalExpected: $totalExpected, ')
           ..write('countRule: $countRule, ')
           ..write('countN: $countN, ')
+          ..write('unmarkedRule: $unmarkedRule, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1439,6 +1494,16 @@ class $ExamQuestionsTable extends ExamQuestions
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _weightMeta = const VerificationMeta('weight');
+  @override
+  late final GeneratedColumn<double> weight = GeneratedColumn<double>(
+    'weight',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1448,6 +1513,7 @@ class $ExamQuestionsTable extends ExamQuestions
     qNo,
     max,
     compulsory,
+    weight,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1506,6 +1572,12 @@ class $ExamQuestionsTable extends ExamQuestions
         compulsory.isAcceptableOrUnknown(data['compulsory']!, _compulsoryMeta),
       );
     }
+    if (data.containsKey('weight')) {
+      context.handle(
+        _weightMeta,
+        weight.isAcceptableOrUnknown(data['weight']!, _weightMeta),
+      );
+    }
     return context;
   }
 
@@ -1543,6 +1615,10 @@ class $ExamQuestionsTable extends ExamQuestions
         DriftSqlType.bool,
         data['${effectivePrefix}compulsory'],
       )!,
+      weight: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}weight'],
+      )!,
     );
   }
 
@@ -1560,6 +1636,10 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
   final int qNo;
   final double max;
   final bool compulsory;
+
+  /// What a mark on this question is multiplied by before it counts (1 for an
+  /// ordinary question). Added in schema version 5.
+  final double weight;
   const ExamQuestionRow({
     required this.id,
     required this.updatedAt,
@@ -1568,6 +1648,7 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
     required this.qNo,
     required this.max,
     required this.compulsory,
+    required this.weight,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1581,6 +1662,7 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
     map['q_no'] = Variable<int>(qNo);
     map['max'] = Variable<double>(max);
     map['compulsory'] = Variable<bool>(compulsory);
+    map['weight'] = Variable<double>(weight);
     return map;
   }
 
@@ -1595,6 +1677,7 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
       qNo: Value(qNo),
       max: Value(max),
       compulsory: Value(compulsory),
+      weight: Value(weight),
     );
   }
 
@@ -1611,6 +1694,7 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
       qNo: serializer.fromJson<int>(json['qNo']),
       max: serializer.fromJson<double>(json['max']),
       compulsory: serializer.fromJson<bool>(json['compulsory']),
+      weight: serializer.fromJson<double>(json['weight']),
     );
   }
   @override
@@ -1624,6 +1708,7 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
       'qNo': serializer.toJson<int>(qNo),
       'max': serializer.toJson<double>(max),
       'compulsory': serializer.toJson<bool>(compulsory),
+      'weight': serializer.toJson<double>(weight),
     };
   }
 
@@ -1635,6 +1720,7 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
     int? qNo,
     double? max,
     bool? compulsory,
+    double? weight,
   }) => ExamQuestionRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1643,6 +1729,7 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
     qNo: qNo ?? this.qNo,
     max: max ?? this.max,
     compulsory: compulsory ?? this.compulsory,
+    weight: weight ?? this.weight,
   );
   ExamQuestionRow copyWithCompanion(ExamQuestionsCompanion data) {
     return ExamQuestionRow(
@@ -1655,6 +1742,7 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
       compulsory: data.compulsory.present
           ? data.compulsory.value
           : this.compulsory,
+      weight: data.weight.present ? data.weight.value : this.weight,
     );
   }
 
@@ -1667,14 +1755,23 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
           ..write('courseId: $courseId, ')
           ..write('qNo: $qNo, ')
           ..write('max: $max, ')
-          ..write('compulsory: $compulsory')
+          ..write('compulsory: $compulsory, ')
+          ..write('weight: $weight')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, updatedAt, deletedAt, courseId, qNo, max, compulsory);
+  int get hashCode => Object.hash(
+    id,
+    updatedAt,
+    deletedAt,
+    courseId,
+    qNo,
+    max,
+    compulsory,
+    weight,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1685,7 +1782,8 @@ class ExamQuestionRow extends DataClass implements Insertable<ExamQuestionRow> {
           other.courseId == this.courseId &&
           other.qNo == this.qNo &&
           other.max == this.max &&
-          other.compulsory == this.compulsory);
+          other.compulsory == this.compulsory &&
+          other.weight == this.weight);
 }
 
 class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
@@ -1696,6 +1794,7 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
   final Value<int> qNo;
   final Value<double> max;
   final Value<bool> compulsory;
+  final Value<double> weight;
   final Value<int> rowid;
   const ExamQuestionsCompanion({
     this.id = const Value.absent(),
@@ -1705,6 +1804,7 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
     this.qNo = const Value.absent(),
     this.max = const Value.absent(),
     this.compulsory = const Value.absent(),
+    this.weight = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ExamQuestionsCompanion.insert({
@@ -1715,6 +1815,7 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
     required int qNo,
     required double max,
     this.compulsory = const Value.absent(),
+    this.weight = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : courseId = Value(courseId),
        qNo = Value(qNo),
@@ -1727,6 +1828,7 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
     Expression<int>? qNo,
     Expression<double>? max,
     Expression<bool>? compulsory,
+    Expression<double>? weight,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1737,6 +1839,7 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
       if (qNo != null) 'q_no': qNo,
       if (max != null) 'max': max,
       if (compulsory != null) 'compulsory': compulsory,
+      if (weight != null) 'weight': weight,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1749,6 +1852,7 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
     Value<int>? qNo,
     Value<double>? max,
     Value<bool>? compulsory,
+    Value<double>? weight,
     Value<int>? rowid,
   }) {
     return ExamQuestionsCompanion(
@@ -1759,6 +1863,7 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
       qNo: qNo ?? this.qNo,
       max: max ?? this.max,
       compulsory: compulsory ?? this.compulsory,
+      weight: weight ?? this.weight,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1787,6 +1892,9 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
     if (compulsory.present) {
       map['compulsory'] = Variable<bool>(compulsory.value);
     }
+    if (weight.present) {
+      map['weight'] = Variable<double>(weight.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1803,6 +1911,7 @@ class ExamQuestionsCompanion extends UpdateCompanion<ExamQuestionRow> {
           ..write('qNo: $qNo, ')
           ..write('max: $max, ')
           ..write('compulsory: $compulsory, ')
+          ..write('weight: $weight, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4576,6 +4685,50 @@ class $BookletsTable extends Booklets
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _calculatedTotalMeta = const VerificationMeta(
+    'calculatedTotal',
+  );
+  @override
+  late final GeneratedColumn<double> calculatedTotal = GeneratedColumn<double>(
+    'calculated_total',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _writtenTotalMeta = const VerificationMeta(
+    'writtenTotal',
+  );
+  @override
+  late final GeneratedColumn<double> writtenTotal = GeneratedColumn<double>(
+    'written_total',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _maxTotalMeta = const VerificationMeta(
+    'maxTotal',
+  );
+  @override
+  late final GeneratedColumn<double> maxTotal = GeneratedColumn<double>(
+    'max_total',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalNotesMeta = const VerificationMeta(
+    'totalNotes',
+  );
+  @override
+  late final GeneratedColumn<String> totalNotes = GeneratedColumn<String>(
+    'total_notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4588,6 +4741,10 @@ class $BookletsTable extends Booklets
     readJson,
     status,
     confirmedAt,
+    calculatedTotal,
+    writtenTotal,
+    maxTotal,
+    totalNotes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4663,6 +4820,36 @@ class $BookletsTable extends Booklets
         ),
       );
     }
+    if (data.containsKey('calculated_total')) {
+      context.handle(
+        _calculatedTotalMeta,
+        calculatedTotal.isAcceptableOrUnknown(
+          data['calculated_total']!,
+          _calculatedTotalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('written_total')) {
+      context.handle(
+        _writtenTotalMeta,
+        writtenTotal.isAcceptableOrUnknown(
+          data['written_total']!,
+          _writtenTotalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('max_total')) {
+      context.handle(
+        _maxTotalMeta,
+        maxTotal.isAcceptableOrUnknown(data['max_total']!, _maxTotalMeta),
+      );
+    }
+    if (data.containsKey('total_notes')) {
+      context.handle(
+        _totalNotesMeta,
+        totalNotes.isAcceptableOrUnknown(data['total_notes']!, _totalNotesMeta),
+      );
+    }
     return context;
   }
 
@@ -4712,6 +4899,22 @@ class $BookletsTable extends Booklets
         DriftSqlType.dateTime,
         data['${effectivePrefix}confirmed_at'],
       ),
+      calculatedTotal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}calculated_total'],
+      ),
+      writtenTotal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}written_total'],
+      ),
+      maxTotal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}max_total'],
+      ),
+      totalNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}total_notes'],
+      ),
     );
   }
 
@@ -4734,6 +4937,20 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
   /// `needs_review` until the examiner confirms it; then `confirmed`.
   final String status;
   final DateTime? confirmedAt;
+
+  /// The exam score worked out from the confirmed question marks when the booklet
+  /// was confirmed. Derived: it can always be worked out again from [QuestionMarks].
+  final double? calculatedTotal;
+
+  /// The total the examiner wrote in the booklet's Total box, when they recorded one.
+  final double? writtenTotal;
+
+  /// The most the questions could add under the counting rule, when the course
+  /// has a question list.
+  final double? maxTotal;
+
+  /// What had to be assumed in the calculation, in words, as a JSON list.
+  final String? totalNotes;
   const BookletRow({
     required this.id,
     required this.updatedAt,
@@ -4745,6 +4962,10 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
     this.readJson,
     required this.status,
     this.confirmedAt,
+    this.calculatedTotal,
+    this.writtenTotal,
+    this.maxTotal,
+    this.totalNotes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4770,6 +4991,18 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || confirmedAt != null) {
       map['confirmed_at'] = Variable<DateTime>(confirmedAt);
+    }
+    if (!nullToAbsent || calculatedTotal != null) {
+      map['calculated_total'] = Variable<double>(calculatedTotal);
+    }
+    if (!nullToAbsent || writtenTotal != null) {
+      map['written_total'] = Variable<double>(writtenTotal);
+    }
+    if (!nullToAbsent || maxTotal != null) {
+      map['max_total'] = Variable<double>(maxTotal);
+    }
+    if (!nullToAbsent || totalNotes != null) {
+      map['total_notes'] = Variable<String>(totalNotes);
     }
     return map;
   }
@@ -4798,6 +5031,18 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
       confirmedAt: confirmedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(confirmedAt),
+      calculatedTotal: calculatedTotal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(calculatedTotal),
+      writtenTotal: writtenTotal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(writtenTotal),
+      maxTotal: maxTotal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maxTotal),
+      totalNotes: totalNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalNotes),
     );
   }
 
@@ -4817,6 +5062,10 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
       readJson: serializer.fromJson<String?>(json['readJson']),
       status: serializer.fromJson<String>(json['status']),
       confirmedAt: serializer.fromJson<DateTime?>(json['confirmedAt']),
+      calculatedTotal: serializer.fromJson<double?>(json['calculatedTotal']),
+      writtenTotal: serializer.fromJson<double?>(json['writtenTotal']),
+      maxTotal: serializer.fromJson<double?>(json['maxTotal']),
+      totalNotes: serializer.fromJson<String?>(json['totalNotes']),
     );
   }
   @override
@@ -4833,6 +5082,10 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
       'readJson': serializer.toJson<String?>(readJson),
       'status': serializer.toJson<String>(status),
       'confirmedAt': serializer.toJson<DateTime?>(confirmedAt),
+      'calculatedTotal': serializer.toJson<double?>(calculatedTotal),
+      'writtenTotal': serializer.toJson<double?>(writtenTotal),
+      'maxTotal': serializer.toJson<double?>(maxTotal),
+      'totalNotes': serializer.toJson<String?>(totalNotes),
     };
   }
 
@@ -4847,6 +5100,10 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
     Value<String?> readJson = const Value.absent(),
     String? status,
     Value<DateTime?> confirmedAt = const Value.absent(),
+    Value<double?> calculatedTotal = const Value.absent(),
+    Value<double?> writtenTotal = const Value.absent(),
+    Value<double?> maxTotal = const Value.absent(),
+    Value<String?> totalNotes = const Value.absent(),
   }) => BookletRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -4858,6 +5115,12 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
     readJson: readJson.present ? readJson.value : this.readJson,
     status: status ?? this.status,
     confirmedAt: confirmedAt.present ? confirmedAt.value : this.confirmedAt,
+    calculatedTotal: calculatedTotal.present
+        ? calculatedTotal.value
+        : this.calculatedTotal,
+    writtenTotal: writtenTotal.present ? writtenTotal.value : this.writtenTotal,
+    maxTotal: maxTotal.present ? maxTotal.value : this.maxTotal,
+    totalNotes: totalNotes.present ? totalNotes.value : this.totalNotes,
   );
   BookletRow copyWithCompanion(BookletsCompanion data) {
     return BookletRow(
@@ -4873,6 +5136,16 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
       confirmedAt: data.confirmedAt.present
           ? data.confirmedAt.value
           : this.confirmedAt,
+      calculatedTotal: data.calculatedTotal.present
+          ? data.calculatedTotal.value
+          : this.calculatedTotal,
+      writtenTotal: data.writtenTotal.present
+          ? data.writtenTotal.value
+          : this.writtenTotal,
+      maxTotal: data.maxTotal.present ? data.maxTotal.value : this.maxTotal,
+      totalNotes: data.totalNotes.present
+          ? data.totalNotes.value
+          : this.totalNotes,
     );
   }
 
@@ -4888,7 +5161,11 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
           ..write('serialNo: $serialNo, ')
           ..write('readJson: $readJson, ')
           ..write('status: $status, ')
-          ..write('confirmedAt: $confirmedAt')
+          ..write('confirmedAt: $confirmedAt, ')
+          ..write('calculatedTotal: $calculatedTotal, ')
+          ..write('writtenTotal: $writtenTotal, ')
+          ..write('maxTotal: $maxTotal, ')
+          ..write('totalNotes: $totalNotes')
           ..write(')'))
         .toString();
   }
@@ -4905,6 +5182,10 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
     readJson,
     status,
     confirmedAt,
+    calculatedTotal,
+    writtenTotal,
+    maxTotal,
+    totalNotes,
   );
   @override
   bool operator ==(Object other) =>
@@ -4919,7 +5200,11 @@ class BookletRow extends DataClass implements Insertable<BookletRow> {
           other.serialNo == this.serialNo &&
           other.readJson == this.readJson &&
           other.status == this.status &&
-          other.confirmedAt == this.confirmedAt);
+          other.confirmedAt == this.confirmedAt &&
+          other.calculatedTotal == this.calculatedTotal &&
+          other.writtenTotal == this.writtenTotal &&
+          other.maxTotal == this.maxTotal &&
+          other.totalNotes == this.totalNotes);
 }
 
 class BookletsCompanion extends UpdateCompanion<BookletRow> {
@@ -4933,6 +5218,10 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
   final Value<String?> readJson;
   final Value<String> status;
   final Value<DateTime?> confirmedAt;
+  final Value<double?> calculatedTotal;
+  final Value<double?> writtenTotal;
+  final Value<double?> maxTotal;
+  final Value<String?> totalNotes;
   final Value<int> rowid;
   const BookletsCompanion({
     this.id = const Value.absent(),
@@ -4945,6 +5234,10 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
     this.readJson = const Value.absent(),
     this.status = const Value.absent(),
     this.confirmedAt = const Value.absent(),
+    this.calculatedTotal = const Value.absent(),
+    this.writtenTotal = const Value.absent(),
+    this.maxTotal = const Value.absent(),
+    this.totalNotes = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   BookletsCompanion.insert({
@@ -4958,6 +5251,10 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
     this.readJson = const Value.absent(),
     this.status = const Value.absent(),
     this.confirmedAt = const Value.absent(),
+    this.calculatedTotal = const Value.absent(),
+    this.writtenTotal = const Value.absent(),
+    this.maxTotal = const Value.absent(),
+    this.totalNotes = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : courseId = Value(courseId);
   static Insertable<BookletRow> custom({
@@ -4971,6 +5268,10 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
     Expression<String>? readJson,
     Expression<String>? status,
     Expression<DateTime>? confirmedAt,
+    Expression<double>? calculatedTotal,
+    Expression<double>? writtenTotal,
+    Expression<double>? maxTotal,
+    Expression<String>? totalNotes,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4984,6 +5285,10 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
       if (readJson != null) 'read_json': readJson,
       if (status != null) 'status': status,
       if (confirmedAt != null) 'confirmed_at': confirmedAt,
+      if (calculatedTotal != null) 'calculated_total': calculatedTotal,
+      if (writtenTotal != null) 'written_total': writtenTotal,
+      if (maxTotal != null) 'max_total': maxTotal,
+      if (totalNotes != null) 'total_notes': totalNotes,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4999,6 +5304,10 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
     Value<String?>? readJson,
     Value<String>? status,
     Value<DateTime?>? confirmedAt,
+    Value<double?>? calculatedTotal,
+    Value<double?>? writtenTotal,
+    Value<double?>? maxTotal,
+    Value<String?>? totalNotes,
     Value<int>? rowid,
   }) {
     return BookletsCompanion(
@@ -5012,6 +5321,10 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
       readJson: readJson ?? this.readJson,
       status: status ?? this.status,
       confirmedAt: confirmedAt ?? this.confirmedAt,
+      calculatedTotal: calculatedTotal ?? this.calculatedTotal,
+      writtenTotal: writtenTotal ?? this.writtenTotal,
+      maxTotal: maxTotal ?? this.maxTotal,
+      totalNotes: totalNotes ?? this.totalNotes,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5049,6 +5362,18 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
     if (confirmedAt.present) {
       map['confirmed_at'] = Variable<DateTime>(confirmedAt.value);
     }
+    if (calculatedTotal.present) {
+      map['calculated_total'] = Variable<double>(calculatedTotal.value);
+    }
+    if (writtenTotal.present) {
+      map['written_total'] = Variable<double>(writtenTotal.value);
+    }
+    if (maxTotal.present) {
+      map['max_total'] = Variable<double>(maxTotal.value);
+    }
+    if (totalNotes.present) {
+      map['total_notes'] = Variable<String>(totalNotes.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5068,6 +5393,10 @@ class BookletsCompanion extends UpdateCompanion<BookletRow> {
           ..write('readJson: $readJson, ')
           ..write('status: $status, ')
           ..write('confirmedAt: $confirmedAt, ')
+          ..write('calculatedTotal: $calculatedTotal, ')
+          ..write('writtenTotal: $writtenTotal, ')
+          ..write('maxTotal: $maxTotal, ')
+          ..write('totalNotes: $totalNotes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5169,6 +5498,69 @@ class $QuestionMarksTable extends QuestionMarks
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _recognisedMarkMeta = const VerificationMeta(
+    'recognisedMark',
+  );
+  @override
+  late final GeneratedColumn<String> recognisedMark = GeneratedColumn<String>(
+    'recognised_mark',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _recognisedQuestionMeta =
+      const VerificationMeta('recognisedQuestion');
+  @override
+  late final GeneratedColumn<String> recognisedQuestion =
+      GeneratedColumn<String>(
+        'recognised_question',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _maxMarkMeta = const VerificationMeta(
+    'maxMark',
+  );
+  @override
+  late final GeneratedColumn<double> maxMark = GeneratedColumn<double>(
+    'max_mark',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('entered'),
+  );
+  static const VerificationMeta _regionMeta = const VerificationMeta('region');
+  @override
+  late final GeneratedColumn<String> region = GeneratedColumn<String>(
+    'region',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _questionRegionMeta = const VerificationMeta(
+    'questionRegion',
+  );
+  @override
+  late final GeneratedColumn<String> questionRegion = GeneratedColumn<String>(
+    'question_region',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5179,6 +5571,12 @@ class $QuestionMarksTable extends QuestionMarks
     mark,
     confidence,
     edited,
+    recognisedMark,
+    recognisedQuestion,
+    maxMark,
+    status,
+    region,
+    questionRegion,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5243,6 +5641,51 @@ class $QuestionMarksTable extends QuestionMarks
         edited.isAcceptableOrUnknown(data['edited']!, _editedMeta),
       );
     }
+    if (data.containsKey('recognised_mark')) {
+      context.handle(
+        _recognisedMarkMeta,
+        recognisedMark.isAcceptableOrUnknown(
+          data['recognised_mark']!,
+          _recognisedMarkMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recognised_question')) {
+      context.handle(
+        _recognisedQuestionMeta,
+        recognisedQuestion.isAcceptableOrUnknown(
+          data['recognised_question']!,
+          _recognisedQuestionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('max_mark')) {
+      context.handle(
+        _maxMarkMeta,
+        maxMark.isAcceptableOrUnknown(data['max_mark']!, _maxMarkMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('region')) {
+      context.handle(
+        _regionMeta,
+        region.isAcceptableOrUnknown(data['region']!, _regionMeta),
+      );
+    }
+    if (data.containsKey('question_region')) {
+      context.handle(
+        _questionRegionMeta,
+        questionRegion.isAcceptableOrUnknown(
+          data['question_region']!,
+          _questionRegionMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5284,6 +5727,30 @@ class $QuestionMarksTable extends QuestionMarks
         DriftSqlType.bool,
         data['${effectivePrefix}edited'],
       )!,
+      recognisedMark: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recognised_mark'],
+      ),
+      recognisedQuestion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recognised_question'],
+      ),
+      maxMark: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}max_mark'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      region: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}region'],
+      ),
+      questionRegion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}question_region'],
+      ),
     );
   }
 
@@ -5299,9 +5766,30 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
   final DateTime? deletedAt;
   final String bookletId;
   final int qNo;
+
+  /// The mark the examiner confirmed.
   final double mark;
   final double? confidence;
   final bool edited;
+
+  /// What the reader returned for the Marks cell and for the Question cell, as seen
+  /// ("1.7", "1?0"), whether or not it was used. Null when the examiner entered
+  /// the row by hand.
+  final String? recognisedMark;
+  final String? recognisedQuestion;
+
+  /// The question's maximum when the course had one.
+  final double? maxMark;
+
+  /// How the examiner arrived at the mark: `accepted` (the machine's suggestion,
+  /// confirmed), `edited` (typed over a different reading) or `entered` (typed with
+  /// nothing suggested).
+  final String status;
+
+  /// Where the Marks cell and the Question cell are on the photograph,
+  /// "left,top,right,bottom" as fractions.
+  final String? region;
+  final String? questionRegion;
   const QuestionMarkRow({
     required this.id,
     required this.updatedAt,
@@ -5311,6 +5799,12 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
     required this.mark,
     this.confidence,
     required this.edited,
+    this.recognisedMark,
+    this.recognisedQuestion,
+    this.maxMark,
+    required this.status,
+    this.region,
+    this.questionRegion,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5327,6 +5821,22 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
       map['confidence'] = Variable<double>(confidence);
     }
     map['edited'] = Variable<bool>(edited);
+    if (!nullToAbsent || recognisedMark != null) {
+      map['recognised_mark'] = Variable<String>(recognisedMark);
+    }
+    if (!nullToAbsent || recognisedQuestion != null) {
+      map['recognised_question'] = Variable<String>(recognisedQuestion);
+    }
+    if (!nullToAbsent || maxMark != null) {
+      map['max_mark'] = Variable<double>(maxMark);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || region != null) {
+      map['region'] = Variable<String>(region);
+    }
+    if (!nullToAbsent || questionRegion != null) {
+      map['question_region'] = Variable<String>(questionRegion);
+    }
     return map;
   }
 
@@ -5344,6 +5854,22 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
           ? const Value.absent()
           : Value(confidence),
       edited: Value(edited),
+      recognisedMark: recognisedMark == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recognisedMark),
+      recognisedQuestion: recognisedQuestion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recognisedQuestion),
+      maxMark: maxMark == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maxMark),
+      status: Value(status),
+      region: region == null && nullToAbsent
+          ? const Value.absent()
+          : Value(region),
+      questionRegion: questionRegion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(questionRegion),
     );
   }
 
@@ -5361,6 +5887,14 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
       mark: serializer.fromJson<double>(json['mark']),
       confidence: serializer.fromJson<double?>(json['confidence']),
       edited: serializer.fromJson<bool>(json['edited']),
+      recognisedMark: serializer.fromJson<String?>(json['recognisedMark']),
+      recognisedQuestion: serializer.fromJson<String?>(
+        json['recognisedQuestion'],
+      ),
+      maxMark: serializer.fromJson<double?>(json['maxMark']),
+      status: serializer.fromJson<String>(json['status']),
+      region: serializer.fromJson<String?>(json['region']),
+      questionRegion: serializer.fromJson<String?>(json['questionRegion']),
     );
   }
   @override
@@ -5375,6 +5909,12 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
       'mark': serializer.toJson<double>(mark),
       'confidence': serializer.toJson<double?>(confidence),
       'edited': serializer.toJson<bool>(edited),
+      'recognisedMark': serializer.toJson<String?>(recognisedMark),
+      'recognisedQuestion': serializer.toJson<String?>(recognisedQuestion),
+      'maxMark': serializer.toJson<double?>(maxMark),
+      'status': serializer.toJson<String>(status),
+      'region': serializer.toJson<String?>(region),
+      'questionRegion': serializer.toJson<String?>(questionRegion),
     };
   }
 
@@ -5387,6 +5927,12 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
     double? mark,
     Value<double?> confidence = const Value.absent(),
     bool? edited,
+    Value<String?> recognisedMark = const Value.absent(),
+    Value<String?> recognisedQuestion = const Value.absent(),
+    Value<double?> maxMark = const Value.absent(),
+    String? status,
+    Value<String?> region = const Value.absent(),
+    Value<String?> questionRegion = const Value.absent(),
   }) => QuestionMarkRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -5396,6 +5942,18 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
     mark: mark ?? this.mark,
     confidence: confidence.present ? confidence.value : this.confidence,
     edited: edited ?? this.edited,
+    recognisedMark: recognisedMark.present
+        ? recognisedMark.value
+        : this.recognisedMark,
+    recognisedQuestion: recognisedQuestion.present
+        ? recognisedQuestion.value
+        : this.recognisedQuestion,
+    maxMark: maxMark.present ? maxMark.value : this.maxMark,
+    status: status ?? this.status,
+    region: region.present ? region.value : this.region,
+    questionRegion: questionRegion.present
+        ? questionRegion.value
+        : this.questionRegion,
   );
   QuestionMarkRow copyWithCompanion(QuestionMarksCompanion data) {
     return QuestionMarkRow(
@@ -5409,6 +5967,18 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
           ? data.confidence.value
           : this.confidence,
       edited: data.edited.present ? data.edited.value : this.edited,
+      recognisedMark: data.recognisedMark.present
+          ? data.recognisedMark.value
+          : this.recognisedMark,
+      recognisedQuestion: data.recognisedQuestion.present
+          ? data.recognisedQuestion.value
+          : this.recognisedQuestion,
+      maxMark: data.maxMark.present ? data.maxMark.value : this.maxMark,
+      status: data.status.present ? data.status.value : this.status,
+      region: data.region.present ? data.region.value : this.region,
+      questionRegion: data.questionRegion.present
+          ? data.questionRegion.value
+          : this.questionRegion,
     );
   }
 
@@ -5422,7 +5992,13 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
           ..write('qNo: $qNo, ')
           ..write('mark: $mark, ')
           ..write('confidence: $confidence, ')
-          ..write('edited: $edited')
+          ..write('edited: $edited, ')
+          ..write('recognisedMark: $recognisedMark, ')
+          ..write('recognisedQuestion: $recognisedQuestion, ')
+          ..write('maxMark: $maxMark, ')
+          ..write('status: $status, ')
+          ..write('region: $region, ')
+          ..write('questionRegion: $questionRegion')
           ..write(')'))
         .toString();
   }
@@ -5437,6 +6013,12 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
     mark,
     confidence,
     edited,
+    recognisedMark,
+    recognisedQuestion,
+    maxMark,
+    status,
+    region,
+    questionRegion,
   );
   @override
   bool operator ==(Object other) =>
@@ -5449,7 +6031,13 @@ class QuestionMarkRow extends DataClass implements Insertable<QuestionMarkRow> {
           other.qNo == this.qNo &&
           other.mark == this.mark &&
           other.confidence == this.confidence &&
-          other.edited == this.edited);
+          other.edited == this.edited &&
+          other.recognisedMark == this.recognisedMark &&
+          other.recognisedQuestion == this.recognisedQuestion &&
+          other.maxMark == this.maxMark &&
+          other.status == this.status &&
+          other.region == this.region &&
+          other.questionRegion == this.questionRegion);
 }
 
 class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
@@ -5461,6 +6049,12 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
   final Value<double> mark;
   final Value<double?> confidence;
   final Value<bool> edited;
+  final Value<String?> recognisedMark;
+  final Value<String?> recognisedQuestion;
+  final Value<double?> maxMark;
+  final Value<String> status;
+  final Value<String?> region;
+  final Value<String?> questionRegion;
   final Value<int> rowid;
   const QuestionMarksCompanion({
     this.id = const Value.absent(),
@@ -5471,6 +6065,12 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
     this.mark = const Value.absent(),
     this.confidence = const Value.absent(),
     this.edited = const Value.absent(),
+    this.recognisedMark = const Value.absent(),
+    this.recognisedQuestion = const Value.absent(),
+    this.maxMark = const Value.absent(),
+    this.status = const Value.absent(),
+    this.region = const Value.absent(),
+    this.questionRegion = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   QuestionMarksCompanion.insert({
@@ -5482,6 +6082,12 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
     required double mark,
     this.confidence = const Value.absent(),
     this.edited = const Value.absent(),
+    this.recognisedMark = const Value.absent(),
+    this.recognisedQuestion = const Value.absent(),
+    this.maxMark = const Value.absent(),
+    this.status = const Value.absent(),
+    this.region = const Value.absent(),
+    this.questionRegion = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : bookletId = Value(bookletId),
        qNo = Value(qNo),
@@ -5495,6 +6101,12 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
     Expression<double>? mark,
     Expression<double>? confidence,
     Expression<bool>? edited,
+    Expression<String>? recognisedMark,
+    Expression<String>? recognisedQuestion,
+    Expression<double>? maxMark,
+    Expression<String>? status,
+    Expression<String>? region,
+    Expression<String>? questionRegion,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5506,6 +6118,12 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
       if (mark != null) 'mark': mark,
       if (confidence != null) 'confidence': confidence,
       if (edited != null) 'edited': edited,
+      if (recognisedMark != null) 'recognised_mark': recognisedMark,
+      if (recognisedQuestion != null) 'recognised_question': recognisedQuestion,
+      if (maxMark != null) 'max_mark': maxMark,
+      if (status != null) 'status': status,
+      if (region != null) 'region': region,
+      if (questionRegion != null) 'question_region': questionRegion,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5519,6 +6137,12 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
     Value<double>? mark,
     Value<double?>? confidence,
     Value<bool>? edited,
+    Value<String?>? recognisedMark,
+    Value<String?>? recognisedQuestion,
+    Value<double?>? maxMark,
+    Value<String>? status,
+    Value<String?>? region,
+    Value<String?>? questionRegion,
     Value<int>? rowid,
   }) {
     return QuestionMarksCompanion(
@@ -5530,6 +6154,12 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
       mark: mark ?? this.mark,
       confidence: confidence ?? this.confidence,
       edited: edited ?? this.edited,
+      recognisedMark: recognisedMark ?? this.recognisedMark,
+      recognisedQuestion: recognisedQuestion ?? this.recognisedQuestion,
+      maxMark: maxMark ?? this.maxMark,
+      status: status ?? this.status,
+      region: region ?? this.region,
+      questionRegion: questionRegion ?? this.questionRegion,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5561,6 +6191,24 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
     if (edited.present) {
       map['edited'] = Variable<bool>(edited.value);
     }
+    if (recognisedMark.present) {
+      map['recognised_mark'] = Variable<String>(recognisedMark.value);
+    }
+    if (recognisedQuestion.present) {
+      map['recognised_question'] = Variable<String>(recognisedQuestion.value);
+    }
+    if (maxMark.present) {
+      map['max_mark'] = Variable<double>(maxMark.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (region.present) {
+      map['region'] = Variable<String>(region.value);
+    }
+    if (questionRegion.present) {
+      map['question_region'] = Variable<String>(questionRegion.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5578,6 +6226,12 @@ class QuestionMarksCompanion extends UpdateCompanion<QuestionMarkRow> {
           ..write('mark: $mark, ')
           ..write('confidence: $confidence, ')
           ..write('edited: $edited, ')
+          ..write('recognisedMark: $recognisedMark, ')
+          ..write('recognisedQuestion: $recognisedQuestion, ')
+          ..write('maxMark: $maxMark, ')
+          ..write('status: $status, ')
+          ..write('region: $region, ')
+          ..write('questionRegion: $questionRegion, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10060,6 +10714,7 @@ typedef $$CoursesTableCreateCompanionBuilder =
       Value<double> totalExpected,
       Value<String> countRule,
       Value<int?> countN,
+      Value<String> unmarkedRule,
       Value<int> rowid,
     });
 typedef $$CoursesTableUpdateCompanionBuilder =
@@ -10074,6 +10729,7 @@ typedef $$CoursesTableUpdateCompanionBuilder =
       Value<double> totalExpected,
       Value<String> countRule,
       Value<int?> countN,
+      Value<String> unmarkedRule,
       Value<int> rowid,
     });
 
@@ -10284,6 +10940,11 @@ class $$CoursesTableFilterComposer
 
   ColumnFilters<int> get countN => $composableBuilder(
     column: $table.countN,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unmarkedRule => $composableBuilder(
+    column: $table.unmarkedRule,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10546,6 +11207,11 @@ class $$CoursesTableOrderingComposer
     column: $table.countN,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get unmarkedRule => $composableBuilder(
+    column: $table.unmarkedRule,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CoursesTableAnnotationComposer
@@ -10590,6 +11256,11 @@ class $$CoursesTableAnnotationComposer
 
   GeneratedColumn<int> get countN =>
       $composableBuilder(column: $table.countN, builder: (column) => column);
+
+  GeneratedColumn<String> get unmarkedRule => $composableBuilder(
+    column: $table.unmarkedRule,
+    builder: (column) => column,
+  );
 
   Expression<T> coursePartsRefs<T extends Object>(
     Expression<T> Function($$CoursePartsTableAnnotationComposer a) f,
@@ -10839,6 +11510,7 @@ class $$CoursesTableTableManager
                 Value<double> totalExpected = const Value.absent(),
                 Value<String> countRule = const Value.absent(),
                 Value<int?> countN = const Value.absent(),
+                Value<String> unmarkedRule = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CoursesCompanion(
                 id: id,
@@ -10851,6 +11523,7 @@ class $$CoursesTableTableManager
                 totalExpected: totalExpected,
                 countRule: countRule,
                 countN: countN,
+                unmarkedRule: unmarkedRule,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -10865,6 +11538,7 @@ class $$CoursesTableTableManager
                 Value<double> totalExpected = const Value.absent(),
                 Value<String> countRule = const Value.absent(),
                 Value<int?> countN = const Value.absent(),
+                Value<String> unmarkedRule = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CoursesCompanion.insert(
                 id: id,
@@ -10877,6 +11551,7 @@ class $$CoursesTableTableManager
                 totalExpected: totalExpected,
                 countRule: countRule,
                 countN: countN,
+                unmarkedRule: unmarkedRule,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -11787,6 +12462,7 @@ typedef $$ExamQuestionsTableCreateCompanionBuilder =
       required int qNo,
       required double max,
       Value<bool> compulsory,
+      Value<double> weight,
       Value<int> rowid,
     });
 typedef $$ExamQuestionsTableUpdateCompanionBuilder =
@@ -11798,6 +12474,7 @@ typedef $$ExamQuestionsTableUpdateCompanionBuilder =
       Value<int> qNo,
       Value<double> max,
       Value<bool> compulsory,
+      Value<double> weight,
       Value<int> rowid,
     });
 
@@ -11869,6 +12546,11 @@ class $$ExamQuestionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get weight => $composableBuilder(
+    column: $table.weight,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CoursesTableFilterComposer get courseId {
     final $$CoursesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -11932,6 +12614,11 @@ class $$ExamQuestionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get weight => $composableBuilder(
+    column: $table.weight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CoursesTableOrderingComposer get courseId {
     final $$CoursesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -11984,6 +12671,9 @@ class $$ExamQuestionsTableAnnotationComposer
     column: $table.compulsory,
     builder: (column) => column,
   );
+
+  GeneratedColumn<double> get weight =>
+      $composableBuilder(column: $table.weight, builder: (column) => column);
 
   $$CoursesTableAnnotationComposer get courseId {
     final $$CoursesTableAnnotationComposer composer = $composerBuilder(
@@ -12044,6 +12734,7 @@ class $$ExamQuestionsTableTableManager
                 Value<int> qNo = const Value.absent(),
                 Value<double> max = const Value.absent(),
                 Value<bool> compulsory = const Value.absent(),
+                Value<double> weight = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExamQuestionsCompanion(
                 id: id,
@@ -12053,6 +12744,7 @@ class $$ExamQuestionsTableTableManager
                 qNo: qNo,
                 max: max,
                 compulsory: compulsory,
+                weight: weight,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -12064,6 +12756,7 @@ class $$ExamQuestionsTableTableManager
                 required int qNo,
                 required double max,
                 Value<bool> compulsory = const Value.absent(),
+                Value<double> weight = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExamQuestionsCompanion.insert(
                 id: id,
@@ -12073,6 +12766,7 @@ class $$ExamQuestionsTableTableManager
                 qNo: qNo,
                 max: max,
                 compulsory: compulsory,
+                weight: weight,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -14893,6 +15587,10 @@ typedef $$BookletsTableCreateCompanionBuilder =
       Value<String?> readJson,
       Value<String> status,
       Value<DateTime?> confirmedAt,
+      Value<double?> calculatedTotal,
+      Value<double?> writtenTotal,
+      Value<double?> maxTotal,
+      Value<String?> totalNotes,
       Value<int> rowid,
     });
 typedef $$BookletsTableUpdateCompanionBuilder =
@@ -14907,6 +15605,10 @@ typedef $$BookletsTableUpdateCompanionBuilder =
       Value<String?> readJson,
       Value<String> status,
       Value<DateTime?> confirmedAt,
+      Value<double?> calculatedTotal,
+      Value<double?> writtenTotal,
+      Value<double?> maxTotal,
+      Value<String?> totalNotes,
       Value<int> rowid,
     });
 
@@ -15026,6 +15728,26 @@ class $$BookletsTableFilterComposer
 
   ColumnFilters<DateTime> get confirmedAt => $composableBuilder(
     column: $table.confirmedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get calculatedTotal => $composableBuilder(
+    column: $table.calculatedTotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get writtenTotal => $composableBuilder(
+    column: $table.writtenTotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get maxTotal => $composableBuilder(
+    column: $table.maxTotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get totalNotes => $composableBuilder(
+    column: $table.totalNotes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15168,6 +15890,26 @@ class $$BookletsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get calculatedTotal => $composableBuilder(
+    column: $table.calculatedTotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get writtenTotal => $composableBuilder(
+    column: $table.writtenTotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get maxTotal => $composableBuilder(
+    column: $table.maxTotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get totalNotes => $composableBuilder(
+    column: $table.totalNotes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CoursesTableOrderingComposer get courseId {
     final $$CoursesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -15267,6 +16009,24 @@ class $$BookletsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get confirmedAt => $composableBuilder(
     column: $table.confirmedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get calculatedTotal => $composableBuilder(
+    column: $table.calculatedTotal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get writtenTotal => $composableBuilder(
+    column: $table.writtenTotal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get maxTotal =>
+      $composableBuilder(column: $table.maxTotal, builder: (column) => column);
+
+  GeneratedColumn<String> get totalNotes => $composableBuilder(
+    column: $table.totalNotes,
     builder: (column) => column,
   );
 
@@ -15408,6 +16168,10 @@ class $$BookletsTableTableManager
                 Value<String?> readJson = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> confirmedAt = const Value.absent(),
+                Value<double?> calculatedTotal = const Value.absent(),
+                Value<double?> writtenTotal = const Value.absent(),
+                Value<double?> maxTotal = const Value.absent(),
+                Value<String?> totalNotes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BookletsCompanion(
                 id: id,
@@ -15420,6 +16184,10 @@ class $$BookletsTableTableManager
                 readJson: readJson,
                 status: status,
                 confirmedAt: confirmedAt,
+                calculatedTotal: calculatedTotal,
+                writtenTotal: writtenTotal,
+                maxTotal: maxTotal,
+                totalNotes: totalNotes,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -15434,6 +16202,10 @@ class $$BookletsTableTableManager
                 Value<String?> readJson = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> confirmedAt = const Value.absent(),
+                Value<double?> calculatedTotal = const Value.absent(),
+                Value<double?> writtenTotal = const Value.absent(),
+                Value<double?> maxTotal = const Value.absent(),
+                Value<String?> totalNotes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BookletsCompanion.insert(
                 id: id,
@@ -15446,6 +16218,10 @@ class $$BookletsTableTableManager
                 readJson: readJson,
                 status: status,
                 confirmedAt: confirmedAt,
+                calculatedTotal: calculatedTotal,
+                writtenTotal: writtenTotal,
+                maxTotal: maxTotal,
+                totalNotes: totalNotes,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -15586,6 +16362,12 @@ typedef $$QuestionMarksTableCreateCompanionBuilder =
       required double mark,
       Value<double?> confidence,
       Value<bool> edited,
+      Value<String?> recognisedMark,
+      Value<String?> recognisedQuestion,
+      Value<double?> maxMark,
+      Value<String> status,
+      Value<String?> region,
+      Value<String?> questionRegion,
       Value<int> rowid,
     });
 typedef $$QuestionMarksTableUpdateCompanionBuilder =
@@ -15598,6 +16380,12 @@ typedef $$QuestionMarksTableUpdateCompanionBuilder =
       Value<double> mark,
       Value<double?> confidence,
       Value<bool> edited,
+      Value<String?> recognisedMark,
+      Value<String?> recognisedQuestion,
+      Value<double?> maxMark,
+      Value<String> status,
+      Value<String?> region,
+      Value<String?> questionRegion,
       Value<int> rowid,
     });
 
@@ -15674,6 +16462,36 @@ class $$QuestionMarksTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get recognisedMark => $composableBuilder(
+    column: $table.recognisedMark,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recognisedQuestion => $composableBuilder(
+    column: $table.recognisedQuestion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get maxMark => $composableBuilder(
+    column: $table.maxMark,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get region => $composableBuilder(
+    column: $table.region,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get questionRegion => $composableBuilder(
+    column: $table.questionRegion,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$BookletsTableFilterComposer get bookletId {
     final $$BookletsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -15742,6 +16560,36 @@ class $$QuestionMarksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get recognisedMark => $composableBuilder(
+    column: $table.recognisedMark,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recognisedQuestion => $composableBuilder(
+    column: $table.recognisedQuestion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get maxMark => $composableBuilder(
+    column: $table.maxMark,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get region => $composableBuilder(
+    column: $table.region,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get questionRegion => $composableBuilder(
+    column: $table.questionRegion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$BookletsTableOrderingComposer get bookletId {
     final $$BookletsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -15797,6 +16645,30 @@ class $$QuestionMarksTableAnnotationComposer
 
   GeneratedColumn<bool> get edited =>
       $composableBuilder(column: $table.edited, builder: (column) => column);
+
+  GeneratedColumn<String> get recognisedMark => $composableBuilder(
+    column: $table.recognisedMark,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recognisedQuestion => $composableBuilder(
+    column: $table.recognisedQuestion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get maxMark =>
+      $composableBuilder(column: $table.maxMark, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get region =>
+      $composableBuilder(column: $table.region, builder: (column) => column);
+
+  GeneratedColumn<String> get questionRegion => $composableBuilder(
+    column: $table.questionRegion,
+    builder: (column) => column,
+  );
 
   $$BookletsTableAnnotationComposer get bookletId {
     final $$BookletsTableAnnotationComposer composer = $composerBuilder(
@@ -15858,6 +16730,12 @@ class $$QuestionMarksTableTableManager
                 Value<double> mark = const Value.absent(),
                 Value<double?> confidence = const Value.absent(),
                 Value<bool> edited = const Value.absent(),
+                Value<String?> recognisedMark = const Value.absent(),
+                Value<String?> recognisedQuestion = const Value.absent(),
+                Value<double?> maxMark = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> region = const Value.absent(),
+                Value<String?> questionRegion = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => QuestionMarksCompanion(
                 id: id,
@@ -15868,6 +16746,12 @@ class $$QuestionMarksTableTableManager
                 mark: mark,
                 confidence: confidence,
                 edited: edited,
+                recognisedMark: recognisedMark,
+                recognisedQuestion: recognisedQuestion,
+                maxMark: maxMark,
+                status: status,
+                region: region,
+                questionRegion: questionRegion,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -15880,6 +16764,12 @@ class $$QuestionMarksTableTableManager
                 required double mark,
                 Value<double?> confidence = const Value.absent(),
                 Value<bool> edited = const Value.absent(),
+                Value<String?> recognisedMark = const Value.absent(),
+                Value<String?> recognisedQuestion = const Value.absent(),
+                Value<double?> maxMark = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> region = const Value.absent(),
+                Value<String?> questionRegion = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => QuestionMarksCompanion.insert(
                 id: id,
@@ -15890,6 +16780,12 @@ class $$QuestionMarksTableTableManager
                 mark: mark,
                 confidence: confidence,
                 edited: edited,
+                recognisedMark: recognisedMark,
+                recognisedQuestion: recognisedQuestion,
+                maxMark: maxMark,
+                status: status,
+                region: region,
+                questionRegion: questionRegion,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

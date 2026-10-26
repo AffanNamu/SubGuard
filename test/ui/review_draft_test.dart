@@ -45,14 +45,26 @@ void main() {
     await h.settle(tester);
   }
 
-  Future<void> typeMark(WidgetTester tester, int q, List<String> keys) async {
-    await h.tapText(tester, 'Q-$q');
+  Future<void> pad(WidgetTester tester, List<String> keys) async {
     for (final k in keys) {
       await tester.tap(find.descendant(of: find.byType(ScoreKeypad), matching: find.text(k)));
       await tester.pump();
     }
     await tester.tap(find.text('Save'));
     await h.settle(tester);
+  }
+
+  /// Adds question [q] by hand and gives it [keys] as its mark (the examiner typing from the photo).
+  Future<void> typeMark(WidgetTester tester, int q, List<String> keys) async {
+    await h.reveal(tester, find.text('Add a question'));
+    await tester.tap(find.text('Add a question'));
+    await h.settle(tester);
+    await pad(tester, [for (final d in '$q'.split('')) d]);
+    final field = find.byKey(const ValueKey('m-manual-1'));
+    await h.reveal(tester, field);
+    await tester.tap(field);
+    await h.settle(tester);
+    await pad(tester, keys);
   }
 
   Future<void> typeExamNumber(WidgetTester tester, String value) async {
@@ -86,8 +98,10 @@ void main() {
     final saved = await tester.runAsync(() => h.drafts.load(firstScanId));
     expect(saved, isNotNull);
     expect(saved!.draft.examNumber, 'FWM/24U/0538');
-    expect(saved.draft.marks, {1: 12.5});
-    expect(saved.draft.editedMarks, {1});
+    expect(saved.draft.records, hasLength(1));
+    expect(saved.draft.records.single.qNo, 1);
+    expect(saved.draft.records.single.mark, 12.5);
+    expect(saved.draft.records.single.manual, isTrue);
 
     await reopen(tester);
     expect(examNumberShown(tester), 'FWM/24U/0538');
@@ -103,7 +117,7 @@ void main() {
       tester,
       size: tall,
       tab: null,
-      seed: () => seed(draft: const ReviewDraft(examNumber: 'FWM/24U/0539', marks: {2: 7.0}, editedMarks: {2})),
+      seed: () => seed(draft: const ReviewDraft(examNumber: 'FWM/24U/0539', records: [DraftRecord(key: 'manual-1', qNo: 2, mark: 7.0, manual: true)])),
     );
     await openFirstReview(tester);
     expect(examNumberShown(tester), 'FWM/24U/0539');
@@ -117,7 +131,7 @@ void main() {
       tester,
       size: tall,
       tab: null,
-      seed: () => seed(draft: const ReviewDraft(examNumber: 'FWM/24U/0539', marks: {2: 7.0}, editedMarks: {2})),
+      seed: () => seed(draft: const ReviewDraft(examNumber: 'FWM/24U/0539', records: [DraftRecord(key: 'manual-1', qNo: 2, mark: 7.0, manual: true)])),
     );
     await openFirstReview(tester);
     await h.tapText(tester, 'Discard them');
@@ -177,11 +191,16 @@ void main() {
       tester,
       size: tall,
       tab: null,
-      seed: () => seed(draft: const ReviewDraft(examNumber: 'FWM/24U/0538', marks: {1: 20.0}, editedMarks: {1})),
+      seed: () => seed(draft: const ReviewDraft(examNumber: 'FWM/24U/0538', records: [DraftRecord(key: 'manual-1', qNo: 1, mark: 20.0, manual: true)])),
     );
     await openFirstReview(tester);
     expect(examNumberShown(tester), 'FWM/24U/0538');
-    await typeMark(tester, 1, ['1', '5']); // the examiner corrects the restored mark before confirming
+    final field = find.byKey(const ValueKey('m-manual-1'));
+    await h.reveal(tester, field);
+    await tester.tap(field); // the examiner corrects the restored mark before confirming
+    await h.settle(tester);
+    await pad(tester, ['1', '5']);
+    await h.reveal(tester, find.text('Confirm & next'));
     await h.tapText(tester, 'Confirm & next');
     await h.settle(tester);
 
@@ -260,11 +279,11 @@ void main() {
     await h.start(tester, size: tall, tab: null, seed: () async {
       await seed();
       final runId = await seedRun();
-      await h.drafts.save(firstScanId, ReviewDraft(dismissedRows: const {'mark_row_1'}, runId: runId));
+      await h.drafts.save(firstScanId, ReviewDraft(records: const [DraftRecord(key: 'mark_row_1', dismissed: true)], runId: runId));
     });
     await openFirstReview(tester);
-    expect(find.textContaining('Row 1 · reads as Q1'), findsNothing);
-    expect(find.textContaining('Row 2 · reads as Q2'), findsOneWidget);
+    expect(find.textContaining('Row 1: not a mark. Left out of the total.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('sm-mark_row_2-2.0')), findsOneWidget);
     expect(find.textContaining('were restored'), findsOneWidget);
     await h.stop(tester);
   });
@@ -273,11 +292,27 @@ void main() {
     await h.start(tester, size: tall, tab: null, seed: () async {
       await seed();
       await seedRun();
-      await h.drafts.save(firstScanId, const ReviewDraft(dismissedRows: {'mark_row_1'}, runId: 'an-earlier-run'));
+      await h.drafts.save(firstScanId, const ReviewDraft(records: [DraftRecord(key: 'mark_row_1', dismissed: true)], runId: 'an-earlier-run'));
     });
     await openFirstReview(tester);
-    expect(find.textContaining('Row 1 · reads as Q1'), findsOneWidget);
-    expect(find.textContaining('Row 2 · reads as Q2'), findsOneWidget);
+    expect(find.textContaining('not a mark. Left out of the total.'), findsNothing);
+    expect(find.byKey(const ValueKey('sm-mark_row_1-4.5')), findsOneWidget);
+    expect(find.byKey(const ValueKey('sm-mark_row_2-2.0')), findsOneWidget);
+    await h.stop(tester);
+  });
+  testWidgets('a draft saved before records existed (marks by question number) comes back as added questions', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await h.db.customStatement("INSERT INTO review_draft (id, updated_at, scan_id, draft_json) VALUES ('d-old', '2026-10-01T10:00:00.000Z', '$firstScanId', "
+          "'{\"v\":1,\"examNumber\":\"FWM/24U/0539\",\"serial\":\"\",\"marks\":{\"2\":7.0,\"4\":null},\"editedMarks\":[2],\"writtenTotal\":null,\"addExtra\":false,\"allowDuplicate\":false,\"dismissedRows\":[]}')");
+    });
+    await openFirstReview(tester);
+    expect(examNumberShown(tester), 'FWM/24U/0539');
+    expect(find.textContaining('were restored'), findsOneWidget);
+    await h.reveal(tester, find.byKey(const ValueKey('record-manual-1')));
+    expect(find.text('Q2'), findsWidgets);
+    expect(find.text('7'), findsWidgets);
+    expect(find.byKey(const ValueKey('record-manual-2')), findsOneWidget, reason: 'the question whose mark was cleared is still a record, with no mark');
     await h.stop(tester);
   });
 }

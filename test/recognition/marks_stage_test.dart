@@ -144,4 +144,63 @@ void main() {
     expect(r.rows, isEmpty);
     expect(r.notes.join(' '), contains('too small'));
   });
+  group('a decimal point, and what is not one', () {
+    test('a dot written raised, at about half the height of the digits, between two digits is the decimal point', () {
+      final t = SyntheticTable();
+      t.rule(248, 140, 780);
+      t.one(270, 200, 30, SyntheticTable.red);
+      // 8 wide, 14 tall, mid-height: a raised dot. Before this was understood it was read as a digit.
+      t.rect(299, 208, 307, 222, SyntheticTable.red);
+      t.ring(318, 200, 30, SyntheticTable.red);
+      final row = read(t).rows.single;
+      expect(row.mark.chars.map((c) => c.text), ['7', '.', '7']);
+      expect(row.mark.displayText, '7.7');
+    });
+
+    test('the same small blob at the end of a mark is not a decimal point', () {
+      final t = SyntheticTable();
+      t.rule(248, 140, 780);
+      t.one(270, 200, 30, SyntheticTable.red);
+      t.ring(290, 200, 30, SyntheticTable.red);
+      t.rect(330, 208, 338, 222, SyntheticTable.red);
+      final chars = read(t).rows.single.mark.chars.map((c) => c.text).toList();
+      expect(chars.where((c) => c == '.'), isEmpty, reason: 'a point has to stand between two digits');
+    });
+
+    test('two digits with no dot between them get no point added: the reading says so', () {
+      final t = SyntheticTable();
+      t.rule(248, 140, 780);
+      t.one(270, 200, 30, SyntheticTable.red);
+      t.ring(296, 200, 30, SyntheticTable.red);
+      final row = read(t).rows.single;
+      expect(row.mark.displayText, '77');
+      expect(row.mark.warnings.join(' '), contains('No decimal point was seen'));
+    });
+
+    test('a flat stroke is not a digit, whatever the network says about it', () {
+      final t = SyntheticTable();
+      t.rule(248, 140, 780);
+      t.ring(270, 200, 30, SyntheticTable.red);
+      t.rect(300, 214, 372, 220, SyntheticTable.red); // 72 wide, 6 tall
+      final row = read(t).rows.single;
+      expect(row.mark.chars.map((c) => c.text), contains('?'), reason: 'the stroke is not read as a digit');
+      expect(row.mark.chars.where((c) => c.text != '?' && c.box.right - c.box.left > 40), isEmpty);
+      expect(row.mark.candidates, isEmpty, reason: 'an unreadable character leaves no candidates');
+    });
+  });
+
+  test('a pen stroke left below the last row is a fraction of the size of the writing, and is not a row', () {
+    final t = table(rows: 3);
+    t.rect(262, 470, 336, 476, SyntheticTable.red); // 74 wide, 6 tall: the end of a strike-through
+    final r = read(t);
+    expect(r.rows, hasLength(3));
+    expect(r.rows.map((row) => row.index), [1, 2, 3]);
+    expect(r.notes.join(' '), contains('pen stroke below row'));
+    expect(r.strokesCrossingRows, isNotEmpty);
+  });
+
+  test('rows of ordinary size are all kept, however many there are', () {
+    final r = read(table(rows: 6));
+    expect(r.rows, hasLength(6));
+  });
 }

@@ -16,6 +16,25 @@ enum CountRule {
       );
 }
 
+/// What a question on the paper with no mark means.
+enum UnmarkedRule {
+  /// It counts as zero. The usual case: the candidate did not answer it.
+  zero('zero', 'Counts as zero'),
+
+  /// Each one must be given a mark (0 if that is what it is) before the booklet
+  /// is confirmed.
+  ask('ask', 'Ask me about each one');
+
+  const UnmarkedRule(this.dbValue, this.label);
+  final String dbValue;
+  final String label;
+
+  static UnmarkedRule fromDb(String? value) => UnmarkedRule.values.firstWhere(
+        (r) => r.dbValue == value,
+        orElse: () => UnmarkedRule.zero,
+      );
+}
+
 enum PartSource {
   scanned('scanned', 'Scanned booklets'),
   typed('typed', 'Typed into the grid'),
@@ -122,6 +141,7 @@ class QuestionSpec {
     required this.qNo,
     required this.max,
     this.compulsory = false,
+    this.weight = 1,
   });
 
   final String id;
@@ -129,12 +149,20 @@ class QuestionSpec {
   final double max;
   final bool compulsory;
 
-  QuestionSpec copyWith({int? qNo, double? max, bool? compulsory}) =>
+  /// What a mark on this question is multiplied by before it counts. 1 for an
+  /// ordinary question; a question that counts double has 2.
+  final double weight;
+
+  /// The most this question can add to the score: its maximum times its weight.
+  double get maxContribution => max * weight;
+
+  QuestionSpec copyWith({int? qNo, double? max, bool? compulsory, double? weight}) =>
       QuestionSpec(
         id: id,
         qNo: qNo ?? this.qNo,
         max: max ?? this.max,
         compulsory: compulsory ?? this.compulsory,
+        weight: weight ?? this.weight,
       );
 }
 
@@ -190,6 +218,7 @@ class GradingScheme {
     this.totalExpected = 100,
     this.countRule = CountRule.all,
     this.countN,
+    this.unmarked = UnmarkedRule.zero,
     this.parts = const [],
     this.questions = const [],
     this.bands = const [],
@@ -199,6 +228,9 @@ class GradingScheme {
   final double totalExpected;
   final CountRule countRule;
   final int? countN;
+
+  /// What a question on the list with no mark means for a booklet.
+  final UnmarkedRule unmarked;
   final List<PartSpec> parts;
   final List<QuestionSpec> questions;
   final List<GradeBand> bands;
@@ -225,7 +257,7 @@ class GradingScheme {
   /// Highest exam score the questions can produce under the counting rule.
   double? get reachableExamScore {
     if (questions.isEmpty) return null;
-    final maxes = questions.map((q) => q.max).toList()..sort((a, b) => b.compareTo(a));
+    final maxes = questions.map((q) => q.maxContribution).toList()..sort((a, b) => b.compareTo(a));
     switch (countRule) {
       case CountRule.all:
         return maxes.fold<double>(0, (a, b) => a + b);
@@ -233,10 +265,10 @@ class GradingScheme {
         final n = (countN ?? maxes.length).clamp(0, maxes.length);
         return maxes.take(n).fold<double>(0, (a, b) => a + b);
       case CountRule.compulsoryPlusBestN:
-        final compulsory = questions.where((q) => q.compulsory).map((q) => q.max);
+        final compulsory = questions.where((q) => q.compulsory).map((q) => q.maxContribution);
         final rest = questions
             .where((q) => !q.compulsory)
-            .map((q) => q.max)
+            .map((q) => q.maxContribution)
             .toList()
           ..sort((a, b) => b.compareTo(a));
         final n = (countN ?? rest.length).clamp(0, rest.length);
@@ -317,6 +349,7 @@ class GradingScheme {
     CountRule? countRule,
     int? countN,
     bool clearCountN = false,
+    UnmarkedRule? unmarked,
     List<PartSpec>? parts,
     List<QuestionSpec>? questions,
     List<GradeBand>? bands,
@@ -325,6 +358,7 @@ class GradingScheme {
         totalExpected: totalExpected ?? this.totalExpected,
         countRule: countRule ?? this.countRule,
         countN: clearCountN ? null : (countN ?? this.countN),
+        unmarked: unmarked ?? this.unmarked,
         parts: parts ?? this.parts,
         questions: questions ?? this.questions,
         bands: bands ?? this.bands,

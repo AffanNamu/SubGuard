@@ -10,6 +10,9 @@ part 'app_database.g.dart';
 /// Version 2: batches, and the intake columns on scans.
 /// Version 3: recognition runs and field reviews (the examiner's decisions).
 /// Version 4: review drafts (what the examiner has entered and not yet confirmed).
+/// Version 5: question weights and the unmarked-question rule; the question-mark record
+///            keeps what was read, the maximum, status and place; booklets keep their
+///            calculated, written and maximum totals apart.
 ///
 /// To change the schema:
 ///  1. Edit `tables.dart` and bump this number.
@@ -19,7 +22,7 @@ part 'app_database.g.dart';
 ///     field have already run it.
 ///  4. Add a test in `test/data/migration_test.dart` that opens the old version
 ///     with data in it and checks the data survives.
-const int latestSchemaVersion = 4;
+const int latestSchemaVersion = 5;
 
 @DriftDatabase(tables: [
   Courses,
@@ -75,6 +78,23 @@ class AppDatabase extends _$AppDatabase {
             // One new table; no existing table or row is touched.
             await m.createTable(schema.reviewDraft);
             await m.createIndex(schema.reviewDraftScan);
+          },
+          from4To5: (m, schema) async {
+            // Columns only, all nullable or with a default that keeps what was there:
+            // a question has weight 1, a course counts unmarked questions as zero, an
+            // existing mark was confirmed by the examiner. No row is rewritten.
+            await m.addColumn(schema.course, schema.course.unmarkedRule);
+            await m.addColumn(schema.examQuestion, schema.examQuestion.weight);
+            await m.addColumn(schema.booklet, schema.booklet.calculatedTotal);
+            await m.addColumn(schema.booklet, schema.booklet.writtenTotal);
+            await m.addColumn(schema.booklet, schema.booklet.maxTotal);
+            await m.addColumn(schema.booklet, schema.booklet.totalNotes);
+            await m.addColumn(schema.questionMark, schema.questionMark.recognisedMark);
+            await m.addColumn(schema.questionMark, schema.questionMark.recognisedQuestion);
+            await m.addColumn(schema.questionMark, schema.questionMark.maxMark);
+            await m.addColumn(schema.questionMark, schema.questionMark.status);
+            await m.addColumn(schema.questionMark, schema.questionMark.region);
+            await m.addColumn(schema.questionMark, schema.questionMark.questionRegion);
           },
         ),
         beforeOpen: (details) async {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
+import '../../data/repositories/settings_repository.dart';
 import '../../providers/providers.dart';
 import '../../services/scan/image_source.dart';
 import '../incoming/saved_documents_screen.dart';
@@ -152,6 +153,22 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => open(const LayoutScreen()),
               ),
             ),
+            const SizedBox(height: 12),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: NavTile(
+                icon: Icons.format_list_numbered_rounded,
+                color: c.tilePurple,
+                title: 'Highest question number',
+                subtitle: 'Q${settings.maxQuestionNumber}. A question number above it is not accepted. The app never fills in a list of questions.',
+                onTap: () async {
+                  final v = await _askQuestionLimit(context, settings.maxQuestionNumber);
+                  if (v != null) {
+                    await ref.read(settingsProvider.notifier).update((s) => s.copyWith(maxQuestionNumber: v));
+                  }
+                },
+              ),
+            ),
             const SectionHeading('Results'),
             Card(
               clipBehavior: Clip.antiAlias,
@@ -255,6 +272,50 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Asks for the highest question number the app accepts.
+Future<int?> _askQuestionLimit(BuildContext context, int current) {
+  final controller = TextEditingController(text: '$current');
+  return showDialog<int>(
+    context: context,
+    builder: (ctx) {
+      String? problem;
+      return StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Highest question number'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Question numbers above this are treated as unclear when a booklet is read, and cannot be added. Raise it if your papers have more questions.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                decoration: InputDecoration(labelText: 'Highest question number', errorText: problem),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final v = int.tryParse(controller.text.trim());
+                if (v == null || v < 1 || v > AppSettings.maxQuestionNumberLimit) {
+                  setState(() => problem = 'Enter a whole number from 1 to ${AppSettings.maxQuestionNumberLimit}.');
+                  return;
+                }
+                Navigator.pop(ctx, v);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 /// "12.4 MB", for the storage row.

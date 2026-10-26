@@ -96,6 +96,9 @@ class CourseDraftController extends ChangeNotifier {
 
   // ---- exam paper ----
 
+  /// Quick set: questions 1 to [n] on the paper. Going up adds the next numbers after the
+  /// highest one already there (so a paper with Q1, Q2, Q4 and Q5 goes on to Q6); going
+  /// down takes away the highest numbers.
   void setQuestionCount(int n) {
     final questions = [..._scheme.questions]..sort((a, b) => a.qNo.compareTo(b.qNo));
     if (n < questions.length) {
@@ -103,11 +106,26 @@ class CourseDraftController extends ChangeNotifier {
       return;
     }
     final fill = questions.isNotEmpty ? questions.last.max : 10.0;
-    for (var i = questions.length; i < n; i++) {
-      questions.add(QuestionSpec(id: newId(), qNo: i + 1, max: fill));
+    var next = questions.isEmpty ? 1 : questions.last.qNo + 1;
+    while (questions.length < n) {
+      questions.add(QuestionSpec(id: newId(), qNo: next++, max: fill));
     }
     _set(_scheme.copyWith(questions: questions));
   }
+
+  /// Adds the question the examiner names (any number not already on the paper).
+  /// Returns false when that number is already there.
+  bool addQuestion(int qNo) {
+    if (_scheme.questions.any((q) => q.qNo == qNo)) return false;
+    final fill = _scheme.questions.isNotEmpty ? _scheme.questions.last.max : 10.0;
+    final questions = [..._scheme.questions, QuestionSpec(id: newId(), qNo: qNo, max: fill)]..sort((a, b) => a.qNo.compareTo(b.qNo));
+    _set(_scheme.copyWith(questions: questions));
+    return true;
+  }
+
+  void removeQuestion(String id) => _set(_scheme.copyWith(questions: [for (final q in _scheme.questions) if (q.id != id) q]));
+
+  void setUnmarked(UnmarkedRule rule) => _set(_scheme.copyWith(unmarked: rule));
 
   void updateQuestion(QuestionSpec q) => _set(_scheme.copyWith(questions: [
         for (final x in _scheme.questions) x.id == q.id ? q : x,

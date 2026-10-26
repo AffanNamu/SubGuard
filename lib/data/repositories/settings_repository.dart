@@ -16,7 +16,14 @@ class AppSettings {
     this.seenWelcome = false,
     this.photoQuality = PhotoQuality.high,
     this.readAutomatically = true,
+    this.maxQuestionNumber = defaultMaxQuestionNumber,
   });
+
+  /// The highest question number the app accepts when it reads or adds one. Not a list
+  /// the app fills in: a question number above it is "not clear" rather than accepted.
+  /// The examiner sets it for their papers.
+  static const defaultMaxQuestionNumber = 60;
+  static const maxQuestionNumberLimit = 999;
 
   final ThemeMode themeMode;
   final ExportHeader header;
@@ -30,6 +37,9 @@ class AppSettings {
   /// Start reading booklets as soon as they are added.
   final bool readAutomatically;
 
+  /// See [defaultMaxQuestionNumber].
+  final int maxQuestionNumber;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     ExportHeader? header,
@@ -38,6 +48,7 @@ class AppSettings {
     bool? seenWelcome,
     PhotoQuality? photoQuality,
     bool? readAutomatically,
+    int? maxQuestionNumber,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -47,6 +58,7 @@ class AppSettings {
         seenWelcome: seenWelcome ?? this.seenWelcome,
         photoQuality: photoQuality ?? this.photoQuality,
         readAutomatically: readAutomatically ?? this.readAutomatically,
+        maxQuestionNumber: maxQuestionNumber ?? this.maxQuestionNumber,
       );
 }
 
@@ -66,6 +78,7 @@ class SettingsRepository {
   static const _seenWelcome = 'seen_welcome';
   static const _photoQuality = 'photo_quality';
   static const _readAutomatically = 'read_automatically';
+  static const _maxQuestionNumber = 'max_question_number';
   static const _layouts = 'layout_profiles';
   static const _layoutId = 'layout_profile_id';
 
@@ -87,6 +100,7 @@ class SettingsRepository {
         seenWelcome: _prefs.getBool(_seenWelcome) ?? false,
         photoQuality: PhotoQuality.fromName(_prefs.getString(_photoQuality)),
         readAutomatically: _prefs.getBool(_readAutomatically) ?? true,
+        maxQuestionNumber: (_prefs.getInt(_maxQuestionNumber) ?? AppSettings.defaultMaxQuestionNumber).clamp(1, AppSettings.maxQuestionNumberLimit),
       );
 
   /// Layout files the administrator added, as they were checked when added. A stored
@@ -127,5 +141,6 @@ class SettingsRepository {
     await _prefs.setBool(_seenWelcome, s.seenWelcome);
     await _prefs.setString(_photoQuality, s.photoQuality.name);
     await _prefs.setBool(_readAutomatically, s.readAutomatically);
+    await _prefs.setInt(_maxQuestionNumber, s.maxQuestionNumber);
   }
 }

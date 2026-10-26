@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/number_field.dart';
+import '../../core/widgets/number_pad_sheet.dart';
 import '../../domain/models.dart';
 import '../../domain/scheme.dart';
 import '../../providers/providers.dart';
@@ -304,13 +305,14 @@ class _PartCard extends StatelessWidget {
 // Step 3: the exam paper.
 // ---------------------------------------------------------------------------
 
-class ExamStep extends StatelessWidget {
+class ExamStep extends ConsumerWidget {
   const ExamStep({super.key, required this.draft});
 
   final CourseDraftController draft;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final highest = ref.watch(settingsProvider.select((s) => s.maxQuestionNumber));
     final scheme = draft.scheme;
     final text = Theme.of(context).textTheme;
     final muted = text.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
@@ -340,8 +342,11 @@ class ExamStep extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Number of questions', style: text.titleMedium),
-                      Text(count == 0 ? 'None set' : '$count on the paper', style: muted),
+                      Text('Questions on the paper', style: text.titleMedium),
+                      Text(
+                        count == 0 ? 'None set' : scheme.questions.map((q) => 'Q${q.qNo}').join(', '),
+                        style: muted,
+                      ),
                     ],
                   ),
                 ),
@@ -359,13 +364,39 @@ class ExamStep extends StatelessWidget {
                 ),
                 IconButton.filledTonal(
                   tooltip: 'More questions',
-                  onPressed: count >= 30 ? null : () => draft.setQuestionCount(count + 1),
+                  onPressed: scheme.questions.any((q) => q.qNo >= highest) ? null : () => draft.setQuestionCount(count + 1),
                   icon: const Icon(Icons.add_rounded),
                   iconSize: 28,
                   constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const ValueKey('add-question'),
+            onPressed: () async {
+              final result = await showNumberPad(
+                context,
+                title: 'Add a question',
+                hint: 'Its number on the paper, from 1 to $highest. Numbers need not run in order.',
+                max: highest.toDouble(),
+                step: 1,
+              );
+              final v = result?.value;
+              if (v == null || !context.mounted) return;
+              final q = v.round();
+              if (q < 1 || q > highest) {
+                showMessage(context, 'Question numbers go from 1 to $highest. You can change that limit in Settings.');
+              } else if (!draft.addQuestion(q)) {
+                showMessage(context, 'Q$q is already on the paper.');
+              }
+            },
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add a question by number'),
           ),
         ),
         if (count > 0) ...[
@@ -399,35 +430,64 @@ class ExamStep extends StatelessWidget {
               child: Card(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-                  child: Row(
+                  child: Column(
                     children: [
-                      SizedBox(
-                        width: 44,
-                        child: Text('Q${q.qNo}', style: text.titleMedium),
-                      ),
-                      SizedBox(
-                        width: 96,
-                        child: NumberField(
-                          key: ValueKey('${q.id}-max'),
-                          label: 'Max',
-                          value: q.max,
-                          onChanged: (v) {
-                            if (v != null) draft.updateQuestion(q.copyWith(max: v));
-                          },
-                        ),
-                      ),
-                      const Spacer(),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
+                      Row(
                         children: [
-                          Switch(
-                            value: q.compulsory,
-                            onChanged: (v) => draft.updateQuestion(q.copyWith(compulsory: v)),
+                          SizedBox(
+                            width: 44,
+                            child: Text('Q${q.qNo}', style: text.titleMedium),
                           ),
-                          Text('Compulsory', style: text.bodySmall),
+                          SizedBox(
+                            width: 96,
+                            child: NumberField(
+                              key: ValueKey('${q.id}-max'),
+                              label: 'Max',
+                              value: q.max,
+                              onChanged: (v) {
+                                if (v != null) draft.updateQuestion(q.copyWith(max: v));
+                              },
+                            ),
+                          ),
+                          const Spacer(),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Switch(
+                                value: q.compulsory,
+                                onChanged: (v) => draft.updateQuestion(q.copyWith(compulsory: v)),
+                              ),
+                              Text('Compulsory', style: text.bodySmall),
+                            ],
+                          ),
+                          const SizedBox(width: 8),
                         ],
                       ),
-                      const SizedBox(width: 8),
+                      Row(
+                        children: [
+                          const SizedBox(width: 44),
+                          SizedBox(
+                            width: 96,
+                            child: NumberField(
+                              key: ValueKey('${q.id}-weight'),
+                              label: 'Weight',
+                              value: q.weight,
+                              min: 0,
+                              onChanged: (v) {
+                                if (v != null) draft.updateQuestion(q.copyWith(weight: v));
+                              },
+                              helper: '1 = normal',
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            key: ValueKey('${q.id}-remove'),
+                            tooltip: 'Remove Q${q.qNo}',
+                            onPressed: () => draft.removeQuestion(q.id),
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -463,6 +523,24 @@ class ExamStep extends StatelessWidget {
               },
             ),
           ],
+          const SectionHeading('A question with no mark'),
+          RadioGroup<UnmarkedRule>(
+            groupValue: scheme.unmarked,
+            onChanged: (v) => draft.setUnmarked(v!),
+            child: Column(
+              children: [
+                for (final rule in UnmarkedRule.values)
+                  RadioListTile<UnmarkedRule>(
+                    contentPadding: EdgeInsets.zero,
+                    value: rule,
+                    title: Text(rule.label),
+                    subtitle: Text(rule == UnmarkedRule.zero
+                        ? 'The candidate did not answer it. It adds nothing.'
+                        : 'Each one must be given a mark (0 if none) before a booklet can be confirmed.'),
+                  ),
+              ],
+            ),
+          ),
         ],
       ],
     );

@@ -4,9 +4,12 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:unimarkly/domain/defaults.dart';
+import 'package:unimarkly/domain/mark_rules.dart';
 import 'package:unimarkly/domain/ocr.dart';
 import 'package:unimarkly/domain/recognition.dart';
 import 'package:unimarkly/domain/reg_no.dart';
+import 'package:unimarkly/domain/row_suggestions.dart';
 import 'package:unimarkly/services/recognition/booklet_pipeline.dart';
 import 'package:unimarkly/services/recognition/interfaces.dart';
 import 'package:unimarkly/services/recognition/model_registry.dart';
@@ -276,6 +279,9 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
   final reg = _Counter(), regAny = _Counter(), regAssisted = _Counter(), regRead = _Counter();
   var regCharErrors = 0, regChars = 0;
   final markExact = _Counter(), markAssoc = _Counter(), markQuestion = _Counter(), markAny = _Counter();
+  // What the examiner is actually shown: the suggestions that pass the plausibility rules for the default scheme.
+  final suggestedHasTrue = _Counter(), suggestedTop = _Counter(), questionTop = _Counter(), implausibleOffered = _Counter(), noSuggestion = _Counter();
+  final defaultScheme = Defaults.nigerianScheme();
   final serial = _Counter(), totalBlank = _Counter();
   final docExact = _Counter();
   final recognizedFields = _Counter(); // right = correctly accepted
@@ -323,6 +329,16 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
 
     // marks
     final machineRows = [for (final f in r.fields) if (f.key.startsWith('mark_row_')) f];
+    final suggestions = RowSuggestions.allOf(
+      r.fields,
+      marksFor: (q) => MarkRules.forScheme(defaultScheme, qNo: q),
+      questionRules: const QuestionRules(highest: 60),
+    );
+    for (final sug in suggestions) {
+      for (final c in sug.markAlternatives) {
+        implausibleOffered.add(!MarkRules.forScheme(defaultScheme, qNo: int.tryParse(sug.questionAlternatives.firstOrNull?.text ?? '')).check(c.text).plausible);
+      }
+    }
     final marks = <Map<String, Object?>>[];
     for (final t in run.doc.fields.where((f) => f.key.startsWith('mark_q'))) {
       // A row is "found at the right place" when the centre of the annotated
@@ -348,6 +364,15 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
       final exact = byQuestion != null && _sameNumber(byQuestion.value, t.text);
       markExact.add(exact);
       markAny.add(machineRows.any((row) => int.tryParse(row.question ?? '') == t.question && row.candidates.any((c) => _sameNumber(c.text, t.text))));
+      if (placed != null) {
+        final sug = suggestions.where((x) => x.markKey == placed!.key).firstOrNull;
+        if (sug != null) {
+          suggestedHasTrue.add(sug.markAlternatives.any((c) => _sameNumber(c.text, t.text)));
+          suggestedTop.add(sug.markAlternatives.isNotEmpty && _sameNumber(sug.markAlternatives.first.text, t.text));
+          noSuggestion.add(sug.markAlternatives.isEmpty);
+          questionTop.add(sug.questionAlternatives.isNotEmpty && sug.questionAlternatives.first.text == '${t.question}');
+        }
+      }
       cat['mark']!.add(exact);
       if (!exact) docOk = false;
       marks.add({'question': t.question, 'truth': t.text, 'machine': byQuestion?.value, 'row_found': associated, 'question_read': placed?.question, 'exact': exact});
@@ -428,6 +453,14 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
       'mark_in_candidates_with_question': markAny.json,
       'mark_row_found_at_right_place': markAssoc.json,
       'mark_row_question_label_correct': markQuestion.json,
+      'suggestions_shown': {
+        'note': 'What the examiner is offered for a row found at the right place, after the plausibility rules for the default scheme (exam 70, step 0.5).',
+        'true_mark_among_suggested_marks': suggestedHasTrue.json,
+        'true_mark_is_first_suggestion': suggestedTop.json,
+        'rows_with_no_mark_suggested_and_told_to_enter_it': noSuggestion.json,
+        'true_question_is_first_suggested_question': questionTop.json,
+        'suggested_marks_that_break_the_rules': {'broken': implausibleOffered.right, 'of': implausibleOffered.total},
+      },
       'printed_serial_exact': serial.json,
       'written_total_correct_including_blank': totalBlank.json,
       'document_exact': docExact.json,
@@ -476,6 +509,11 @@ _Report _report(List<_Run> runs, Map<String, Object?> batch, int peakRss, String
     ..writeln('| marks, right value among candidates with the right question | ${markAny.text} |')
     ..writeln('| mark rows found at the right place | ${markAssoc.text} |')
     ..writeln('| question labels read correctly | ${markQuestion.text} |')
+    ..writeln('| mark rows where the true mark is among the suggestions shown | ${suggestedHasTrue.text} |')
+    ..writeln('| mark rows where the true mark is the first suggestion | ${suggestedTop.text} |')
+    ..writeln('| mark rows with no mark suggested (the examiner is asked to enter it) | ${noSuggestion.text} |')
+    ..writeln('| rows where the first suggested question number is right | ${questionTop.text} |')
+    ..writeln('| suggested marks that break the rules (above the maximum, off the step) | ${implausibleOffered.right} of ${implausibleOffered.total} |')
     ..writeln('| printed booklet number, exact | ${serial.text} |')
     ..writeln('| written total correct (blank counts when blank) | ${totalBlank.text} |')
     ..writeln('| whole document exact | ${docExact.text} |')

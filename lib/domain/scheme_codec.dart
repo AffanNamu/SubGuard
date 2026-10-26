@@ -15,6 +15,7 @@ class SchemeCodec {
         'totalExpected': s.totalExpected,
         'countRule': s.countRule.dbValue,
         'countN': s.countN,
+        'unmarked': s.unmarked.dbValue,
         'parts': [
           for (final p in s.parts)
             {
@@ -30,7 +31,7 @@ class SchemeCodec {
         ],
         'questions': [
           for (final q in s.questions)
-            {'qNo': q.qNo, 'max': q.max, 'compulsory': q.compulsory}
+            {'qNo': q.qNo, 'max': q.max, 'compulsory': q.compulsory, if (q.weight != 1) 'weight': q.weight}
         ],
         'bands': [
           for (final b in s.bands)
@@ -71,6 +72,7 @@ class SchemeCodec {
       totalExpected: d(m['totalExpected'], 100),
       countRule: CountRule.fromDb(m['countRule'] as String?),
       countN: (m['countN'] as num?)?.toInt(),
+      unmarked: UnmarkedRule.fromDb(m['unmarked'] as String?),
       parts: parts,
       questions: [
         for (final q in (m['questions'] as List?) ?? const [])
@@ -79,6 +81,7 @@ class SchemeCodec {
             qNo: ((q as Map)['qNo'] as num).toInt(),
             max: d(q['max']),
             compulsory: q['compulsory'] as bool? ?? false,
+            weight: d(q['weight'], 1),
           )
       ],
       bands: [

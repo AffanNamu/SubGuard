@@ -48,6 +48,10 @@ were the chance of being right.
 * A mark is read character by character. **No decimal point is inserted** when
   none was seen; an unreadable character is `?`, and a reading with a `?` is shown
   as partial, never as a number.
+* **A reading that cannot be a mark is not offered as one.** A mark above the question's (or the
+  exam's) maximum, or off the scheme's step, or with a `?`, is left out of the suggestions and kept
+  as evidence with the reason; it is not repaired and not forced into range. Question numbers and
+  marks are suggested separately and never used to guess each other. See `QUESTION_MARKS.md`.
 * A validator never rewrites a mark. A handwritten sum of 38 against a written
   total of 36 keeps both numbers and raises a discrepancy.
 

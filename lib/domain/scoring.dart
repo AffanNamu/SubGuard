@@ -1,3 +1,4 @@
+import 'exam_tally.dart';
 import 'scheme.dart';
 
 /// Floating-point sums of halves and quarters are exact, but scaled marks
@@ -94,39 +95,14 @@ class ScoreCalculator {
     return null;
   }
 
-  /// Exam score from per-question marks under the course's counting rule.
-  /// [marks] holds only the questions the examiner marked.
+  /// Exam score from per-question marks under the course's counting rule. [marks]
+  /// holds only the questions the examiner marked. See [ExamTally] for the rules;
+  /// this is its calculated score, or 0 when nothing was marked.
   static double examScoreFromQuestions(
     GradingScheme scheme,
     Map<int, double> marks,
-  ) {
-    if (marks.isEmpty) return 0;
-    final compulsoryNos =
-        scheme.questions.where((q) => q.compulsory).map((q) => q.qNo).toSet();
-
-    switch (scheme.countRule) {
-      case CountRule.all:
-        return roundMark(marks.values.fold(0.0, (a, b) => a + b));
-      case CountRule.bestN:
-        final sorted = marks.values.toList()..sort((a, b) => b.compareTo(a));
-        final n = scheme.countN ?? sorted.length;
-        return roundMark(sorted.take(n).fold(0.0, (a, b) => a + b));
-      case CountRule.compulsoryPlusBestN:
-        var sum = 0.0;
-        final rest = <double>[];
-        marks.forEach((qNo, mark) {
-          if (compulsoryNos.contains(qNo)) {
-            sum += mark;
-          } else {
-            rest.add(mark);
-          }
-        });
-        rest.sort((a, b) => b.compareTo(a));
-        final n = scheme.countN ?? rest.length;
-        sum += rest.take(n).fold(0.0, (a, b) => a + b);
-        return roundMark(sum);
-    }
-  }
+  ) =>
+      ExamTally.compute(scheme, [for (final e in marks.entries) TallyMark(e.key, e.value)]).calculated ?? 0;
 
   /// Decimals a step needs: 1 -> 0, 0.5 -> 1, 0.25 -> 2.
   static int decimalsForStep(double step) {

@@ -25,7 +25,7 @@ stages on one photograph. Every stage is an interface
 | 4 | Printed text | whole-photo text with boxes | `PrintedTextRecognizer` (= `OcrEngine`) → PaddleOCR PP-OCRv6 on the phone |
 | 5 | Layout | where the exam number, marks table, total and answered line are, found from the printed labels (so tilt and zoom matter less); the cover is described by a layout profile, so another cover is another file (`LAYOUT_PROFILES.md`) | `LayoutAnalyzer` → `ProfileLayoutAnalyzer` (`BookletExtractor` = the built-in Modibbo Adama profile) |
 | 6 | Close-ups | the printed booklet number and the handwritten exam number re-read at higher magnification, in more than one picture variant | `RegionOcrEngine` |
-| 7 | Marks table | one ink picture over the whole table (brightness shape, red-pen colour gate); strike-throughs and underlines removed (Hough transform); rows found from the ink; each mark and question label read character by character | `HandwritingRecognizer` → `MarkReader` + digit network |
+| 7 | Marks table | one ink picture over the whole table (brightness shape, red-pen colour gate); strike-throughs and underlines removed (Hough transform); rows found from the ink (a leftover stroke far smaller than the writing is not a row); each mark and question label read character by character, a raised dot between two digits being the decimal point | `HandwritingRecognizer` → `MarkReader` + digit network |
 | 8 | Validation | marks against question maxima, the mark step, the part maximum; the written total against the sum; the "questions answered" line; duplicate or unreadable rows | `ExaminationValidator` → `SchemeExaminationValidator` |
 | 9 | Field states | each field is `recognized`, `needs_review`, `unreadable` or `failed` | `FieldConfidencePolicy` → `RecognitionPolicy` |
 
@@ -96,7 +96,17 @@ character of what was read"). It is never entered for the examiner. When the
 reading is equally close to two class-list numbers, none is offered and the screen
 says so.
 
+## From rows to a result
+
+The pipeline returns, for each row of the examiner's table, a question-number field and a
+mark field with their candidates. What the examiner is *offered* from them (only readings that
+can be a mark or a question number under the course's scheme), how the records are kept and
+how the total is calculated is in `QUESTION_MARKS.md`.
+
 ## What is stored
+
+Schema v5 (see `QUESTION_MARKS.md`) keeps, for each confirmed question, what the reader returned
+beside the confirmed mark, and, for each booklet, the calculated and the written total apart.
 
 Schema v3 adds two tables and changes none (`drift_schemas/drift_schema_v3.json`,
 migration tested from v2 with data in it):

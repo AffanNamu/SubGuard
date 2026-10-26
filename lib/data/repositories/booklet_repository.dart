@@ -10,6 +10,35 @@ import '../database/app_database.dart';
 import 'recognition_repository.dart';
 import 'score_repository.dart';
 
+/// One confirmed question-mark record: the question number and the mark the examiner
+/// confirmed, with what the reader had returned for each (kept apart from them), the
+/// maximum, how the examiner arrived at it, and where on the photograph it is.
+class ConfirmedMark {
+  const ConfirmedMark({
+    required this.qNo,
+    required this.mark,
+    this.edited = false,
+    this.status = 'entered',
+    this.recognisedMark,
+    this.recognisedQuestion,
+    this.maxMark,
+    this.region,
+    this.questionRegion,
+  });
+
+  final int qNo;
+  final double mark;
+  final bool edited;
+
+  /// `accepted`, `edited` or `entered` (see the `question_mark.status` column).
+  final String status;
+  final String? recognisedMark;
+  final String? recognisedQuestion;
+  final double? maxMark;
+  final Region? region;
+  final Region? questionRegion;
+}
+
 /// What the reader found on one photo, as stored.
 class StoredBooklet {
   const StoredBooklet({
@@ -22,6 +51,11 @@ class StoredBooklet {
     required this.engine,
     required this.confirmed,
     required this.marks,
+    this.records = const [],
+    this.calculatedTotal,
+    this.writtenTotal,
+    this.maxTotal,
+    this.totalNotes = const [],
   });
 
   final String id;
@@ -35,6 +69,17 @@ class StoredBooklet {
 
   /// Question number -> mark, once confirmed.
   final Map<int, double> marks;
+
+  /// The same marks as separate records, with what was read, the maximum, status and place.
+  final List<ConfirmedMark> records;
+
+  /// The exam score worked out from the confirmed marks when the booklet was
+  /// confirmed (derived), the total the examiner wrote in the booklet (null: none
+  /// recorded), the most the questions could add, and what was assumed.
+  final double? calculatedTotal;
+  final double? writtenTotal;
+  final double? maxTotal;
+  final List<String> totalNotes;
 }
 
 /// One value the examiner changed from what the reader suggested. Each one is a
@@ -80,7 +125,34 @@ class BookletRepository {
       engine: json['engine'] as String? ?? 'unknown',
       confirmed: row.status == 'confirmed',
       marks: {for (final m in marks) m.qNo: m.mark},
+      records: [
+        for (final m in marks)
+          ConfirmedMark(
+            qNo: m.qNo,
+            mark: m.mark,
+            edited: m.edited,
+            status: m.status,
+            recognisedMark: m.recognisedMark,
+            recognisedQuestion: m.recognisedQuestion,
+            maxMark: m.maxMark,
+            region: Region.decode(m.region),
+            questionRegion: Region.decode(m.questionRegion),
+          ),
+      ]..sort((a, b) => a.qNo.compareTo(b.qNo)),
+      calculatedTotal: row.calculatedTotal,
+      writtenTotal: row.writtenTotal,
+      maxTotal: row.maxTotal,
+      totalNotes: _notes(row.totalNotes),
     );
+  }
+
+  static List<String> _notes(String? json) {
+    if (json == null) return const [];
+    try {
+      return [for (final n in jsonDecode(json) as List) n as String];
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// The booklet confirmed for [studentId] in [courseId], if any, other than
@@ -167,6 +239,17 @@ class BookletRepository {
     List<CorrectionDraft> corrections = const [],
     List<FieldReviewDraft> reviews = const [],
     String? runId,
+
+    /// The marks as full records. When absent each entry of [marks] is stored as a
+    /// record with nothing but its number, mark and whether it was edited.
+    List<ConfirmedMark>? records,
+
+    /// The calculated total (derived), the written total (null when none was
+    /// recorded), the maximum and the assumptions. [examScore] is what goes in the grid.
+    double? calculatedTotal,
+    double? writtenTotal,
+    double? maxTotal,
+    List<String> totalNotes = const [],
   }) =>
       _db.transaction(() async {
         final now = _now;
@@ -190,19 +273,34 @@ class BookletRepository {
           serialNo: Value(serialNo),
           status: const Value('confirmed'),
           confirmedAt: Value(now),
+          calculatedTotal: Value(calculatedTotal ?? examScore),
+          writtenTotal: Value(writtenTotal),
+          maxTotal: Value(maxTotal),
+          totalNotes: Value(totalNotes.isEmpty ? null : jsonEncode(totalNotes)),
           updatedAt: Value(now),
         ));
 
         // Replace the question marks.
         await (_db.update(_db.questionMarks)..where((m) => m.bookletId.equals(bookletId) & m.deletedAt.isNull()))
             .write(QuestionMarksCompanion(deletedAt: Value(now), updatedAt: Value(now)));
-        for (final e in marks.entries) {
+        final toStore = records ??
+            [
+              for (final e in marks.entries)
+                ConfirmedMark(qNo: e.key, mark: e.value, edited: editedMarks.contains(e.key), status: editedMarks.contains(e.key) ? 'edited' : 'entered'),
+            ];
+        for (final r in toStore) {
           await _db.into(_db.questionMarks).insert(QuestionMarksCompanion.insert(
                 bookletId: bookletId,
-                qNo: e.key,
-                mark: e.value,
+                qNo: r.qNo,
+                mark: r.mark,
                 id: Value(newId()),
-                edited: Value(editedMarks.contains(e.key)),
+                edited: Value(r.edited),
+                recognisedMark: Value(r.recognisedMark),
+                recognisedQuestion: Value(r.recognisedQuestion),
+                maxMark: Value(r.maxMark),
+                status: Value(r.status),
+                region: Value(r.region?.encode()),
+                questionRegion: Value(r.questionRegion?.encode()),
                 updatedAt: Value(now),
               ));
         }

@@ -41,6 +41,8 @@ support: record its model, RAM and Android version) and a recent iPhone. Use ful
 | R8 | Try `PaddleOcrConfig.handwrittenRows()` for the close-ups | whether the exam number is read better than with the current config | | |
 | R9 | Rotate the phone and use font scale 1.3 on the review screen | nothing cut off; "Show on photo" works with pinch zoom | | |
 | R10 | Photograph one booklet lying on its side, and one upside down (a phone that does not set the rotation flag, or a booklet turned on the desk) | the app turns it upright (a note says so); the photo viewer shows it upright; extra seconds per page | | |
+| R12 | On a booklet with handwritten marks (decimals such as 1.0, 5.5), look at each row's card | per row: was the question number suggested correctly; was the mark suggested, not suggested, or wrong; nothing like 147 offered; the calculated total after confirming equals the sum of the marks | | |
+| R13 | Confirm a booklet whose Total box is blank, then one where the written total differs from the sum | the calculated total is there either way; the difference is flagged and neither number changes | | |
 | R11 | Type an exam number and two marks on a booklet, kill the app, reopen the booklet | the entries come back with a notice; "Discard them" clears them; nothing reached the score grid before Confirm | | |
 
 Report each row with the photos (if authorised) and the phone model. Rows R6 and R8 are what decide the

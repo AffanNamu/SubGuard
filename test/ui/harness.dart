@@ -20,6 +20,7 @@ import 'package:unimarkly/domain/defaults.dart';
 import 'package:unimarkly/domain/ids.dart';
 import 'package:unimarkly/domain/models.dart';
 import 'package:unimarkly/domain/scan.dart';
+import 'package:unimarkly/domain/scheme.dart';
 import 'package:unimarkly/features/incoming/incoming_controller.dart';
 import 'package:unimarkly/providers/providers.dart';
 import 'package:unimarkly/services/incoming/incoming_file.dart';
@@ -301,13 +302,13 @@ class AppHarness {
 
   // ---- data for `seed` ----
 
-  static Course makeCourse({String code = 'AGR 114', String department = 'FWM'}) => Course(
+  static Course makeCourse({String code = 'AGR 114', String department = 'FWM', GradingScheme? scheme}) => Course(
         id: newId(),
         code: code,
         department: department,
         session: '2024/2025',
         semester: 'Second',
-        scheme: Defaults.nigerianScheme(),
+        scheme: scheme ?? Defaults.nigerianScheme(),
       );
 
   /// A course with the default scheme and the given students.
@@ -315,8 +316,9 @@ class AppHarness {
     String code = 'AGR 114',
     String department = 'FWM',
     List<String> regNos = const ['FWM/24U/0538', 'FWM/24U/0539', 'FST/25U/244/5772'],
+    GradingScheme? scheme,
   }) async {
-    final course = makeCourse(code: code, department: department);
+    final course = makeCourse(code: code, department: department, scheme: scheme);
     await courses.save(course);
     if (regNos.isNotEmpty) {
       await students.addMany(course.id, [for (final r in regNos) NewStudent(r)]);

@@ -142,15 +142,24 @@ class MarkReader implements HandwritingRecognizer {
     }
 
     final chars = <MarkChar>[];
-    for (final b in parts) {
+    bool digitSized(({int left, int top, int right, int bottom}) b) => (b.bottom - b.top) >= tallest * 0.6;
+    for (var i = 0; i < parts.length; i++) {
+      final b = parts[i];
       final w = b.right - b.left, h = b.bottom - b.top;
-      final isPoint = h < tallest * 0.4 && w < tallest * 0.55;
+      var isPoint = h < tallest * 0.4 && w < tallest * 0.55;
+      // A dot written raised, at half the height of the digits, is still a decimal
+      // point when it is a small narrow blob standing between two digit-sized
+      // characters. At the start or end of a mark, or beside something that is not
+      // digit-sized, it is not taken for one.
+      if (!isPoint && i > 0 && i < parts.length - 1 && h < tallest * 0.55 && w < tallest * 0.4 && digitSized(parts[i - 1]) && digitSized(parts[i + 1])) {
+        isPoint = true;
+      }
       if (isPoint) {
         chars.add(MarkChar(text: '.', box: b, alternatives: const [], confidence: 1));
         continue;
       }
-      if (h < tallest * 0.4) {
-        // Wider than a point and short: a dash or a stroke, not a digit.
+      if (h < tallest * 0.4 || w > h * 3.5) {
+        // Short, or far wider than tall: a dash or a stroke, not a digit.
         chars.add(MarkChar(text: '?', box: b, alternatives: const [], confidence: 0));
         warnings.add('A mark that is not a digit or a point was found.');
         continue;

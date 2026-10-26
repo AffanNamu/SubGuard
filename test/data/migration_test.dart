@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
+import 'package:drift/drift.dart' show OrderingTerm, Value, driftRuntimeOptions;
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unimarkly/data/database/app_database.dart';
@@ -112,11 +112,13 @@ void main() {
     await verifier.migrateAndValidate(db, 3);
 
     // Everything written by version 2 is still there, unchanged.
-    final booklet = await (db.select(db.booklets)..where((b) => b.id.equals('bk1'))).getSingle();
-    expect(booklet.status, 'confirmed');
-    expect(booklet.serialNo, '292011');
-    expect(booklet.readJson, contains('"engine":"old"'));
-    expect((await (db.select(db.questionMarks)).getSingle()).mark, 5.5);
+    final booklet = (await db.customSelect("SELECT status, serial_no, read_json FROM booklet WHERE id = 'bk1'").getSingle()).data;
+    expect(booklet['status'], 'confirmed');
+    expect(booklet['serial_no'], '292011');
+    expect(booklet['read_json'], contains('"engine":"old"'));
+    // The question-mark table gained columns in version 5, so read it with SQL, not with
+    // the current table class.
+    expect((await db.customSelect('SELECT mark FROM question_mark').getSingle()).read<double>('mark'), 5.5);
     expect((await (db.select(db.corrections)).getSingle()).readValue, '292017');
     expect((await db.select(db.scans).getSingle()).contentHash, 'h1');
 
@@ -159,5 +161,49 @@ void main() {
     expect(await db.select(db.reviewDrafts).get(), isEmpty);
     await db.into(db.reviewDrafts).insert(ReviewDraftsCompanion.insert(scanId: 'sc1', draftJson: '{"v":1}', id: const Value('d1')));
     expect((await db.select(db.reviewDrafts).getSingle()).scanId, 'sc1');
+  });
+  test('version 5 adds question weights, the unmarked rule, kept totals and the question-mark record fields, and changes no earlier row', () async {
+    final schema = await verifier.schemaAt(4);
+    final raw = schema.rawDatabase;
+    raw.execute("INSERT INTO course (id, updated_at, code, count_rule, count_n) VALUES ('c1', '2026-09-01T10:00:00.000Z', 'AGR 114', 'best_n', 3)");
+    raw.execute("INSERT INTO exam_question (id, updated_at, course_id, q_no, max, compulsory) VALUES ('eq1', '2026-09-01T10:00:00.000Z', 'c1', 1, 10, 1)");
+    raw.execute("INSERT INTO student (id, updated_at, course_id, reg_no, on_class_list, position) VALUES ('s1', '2026-09-01T10:00:00.000Z', 'c1', 'FWM/24U/0538', 1, 0)");
+    raw.execute("INSERT INTO upload_batch (id, updated_at, course_id, created_at) VALUES ('b1', '2026-09-01T10:00:00.000Z', 'c1', '2026-09-01T10:00:00.000Z')");
+    raw.execute("INSERT INTO scan (id, updated_at, course_id, kind, photo_path, page_no, status, created_at, batch_id, content_hash) "
+        "VALUES ('sc1', '2026-09-01T10:00:00.000Z', 'c1', 'booklet_cover', 'scans/a.jpg', 1, 'confirmed', '2026-09-01T10:00:00.000Z', 'b1', 'h1')");
+    // A booklet confirmed by version 4 of the app, with its marks.
+    raw.execute("INSERT INTO booklet (id, updated_at, course_id, student_id, scan_id, serial_no, read_json, status, confirmed_at) "
+        "VALUES ('bk1', '2026-09-01T10:00:00.000Z', 'c1', 's1', 'sc1', '292011', '{}', 'confirmed', '2026-09-01T11:00:00.000Z')");
+    raw.execute("INSERT INTO question_mark (id, updated_at, booklet_id, q_no, mark, edited) VALUES ('m1', '2026-09-01T10:00:00.000Z', 'bk1', 1, 5.5, 1)");
+    raw.execute("INSERT INTO question_mark (id, updated_at, booklet_id, q_no, mark, edited) VALUES ('m2', '2026-09-01T10:00:00.000Z', 'bk1', 4, 2.0, 0)");
+
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+    await verifier.migrateAndValidate(db, 5);
+
+    // Every earlier value is as it was.
+    final course = await db.select(db.courses).getSingle();
+    expect(course.countRule, 'best_n');
+    expect(course.countN, 3);
+    expect(course.unmarkedRule, 'zero', reason: 'a course counts unmarked questions as zero, as it always did');
+    final question = await db.select(db.examQuestions).getSingle();
+    expect((question.qNo, question.max, question.compulsory), (1, 10.0, true));
+    expect(question.weight, 1.0, reason: 'a question counts as its mark, as it always did');
+    final marks = await (db.select(db.questionMarks)..orderBy([(m) => OrderingTerm.asc(m.qNo)])).get();
+    expect(marks.map((m) => (m.qNo, m.mark, m.edited)), [(1, 5.5, true), (4, 2.0, false)]);
+    // The new record fields are empty for them, not invented.
+    expect(marks.every((m) => m.recognisedMark == null && m.recognisedQuestion == null && m.maxMark == null && m.region == null && m.questionRegion == null), isTrue);
+    expect(marks.every((m) => m.status == 'entered'), isTrue);
+    final booklet = await db.select(db.booklets).getSingle();
+    expect(booklet.status, 'confirmed');
+    expect(booklet.calculatedTotal, isNull, reason: 'no total was recorded then; it is derived from the marks when shown');
+    expect((booklet.writtenTotal, booklet.maxTotal, booklet.totalNotes), (null, null, null));
+
+    // The new columns take values.
+    await (db.update(db.booklets)..where((b) => b.id.equals('bk1'))).write(const BookletsCompanion(calculatedTotal: Value(7.5), writtenTotal: Value(8.0), maxTotal: Value(30.0), totalNotes: Value('["a note"]')));
+    await (db.update(db.questionMarks)..where((m) => m.id.equals('m1'))).write(const QuestionMarksCompanion(recognisedMark: Value('141'), recognisedQuestion: Value('1'), maxMark: Value(10.0), status: Value('edited'), region: Value('0.78,0.34,0.98,0.38')));
+    final after = await db.select(db.booklets).getSingle();
+    expect((after.calculatedTotal, after.writtenTotal, after.maxTotal), (7.5, 8.0, 30.0));
+    expect((await (db.select(db.questionMarks)..where((m) => m.id.equals('m1'))).getSingle()).recognisedMark, '141');
   });
 }

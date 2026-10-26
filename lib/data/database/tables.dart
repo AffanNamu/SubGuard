@@ -37,6 +37,11 @@ class Courses extends Table with SyncColumns {
   /// `all`, `best_n` or `compulsory_plus_best_n`.
   TextColumn get countRule => text().withDefault(const Constant('all'))();
   IntColumn get countN => integer().nullable()();
+
+  /// What a question on the list with no mark means: `zero` (counts as zero) or
+  /// `ask` (each one must be dealt with before a booklet is confirmed).
+  /// Added in schema version 5.
+  TextColumn get unmarkedRule => text().withDefault(const Constant('zero'))();
 }
 
 @DataClassName('CoursePartRow')
@@ -73,6 +78,10 @@ class ExamQuestions extends Table with SyncColumns {
   IntColumn get qNo => integer()();
   RealColumn get max => real()();
   BoolColumn get compulsory => boolean().withDefault(const Constant(false))();
+
+  /// What a mark on this question is multiplied by before it counts (1 for an
+  /// ordinary question). Added in schema version 5.
+  RealColumn get weight => real().withDefault(const Constant(1))();
 }
 
 @DataClassName('GradeScaleRow')
@@ -181,6 +190,24 @@ class Booklets extends Table with SyncColumns {
   /// `needs_review` until the examiner confirms it; then `confirmed`.
   TextColumn get status => text().withDefault(const Constant('scanned'))();
   DateTimeColumn get confirmedAt => dateTime().nullable()();
+
+  // Added in schema version 5. The totals are kept apart because they are different
+  // things: the calculated one is derived from the confirmed question marks, the
+  // written one is what the examiner wrote on the booklet (null when the box was blank).
+
+  /// The exam score worked out from the confirmed question marks when the booklet
+  /// was confirmed. Derived: it can always be worked out again from [QuestionMarks].
+  RealColumn get calculatedTotal => real().nullable()();
+
+  /// The total the examiner wrote in the booklet's Total box, when they recorded one.
+  RealColumn get writtenTotal => real().nullable()();
+
+  /// The most the questions could add under the counting rule, when the course
+  /// has a question list.
+  RealColumn get maxTotal => real().nullable()();
+
+  /// What had to be assumed in the calculation, in words, as a JSON list.
+  TextColumn get totalNotes => text().nullable()();
 }
 
 @DataClassName('QuestionMarkRow')
@@ -191,9 +218,32 @@ class QuestionMarks extends Table with SyncColumns {
 
   TextColumn get bookletId => text().references(Booklets, #id)();
   IntColumn get qNo => integer()();
+
+  /// The mark the examiner confirmed.
   RealColumn get mark => real()();
   RealColumn get confidence => real().nullable()();
   BoolColumn get edited => boolean().withDefault(const Constant(false))();
+
+  // Added in schema version 5: the record keeps its parts separate.
+
+  /// What the reader returned for the Marks cell and for the Question cell, as seen
+  /// ("1.7", "1?0"), whether or not it was used. Null when the examiner entered
+  /// the row by hand.
+  TextColumn get recognisedMark => text().nullable()();
+  TextColumn get recognisedQuestion => text().nullable()();
+
+  /// The question's maximum when the course had one.
+  RealColumn get maxMark => real().nullable()();
+
+  /// How the examiner arrived at the mark: `accepted` (the machine's suggestion,
+  /// confirmed), `edited` (typed over a different reading) or `entered` (typed with
+  /// nothing suggested).
+  TextColumn get status => text().withDefault(const Constant('entered'))();
+
+  /// Where the Marks cell and the Question cell are on the photograph,
+  /// "left,top,right,bottom" as fractions.
+  TextColumn get region => text().nullable()();
+  TextColumn get questionRegion => text().nullable()();
 }
 
 @DataClassName('RowReadRow')

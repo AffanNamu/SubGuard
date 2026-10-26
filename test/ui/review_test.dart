@@ -39,14 +39,48 @@ void main() {
     await h.settle(tester);
   }
 
-  Future<void> typeMark(WidgetTester tester, int q, List<String> keys) async {
-    await h.tapText(tester, 'Q-$q');
+  /// Records the examiner added by hand in this test, by question number.
+  final added = <int, String>{};
+  setUp(added.clear);
+
+  Future<void> pad(WidgetTester tester, List<String> keys) async {
     for (final k in keys) {
       await tester.tap(find.descendant(of: find.byType(ScoreKeypad), matching: find.text(k)));
       await tester.pump();
     }
     await tester.tap(find.text('Save'));
     await h.settle(tester);
+  }
+
+  /// Adds question [q] (once) and gives it [keys] as its mark: the examiner typing from the photo.
+  Future<void> typeMark(WidgetTester tester, int q, List<String> keys) async {
+    if (!added.containsKey(q)) {
+      await h.reveal(tester, find.text('Add a question'));
+      await tester.tap(find.text('Add a question'));
+      await h.settle(tester);
+      await pad(tester, [for (final d in '$q'.split('')) d]);
+      added[q] = 'manual-${added.length + 1}';
+    }
+    final field = find.byKey(ValueKey('m-${added[q]}'));
+    await h.reveal(tester, field);
+    await tester.tap(field);
+    await h.settle(tester);
+    await pad(tester, keys);
+  }
+
+  /// Sets a record's mark, or question number, by typing on the pad.
+  Future<void> typeInto(WidgetTester tester, String fieldKey, List<String> keys) async {
+    final field = find.byKey(ValueKey(fieldKey));
+    await h.reveal(tester, field);
+    await tester.tap(field);
+    await h.settle(tester);
+    await pad(tester, keys);
+  }
+
+  /// The calculated total as shown, scrolled into view first.
+  Future<String?> total(WidgetTester tester) async {
+    await h.reveal(tester, find.byKey(const ValueKey('calculated-total')));
+    return tester.widget<Text>(find.byKey(const ValueKey('calculated-total'))).data;
   }
 
   Future<void> typeExamNumber(WidgetTester tester, String value) async {
@@ -70,7 +104,7 @@ void main() {
 
     await typeExamNumber(tester, 'FWM/24U/0538');
     expect(find.textContaining('is on the class list'), findsOneWidget);
-    expect(find.text('Enter at least one mark from the photo.'), findsOneWidget);
+    expect(find.text('Confirm at least one question and its mark from the photo.'), findsOneWidget);
     expect(confirmEnabled(tester), isFalse);
 
     await typeMark(tester, 1, ['1', '2', '.5']);
@@ -155,7 +189,9 @@ void main() {
     await typeExamNumber(tester, 'FWM/24U/0538');
     await typeMark(tester, 1, ['2', '0']);
 
-    await h.tapText(tester, "Add the examiner's written total (optional)");
+    await h.reveal(tester, find.byKey(const ValueKey('written-total')));
+    await tester.tap(find.byKey(const ValueKey('written-total')));
+    await h.settle(tester);
     for (final k in ['2', '5']) {
       await tester.tap(find.descendant(of: find.byType(ScoreKeypad), matching: find.text(k)));
       await tester.pump();
@@ -163,7 +199,7 @@ void main() {
     await tester.tap(find.text('Save'));
     await h.settle(tester);
 
-    expect(find.textContaining('The examiner wrote 25, but the marks add up to 20'), findsOneWidget);
+    expect(find.textContaining('The examiner wrote 25, but the confirmed marks add up to 20'), findsOneWidget);
     // It is a warning: the examiner can still confirm.
     expect(confirmEnabled(tester), isTrue);
     await h.stop(tester);
@@ -178,6 +214,7 @@ void main() {
     await h.settle(tester);
 
     // Now on the second photo, same student.
+    added.clear();
     expect(find.text('Review 2 of 2'), findsOneWidget);
     await typeExamNumber(tester, 'FWM/24U/0538');
     await typeMark(tester, 1, ['3', '1']);
@@ -330,7 +367,7 @@ void main() {
     await h.stop(tester);
   });
 
-  testWidgets('machine rows: a clean one can be used for its question; an unclear question or a partial reading cannot', (tester) async {
+  testWidgets('each row is one record with a question number and a mark: suggestions are kept apart and become values only when tapped', (tester) async {
     await h.start(tester, size: tall, tab: null, seed: () async {
       await seed();
       await seedRun([
@@ -341,23 +378,119 @@ void main() {
       ]);
     });
     await openFirstReview(tester);
+    await h.reveal(tester, find.byKey(const ValueKey('record-mark_row_1')));
 
-    expect(find.textContaining('Row 1 · reads as Q3'), findsOneWidget);
-    expect(find.textContaining('Row 2 · question not clear'), findsOneWidget);
-    expect(find.textContaining('Partly read: "1?0"'), findsOneWidget);
-    expect(find.text('Nothing readable in this cell.'), findsOneWidget);
+    // Four rows found, four records. Nothing is confirmed, so there is no total yet.
+    expect(find.byKey(const ValueKey('record-mark_row_1')), findsOneWidget);
+    for (final i in [1, 2, 3, 4]) {
+      await h.reveal(tester, find.byKey(ValueKey('record-mark_row_$i')));
+      expect(find.byKey(ValueKey('record-mark_row_$i')), findsOneWidget);
+    }
+    expect(find.byKey(const ValueKey('record-mark_row_5')), findsNothing, reason: 'no fifth record, and no Q1 to Q100 list');
+    expect(find.text('Needs checking'), findsWidgets);
 
-    // Using row 1's reading fills Q-3, and only Q-3.
-    await tester.tap(find.widgetWithText(ActionChip, '4.5'));
+    // Row 1: the machine suggests Q3 and 4.5 as two separate suggestions. Neither is a value yet.
+    await h.reveal(tester, find.byKey(const ValueKey('record-mark_row_1')));
+    expect(find.byKey(const ValueKey('sq-mark_row_1-3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('sm-mark_row_1-4.5')), findsOneWidget);
+    expect(find.textContaining('Suggested question number (not confirmed)'), findsWidgets);
+    await h.reveal(tester, find.text('Calculated total'));
+    expect(find.text('Calculated total'), findsOneWidget);
+    expect(await total(tester), '—');
+
+    // Tapping the question suggestion confirms the question only; the mark is still a suggestion.
+    await h.reveal(tester, find.byKey(const ValueKey('sq-mark_row_1-3')));
+    await tester.tap(find.byKey(const ValueKey('sq-mark_row_1-3')));
     await h.settle(tester);
-    expect(find.bySemanticsLabel(RegExp(r'Question 3, mark 4\.5')), findsOneWidget);
-    expect(find.bySemanticsLabel(RegExp(r'Question 1, no mark')), findsOneWidget);
+    expect(find.byKey(const ValueKey('sq-mark_row_1-3')), findsNothing);
+    expect(find.byKey(const ValueKey('sm-mark_row_1-4.5')), findsOneWidget);
+    expect(await total(tester), '—');
 
-    // Row 2's question is unclear: the reading cannot be placed.
-    await tester.tap(find.widgetWithText(ActionChip, '2.0'));
+    // Tapping the mark suggestion confirms the mark: now the record is complete and the total follows.
+    await h.reveal(tester, find.byKey(const ValueKey('sm-mark_row_1-4.5')));
+    await tester.tap(find.byKey(const ValueKey('sm-mark_row_1-4.5')));
     await h.settle(tester);
-    expect(find.textContaining('question number for this row is not clear'), findsOneWidget);
-    expect(find.bySemanticsLabel(RegExp(r'Question 2, mark 2')), findsNothing);
+    expect(await total(tester), '4.5');
+
+    // Row 2: the mark is suggested, the question number is not readable: it says so and asks.
+    await h.reveal(tester, find.byKey(const ValueKey('record-mark_row_2')));
+    expect(find.byKey(const ValueKey('sm-mark_row_2-2.0')), findsOneWidget);
+    expect(find.text('Unable to read this question number confidently. Please check the photograph and enter it.'), findsWidgets);
+    await h.reveal(tester, find.byKey(const ValueKey('sm-mark_row_2-2.0')));
+    await tester.tap(find.byKey(const ValueKey('sm-mark_row_2-2.0')));
+    await h.settle(tester);
+    // The mark is not counted under a guessed question number: the total has not moved.
+    expect(await total(tester), '4.5');
+    expect(find.byKey(const ValueKey('unresolved')), findsOneWidget);
+
+    // Row 3: a partial reading with no candidates: nothing is suggested, and the screen says so.
+    await h.reveal(tester, find.byKey(const ValueKey('record-mark_row_3')));
+    expect(find.text('Unable to read this mark confidently. Please check the photograph and enter the correct mark.'), findsWidgets);
+    expect(find.byKey(const ValueKey('sm-mark_row_3-1?0')), findsNothing);
+    await h.stop(tester);
+  });
+
+  testWidgets('"Use these suggestions" confirms the top suggestion for both fields of a row in one tap, and only when asked', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun([markRow(1, value: '2.5', question: '4')]);
+    });
+    await openFirstReview(tester);
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_1')));
+    expect(await total(tester), '—', reason: 'opening the booklet confirms nothing');
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_1')));
+    await tester.tap(find.byKey(const ValueKey('both-mark_row_1')));
+    await h.settle(tester);
+    expect(await total(tester), '2.5');
+    expect(find.text('Confirmed by you'), findsWidgets);
+    await h.stop(tester);
+  });
+
+  testWidgets('implausible readings such as 147 are never offered as marks, and the examiner is told what was read and why it is not offered', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun([
+        markRow(1, value: '147', question: '1', candidates: const [FieldCandidate('147', 0.13), FieldCandidate('140', 0.11), FieldCandidate('180', 0.11)]),
+      ]);
+    });
+    await openFirstReview(tester);
+    await h.reveal(tester, find.byKey(const ValueKey('record-mark_row_1')));
+    expect(find.byKey(const ValueKey('sm-mark_row_1-147')), findsNothing);
+    expect(find.byKey(const ValueKey('sm-mark_row_1-140')), findsNothing);
+    expect(find.text('Unable to read this mark confidently. Please check the photograph and enter the correct mark.'), findsOneWidget);
+    // The raw reading is available as evidence, with the reason.
+    await tester.tap(find.text('How this was read'));
+    await h.settle(tester);
+    expect(find.textContaining('Marks cell read as "147"'), findsOneWidget);
+    expect(find.textContaining('Not offered as a mark: "147" (147 is above the most this can be (70))'), findsOneWidget);
+    await h.stop(tester);
+  });
+
+  testWidgets('a row that is not a mark can be dismissed: it leaves the total, and can be put back', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun([markRow(1, value: '2.0', question: '1'), markRow(2, value: '9.0', question: '2')]);
+    });
+    await openFirstReview(tester);
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_1')));
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_1')));
+    await tester.tap(find.byKey(const ValueKey('both-mark_row_1')));
+    await h.settle(tester);
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_2')));
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_2')));
+    await tester.tap(find.byKey(const ValueKey('both-mark_row_2')));
+    await h.settle(tester);
+    expect(await total(tester), '11');
+
+    await h.reveal(tester, find.byKey(const ValueKey('dismiss-mark_row_2')));
+
+    await tester.tap(find.byKey(const ValueKey('dismiss-mark_row_2')));
+    await h.settle(tester);
+    expect(find.textContaining('Row 2: not a mark. Left out of the total.'), findsOneWidget);
+    expect(await total(tester), '2');
+    await tester.tap(find.text('Put back'));
+    await h.settle(tester);
+    expect(await total(tester), '11');
     await h.stop(tester);
   });
 
@@ -369,7 +502,7 @@ void main() {
     await openFirstReview(tester);
     await h.tapText(tester, 'Show on photo');
     expect(find.byType(PhotoViewerScreen), findsOneWidget);
-    expect(find.textContaining('Outlined: mark in row 1'), findsOneWidget);
+    expect(find.textContaining('Outlined: row 1'), findsOneWidget);
     await h.stop(tester);
   });
 
@@ -388,7 +521,7 @@ void main() {
     // The outline is drawn where the field is on the turned picture.
     final row = markRow(1, value: '4.5').region!;
     final on = PageOrientation.turn(row, 3);
-    final outline = tester.widget<Positioned>(find.ancestor(of: find.bySemanticsLabel('Highlighted: mark in row 1'), matching: find.byType(Positioned)).first);
+    final outline = tester.widget<Positioned>(find.ancestor(of: find.bySemanticsLabel('Highlighted: row 1'), matching: find.byType(Positioned)).first);
     final stack = tester.getSize(find.byType(RotatedBox).evaluate().isEmpty ? find.byType(Stack).first : find.ancestor(of: find.byType(RotatedBox), matching: find.byType(Stack)).first);
     expect(outline.left! / stack.width, closeTo(on.left, 1e-6));
     expect(outline.top! / stack.height, closeTo(on.top, 1e-6));
@@ -465,14 +598,21 @@ void main() {
 
     await tester.tap(find.widgetWithText(ActionChip, 'FWM/24U/0538')); // exam number, as suggested
     await h.settle(tester);
-    await tester.tap(find.widgetWithText(ActionChip, '1.0')); // row 1: Q1 = 1, as read
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_1')));
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_1')));
+    await tester.tap(find.byKey(const ValueKey('both-mark_row_1'))); // row 1: Q1 = 1.0, as read
     await h.settle(tester);
-    await typeMark(tester, 2, ['5']); // Q2: the machine said 2.0, the examiner says 5
-    await typeMark(tester, 4, ['3']); // Q4: no machine reading at all
-    // Row 3's reading (9.0) is dismissed.
-    final row3 = find.ancestor(of: find.textContaining('Row 3 ·'), matching: find.byType(Container)).first;
-    await tester.tap(find.descendant(of: row3, matching: find.text('Dismiss')));
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_2')));
+    await h.reveal(tester, find.byKey(const ValueKey('both-mark_row_2')));
+    await tester.tap(find.byKey(const ValueKey('both-mark_row_2'))); // row 2: Q2, with the machine's 2.0 ...
     await h.settle(tester);
+    await typeInto(tester, 'm-mark_row_2', ['5']); // ... which the examiner then types over with 5
+    await typeMark(tester, 4, ['3']); // an added question: no machine reading at all
+    await h.reveal(tester, find.byKey(const ValueKey('dismiss-mark_row_3')));
+    await h.reveal(tester, find.byKey(const ValueKey('dismiss-mark_row_3')));
+    await tester.tap(find.byKey(const ValueKey('dismiss-mark_row_3'))); // row 3's reading (9.0) is dismissed
+    await h.settle(tester);
+    await h.reveal(tester, confirmButton());
     await tester.tap(confirmButton());
     await h.settle(tester);
 
@@ -492,6 +632,8 @@ void main() {
     expect(rows['mark_q2']!.finalValue, '5');
     expect(rows['mark_q4']!.decision, 'entered');
     expect(rows['mark_q4']!.machineValue, isNull);
+    expect(rows['question_q1']!.decision, 'suggestion', reason: 'the question number was tapped from the machine\'s suggestions');
+    expect(rows['question_q1']!.finalValue, '1');
     expect(rows['mark_row_3']!.decision, 'rejected');
     expect(rows['mark_row_3']!.finalValue, isNull);
     for (final r in rows.values) {
