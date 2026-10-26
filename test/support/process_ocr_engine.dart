@@ -96,9 +96,14 @@ class ProcessOcrEngine implements RegionOcrEngine {
     }
   }
 
+  bool _stopped = false;
+
+  /// Safe to call more than once, so a test can register it as a teardown and also call it.
   Future<void> stop() async {
+    if (_stopped) return;
+    _stopped = true;
     await _lines.cancel();
     _process.kill();
-    _shared = null;
+    if (identical(_shared, this)) _shared = null;
   }
 }

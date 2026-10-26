@@ -44,9 +44,43 @@ long lists of invented numbers and implausible marks, and all of them are gone.
 * A flat stroke (far wider than tall) is not a digit, whatever the network says about it.
 * A pen stroke left below the last row, a fraction of the size of the writing, is not a row.
   It is reported in the notes and left out.
+* **Long pen strokes are looked for in the faint ink too, and taken out pixel by pixel.** The
+  examiner's strike-through of the unused rows is pressed more lightly than the writing, so at
+  the writing's ink level it is a row of separate scraps, each too short to count as a stroke.
+  The stroke finder now also joins ink at a lower level (about a fifth of the writing's), and
+  where a long, thin piece is found there it takes out that piece's own pixels (never the whole
+  box around it, and never the pixels of a character), so the writing next to a stroke stays.
+* **A stray stroke is not a row.** A row *below the last row that has a question number*, with
+  no question number of its own, whose mark cell holds nothing but ink that could not be read
+  and at most one other piece (a lone `1`, or one piece among unreadable bits), is set aside
+  with a note ("...If it is a mark, add it with "Add a question""). A lone upright stroke is
+  what the digit network calls `1` with ~99.9% confidence for *any* vertical pen line, so on its
+  own it is not evidence of a mark.
 
 On the real photograph: four rows, not five; row 1 reads as three characters, the middle one
 a point (`1 . 7`, with `0` as the network's second choice for the last).
+
+#### Why the table position is tested (a CI failure worth recording)
+
+The marks table is cut out of the photograph relative to the printed labels the text reader
+finds. CI installs the newest `rapidocr-onnxruntime` (1.4.4 with onnxruntime 1.31.0 on the day
+this was written); the development machine had 1.2.3 with 1.29.0. They put the labels a few
+pixels apart, and with the table cut out slightly differently the first version of the rules
+above returned scraps of the pen line as extra rows (the real photograph gave 4 rows on the
+development machine and 5 on CI) and the CI run failed 6 tests. Measured before the fix with the marks stage alone,
+60 of 150 slightly different cuts of the same photograph gave the wrong rows; after it, 0 of 150
+(a sweep run once while fixing this, not kept as a test). With the real reader's boxes nudged
+13 ways, 11 gave exactly the four rows and 2 gave the four rows plus one unlabelled scrap
+(`11`, two pieces of the pen line read as a pair of `1`s), which the examiner dismisses and
+which counts for nothing until then.
+
+`test/recognition/table_position_test.dart` keeps the guard: 27 cuts of the table through the
+marks stage (strict: exactly the rows with questions 1, 2, 4, 5) and 8 nudges of the real
+reader's boxes through the whole pipeline (the four written rows first and in order, at most
+two further rows, none with a question number, no offered mark that a mark cannot be). Without
+the fix both fail. The tests that run the real reader should be run against both reader
+versions when it is changed: `python3.12 -m venv v && v/bin/pip install rapidocr-onnxruntime
+opencv-python-headless`, then run the tests with that environment first on the `PATH`.
 
 ### Suggestions (`RowSuggestions`, `MarkRules`, `QuestionRules`)
 
@@ -145,3 +179,12 @@ photograph recorded) and its total computed from them.
   Settings. It is not a list of questions.
 * The review crops of a booklet photographed sideways are not yet turned upright (the full-photo
   viewer and the training export are).
+* The stray-stroke rules were tuned on **one** photograph. Their trade-off is known: a genuine
+  mark `1` written with no question number *below* the last numbered row looks the same as a
+  stray upright stroke and is set aside with a note, not offered. The examiner can add it with
+  "Add a question". A booklet whose marks are all unlabelled is not affected (the rule needs a
+  numbered row above). Whether the rules hold for other examiners' pens and booklets is not
+  known.
+* The extra unlabelled row that two of the 13 nudged readings still gave is the kind of thing
+  the review screen is built for: it is shown as a record with no question number, nothing is
+  counted for it, and "Not a mark" removes it. It is not hidden by the app.

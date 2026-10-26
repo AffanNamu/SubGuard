@@ -162,5 +162,5 @@ class BookletPipelineInfo {
 
   /// Bump when a stage changes in a way that can change results, so a stored
   /// result says which version produced it.
-  static const version = '1.2.0';
+  static const version = '1.2.1';
 }

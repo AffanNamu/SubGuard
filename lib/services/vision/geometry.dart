@@ -185,7 +185,11 @@ ColorRaster warpColor(ColorRaster src, Homography toSource, int width, int heigh
 
 /// A connected group of ink pixels.
 class Blob {
-  Blob(this.left, this.top, this.right, this.bottom, this.area, this.sumX, this.sumY);
+  Blob(this.left, this.top, this.right, this.bottom, this.area, this.sumX, this.sumY, [this.id = 0]);
+
+  /// The label this blob's pixels carry in the label picture [connectedComponents]
+  /// can return, so exactly its own pixels can be found again.
+  final int id;
 
   int left, top, right, bottom; // right/bottom exclusive
   int area;
@@ -199,7 +203,10 @@ class Blob {
 
 /// Connected components of the non-zero pixels of [mask] (8-connected), with
 /// their bounding boxes. Groups smaller than [minArea] pixels are dropped.
-List<Blob> connectedComponents(Raster mask, {int minArea = 1}) {
+///
+/// When [labelsOut] is given (one entry per pixel) it is filled with each pixel's
+/// component id, matching [Blob.id], and 0 for pixels in no kept component.
+List<Blob> connectedComponents(Raster mask, {int minArea = 1, Int32List? labelsOut}) {
   final w = mask.width, h = mask.height;
   final labels = Int32List(w * h);
   final parent = <int>[0];
@@ -248,7 +255,7 @@ List<Blob> connectedComponents(Raster mask, {int minArea = 1}) {
       final r = find(l);
       final b = blobs[r];
       if (b == null) {
-        blobs[r] = Blob(x, y, x + 1, y + 1, 1, x.toDouble(), y.toDouble());
+        blobs[r] = Blob(x, y, x + 1, y + 1, 1, x.toDouble(), y.toDouble(), r);
       } else {
         if (x < b.left) b.left = x;
         if (y < b.top) b.top = y;
@@ -260,5 +267,13 @@ List<Blob> connectedComponents(Raster mask, {int minArea = 1}) {
       }
     }
   }
-  return [for (final b in blobs.values) if (b.area >= minArea) b];
+  final kept = [for (final b in blobs.values) if (b.area >= minArea) b];
+  if (labelsOut != null) {
+    final keep = {for (final b in kept) b.id};
+    for (var i = 0; i < labelsOut.length && i < labels.length; i++) {
+      final l = labels[i];
+      labelsOut[i] = l == 0 ? 0 : (keep.contains(find(l)) ? find(l) : 0);
+    }
+  }
+  return kept;
 }

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import '../../domain/ocr.dart';
 import '../../domain/recognition.dart';
@@ -229,19 +230,39 @@ MarksStageResult readMarksTable(
   // underline) can survive as a "row" of tiny ink. It is not a mark: its characters
   // are a fraction of the height of every other row's. It is reported and left out,
   // never offered as a reading.
+  //
+  // So is what is left of a stroke that was pressed lightly, which no size rule can
+  // catch because a scrap of it can be as tall as a digit: a row below the last row
+  // that has a question number, with no question number of its own and nothing in the
+  // mark cell but ink that could not be read, with at most one other piece that is a
+  // lone "1" or sits among the unreadable bits. A lone upright stroke is what the
+  // digit reader calls "1" for any pen line, so on its own it is no evidence of a
+  // mark; the note says so, and a mark that really is there can be added.
   final heights = [for (final r in rows) r.mark.chars.isEmpty ? 0 : r.mark.chars.map((c) => c.box.bottom - c.box.top).reduce(math.max)];
   var kept = rows;
-  if (rows.length >= 3) {
-    final sorted = [...heights]..sort();
-    final median = sorted[sorted.length ~/ 2];
+  if (rows.length >= 2) {
+    final sortedHeights = [...heights]..sort();
+    final median = sortedHeights[sortedHeights.length ~/ 2];
+    final lastLabelled = rows.lastIndexWhere((r) => r.questionText != null);
     final keep = <MarkRowRead>[];
     for (var i = 0; i < rows.length; i++) {
-      if (median > 0 && heights[i] < median * 0.4) {
-        crossings.add(rows[i].row);
-        notes.add('A pen stroke below row ${rows[i].index} is far smaller than the writing in the other rows, so it was ignored, not read as a mark.');
+      final r = rows[i];
+      final tinyWriting = rows.length >= 3 && median > 0 && heights[i] < median * 0.4;
+      final digits = [for (final c in r.mark.chars) if (c.text != '?') c.text];
+      final strayStroke = lastLabelled >= 0 &&
+          i > lastLabelled &&
+          r.questionText == null &&
+          r.mark.chars.length <= 3 &&
+          digits.length <= 1 &&
+          (digits.every((d) => d == '1') || digits.length < r.mark.chars.length);
+      if (tinyWriting || strayStroke) {
+        crossings.add(r.row);
+        notes.add(tinyWriting
+            ? 'A pen stroke below row ${r.index} is far smaller than the writing in the other rows, so it was ignored, not read as a mark.'
+            : 'A stray stroke below the written rows (no question number, nothing that reads as a mark) was ignored. If it is a mark, add it with "Add a question".');
         continue;
       }
-      keep.add(rows[i]);
+      keep.add(r);
     }
     if (keep.length != rows.length) {
       kept = [for (final (i, r) in keep.indexed) r.withIndex(i + 1)];
@@ -331,11 +352,17 @@ Raster _ink(ColorRaster color, String variant, [List<({int left, int top, int ri
 Raster _withoutLongStrokes(Raster ink, List<({int left, int top, int right, int bottom})>? removed) {
   final strong = inkLevel(ink);
   if (strong == 0) return ink;
-  final mask = Raster(ink.width, ink.height);
-  final thr = math.max(14, (strong * 0.5).round());
-  for (var i = 0; i < ink.data.length; i++) {
-    mask.data[i] = ink.data[i] >= thr ? 255 : 0;
+  final w = ink.width, h = ink.height;
+  Raster maskAt(int level) {
+    final m = Raster(w, h);
+    for (var i = 0; i < ink.data.length; i++) {
+      m.data[i] = ink.data[i] >= level ? 255 : 0;
+    }
+    return m;
   }
+
+  final thr = math.max(14, (strong * 0.5).round());
+  final mask = maskAt(thr);
   final blobs = connectedComponents(mask, minArea: 8);
   if (blobs.isEmpty) return ink;
   // The typical character height is taken from pieces that could be characters.
@@ -347,20 +374,63 @@ Raster _withoutLongStrokes(Raster ink, List<({int left, int top, int right, int 
       if (math.max(b.width, b.height) / math.max(1, math.min(b.width, b.height)) <= 10) b.height,
   ]..sort();
   final typical = heights.isEmpty ? 0.0 : heights[heights.length ~/ 2].toDouble();
+
+  bool isStroke(Blob b) {
+    final bw = b.width.toDouble(), bh = b.height.toDouble();
+    final long = math.max(bw, bh), thin = math.max(1.0, math.min(bw, bh));
+    final diag = math.sqrt(bw * bw + bh * bh);
+    final fill = b.area / math.max(1.0, bw * bh);
+    return (long / thin > 10 && long > typical * 3) || (diag > typical * 3.2 && fill < 0.15);
+  }
+
   final out = ink.copy();
+  // Pixels of the pieces that are characters (with a margin of one pixel). A stroke
+  // is taken out around them, never through them.
+  final protect = Uint8List(w * h);
   for (final b in blobs) {
-    final w = b.width.toDouble(), h = b.height.toDouble();
-    final long = math.max(w, h), thin = math.max(1.0, math.min(w, h));
-    final diag = math.sqrt(w * w + h * h);
-    final fill = b.area / math.max(1.0, w * h);
-    final elongated = long / thin > 10 && long > typical * 3;
-    final diagonal = diag > typical * 3.2 && fill < 0.15;
-    if (!elongated && !diagonal) continue;
-    removed?.add((left: b.left, top: b.top, right: b.right, bottom: b.bottom));
-    for (var y = math.max(0, b.top - 1); y < math.min(ink.height, b.bottom + 1); y++) {
-      for (var x = math.max(0, b.left - 1); x < math.min(ink.width, b.right + 1); x++) {
-        out.data[y * ink.width + x] = 0;
+    if (isStroke(b)) continue;
+    for (var y = math.max(0, b.top - 1); y < math.min(h, b.bottom + 1); y++) {
+      for (var x = math.max(0, b.left - 1); x < math.min(w, b.right + 1); x++) {
+        protect[y * w + x] = 1;
       }
+    }
+  }
+  void erase(Int32List labels, Blob b) {
+    for (var y = math.max(0, b.top - 1); y < math.min(h, b.bottom + 1); y++) {
+      for (var x = math.max(0, b.left - 1); x < math.min(w, b.right + 1); x++) {
+        final i = y * w + x;
+        if (protect[i] != 0) continue;
+        // The stroke's own pixels and the one-pixel fringe next to them.
+        var own = labels[i] == b.id;
+        if (!own) {
+          for (var dy = -1; dy <= 1 && !own; dy++) {
+            for (var dx = -1; dx <= 1; dx++) {
+              final nx = x + dx, ny = y + dy;
+              if (nx >= 0 && ny >= 0 && nx < w && ny < h && labels[ny * w + nx] == b.id) {
+                own = true;
+                break;
+              }
+            }
+          }
+        }
+        if (own) out.data[i] = 0;
+      }
+    }
+  }
+
+  // Strokes are looked for twice: among the strong ink, and among the faint ink
+  // too. A pen strike-through is often pressed more lightly than the writing, so at
+  // the writing's level it is a row of separate scraps, each too short to be a
+  // stroke, and the scraps are then read as rows. Joined up at a lower level it is
+  // one long, thin piece and is recognised as what it is.
+  final low = math.max(10, (strong * 0.22).round());
+  for (final level in [thr, if (low < thr) low]) {
+    final labels = Int32List(w * h);
+    final pieces = connectedComponents(level == thr ? mask : maskAt(level), minArea: 8, labelsOut: labels);
+    for (final b in pieces) {
+      if (!isStroke(b)) continue;
+      removed?.add((left: b.left, top: b.top, right: b.right, bottom: b.bottom));
+      erase(labels, b);
     }
   }
   // What is left may still hold a straight line broken into pieces (faint pen

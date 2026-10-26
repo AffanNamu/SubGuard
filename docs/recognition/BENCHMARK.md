@@ -3,7 +3,7 @@
 Reproduce: `tool/bench/run_benchmark.sh` (needs `pip install rapidocr-onnxruntime
 opencv-python-headless`). It writes `results/benchmark_latest.json` (every run, every
 field, every candidate) and `results/benchmark_latest.md`. The table below is that
-file as of pipeline 1.2.0 (question numbers and marks as separate, rule-checked suggestions; `QUESTION_MARKS.md`), digit model 1.0.0.
+file as of pipeline 1.2.1 (question numbers and marks as separate, rule-checked suggestions; `QUESTION_MARKS.md`), digit model 1.0.0.
 
 ## Read this first
 
@@ -37,21 +37,21 @@ file as of pipeline 1.2.0 (question numbers and marks as separate, rule-checked 
 | registration number, character error rate | 204 edits / 204 chars (100%): nothing valid was read |
 | marks, exact with the right question | 6/68 (the original: 1/4; see the note above) |
 | marks, right value among candidates with the right question | 10/68 |
-| mark rows found at the right place | 41/68 |
+| mark rows found at the right place | 42/68 |
 | question labels read correctly | 31/68 |
-| mark rows where the true mark is among the suggestions shown | 10/41 |
-| mark rows where the true mark is the first suggestion | 10/41 |
-| mark rows with no mark suggested (the examiner is asked to enter it) | 31/41 |
-| rows where the first suggested question number is right | 31/41 |
-| **suggested marks that break the rules** (above the maximum, off the step) | **0 of 31** |
+| mark rows where the true mark is among the suggestions shown | 10/42 |
+| mark rows where the true mark is the first suggestion | 10/42 |
+| mark rows with no mark suggested (the examiner is asked to enter it) | 32/42 |
+| rows where the first suggested question number is right | 31/42 |
+| **suggested marks that break the rules** (above the maximum, off the step) | **0 of 28** |
 | printed booklet number, exact | 12/17 (the other five: not read; none wrong) |
 | written total correct (a blank box counts when blank) | 13/17 |
 | whole document exact | 0/17 |
 | documents needing review | 17/17 |
-| fields needing review | 151/164 |
+| fields needing review | 141/154 |
 | **false acceptance** (accepted and wrong) | **0 of 13** accepted fields with ground truth |
-| time per page | median 7.0 s (min 1.1, max 18.2) on this machine; see the note on timings below |
-| peak resident memory | 362 MB on this machine |
+| time per page | median 7.4 s (min 1.3, max 10.5) on this machine; see the note on timings below |
+| peak resident memory | 369 MB on this machine |
 | batch reliability | 2 read, 4 refused with a reason, 0 crashed, of 6 inputs |
 
 By picture condition (one run each; a run has four marks):
@@ -62,7 +62,7 @@ By picture condition (one run each; a run has four marks):
 | mild blur | 4/4 | 0/4 |
 | heavy blur (judged `poor`, every field `unreadable`) | 0/4 | 0/4 |
 | under-exposed | 3/4 | 0/4 |
-| noisy | 3/4 | 0/4 |
+| noisy | 4/4 | 0/4 |
 | faint ink | 3/4 | 0/4 |
 | shadow | 3/4 | 0/4 |
 | keystone, **straightened** | **4/4** | 1/4 |
@@ -94,7 +94,7 @@ stand-in), marks 343, validation 8. On the photo turned a quarter: orientation
 need only two), the rest as above. These timings were
 taken on a different machine load from the earlier table in this file's history, so do not
 compare them with it; they are not phone figures either. This run's median per page
-(7.0 s) is higher than the previous run's (2.8 s) on the same photographs. I have not
+(7.4 s) is higher than the earlier table's (2.8 s) on the same photographs. I have not
 investigated why: this development machine is shared and its load varies, and the
 per-stage figures above are from the earlier run.
 
@@ -111,19 +111,19 @@ per-stage figures above are from the earlier run.
   stand-in's PP-OCR reads fragments (`L0/0538`). The class list put the right number
   among the candidates in 6 of 17 runs, with a note, never entered. Marks: 1 of 4 on the
   original photo (the pooled 6 of 68 repeats it).
-* **Finding the rows is far better than reading them**: the right place in 41 of 68
+* **Finding the rows is far better than reading them**: the right place in 42 of 68
   tries (4 of 4 on every straightened or turned variant), against 6 of 68 values read
   exactly (the same photo's 1 of 4 repeated). That is why the app uses the engine to
   place suggestions beside the right part of the photo, not to fill values in.
 * **Suggestions follow the rules, and say nothing rather than guess:** of the 41 rows
-  found, 31 are offered no mark at all (the examiner is asked to enter it, with the
+  found, 32 are offered no mark at all (the examiner is asked to enter it, with the
   raw reading and the reason it was left out shown as evidence). The other 10 rows
-  are offered 31 mark values between them, and none is above the question's maximum
-  or off the step: **0 of 31 break the rules.** In all 10 of those rows the true mark
-  is among the values offered, and first in each; 10 of 41 rows overall. Before this change the same photo produced `147`, `141`,
+  are offered 28 mark values between them, and none is above the question's maximum
+  or off the step: **0 of 28 break the rules.** In all 10 of those rows the true mark
+  is among the values offered, and first in each; 10 of 42 rows overall. Before this change the same photo produced `147`, `141`,
   `140`, `2.61` and a fifth row from a pen stroke; those are the failures this
   measures against (`QUESTION_MARKS.md`). The question numbers offered first are right
-  in 31 of 41 rows. All of this is the one photograph again.
+  in 31 of 42 rows. All of this is the one photograph again.
 * **A batch survives bad inputs**: a corrupt file, a text file, an empty file and a
   missing file were each refused with a reason, and the good photos still read.
 * The booklet number is the only thing read well, and only in 12 of 17 runs.

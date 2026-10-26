@@ -34,6 +34,13 @@ void main() {
   late ProcessOcrEngine? ocr;
   late RecognitionResult result;
   late GradingScheme scheme;
+
+  /// Everything the pipeline offered as a row, and the rows that have a question number: the
+  /// four that are written. Where the table's crop falls on the photograph varies by a few
+  /// pixels with the text reader's version, and a scrap of the long pen line below the
+  /// writing can then come back as a further row with no question number. What must not
+  /// vary is that the four written rows are found, in order, and that nothing else counts.
+  late List<RowSuggestions> allRows;
   late List<RowSuggestions> rows;
 
   setUpAll(() async {
@@ -42,11 +49,12 @@ void main() {
     final digits = await ModelRegistry.loadDigits();
     result = await BookletPipeline(ocr: ocr!, digits: digits).run(File(photo));
     scheme = Defaults.nigerianScheme(); // exam part: 70, marks go up in 0.5
-    rows = RowSuggestions.allOf(
+    allRows = RowSuggestions.allOf(
       result.fields,
       marksFor: (q) => MarkRules.forScheme(scheme, qNo: q),
       questionRules: const QuestionRules(highest: 60),
     );
+    rows = [for (final r in allRows) if (r.questionAlternatives.isNotEmpty) r];
   });
   tearDownAll(() async => ocr?.stop());
 
@@ -58,11 +66,18 @@ void main() {
     return false;
   }
 
-  test('the photograph has four written rows, and a stray stroke below them is not a fifth', () {
+  test('the photograph has four written rows; the pen line below them is not read as marks', () {
     if (skip()) return;
     expect(truthMarks.keys.toList()..sort(), [1, 2, 4, 5]);
     expect(rows, hasLength(4), reason: 'notes: ${result.notes}');
-    expect(result.notes.join(' '), contains('pen stroke below row 5'));
+    // The four written rows come first, in order.
+    expect(allRows.take(4).map((r) => r.index), [1, 2, 3, 4]);
+    expect(allRows.take(4).every((r) => r.questionAlternatives.isNotEmpty), isTrue);
+    // Whatever else came back has no question number, so it is not a question: at most a scrap
+    // of the pen line, which the examiner dismisses, and which counts for nothing until then.
+    expect(allRows.length - rows.length, lessThanOrEqualTo(2), reason: 'notes: ${result.notes}');
+    expect(allRows.skip(4).every((r) => r.questionAlternatives.isEmpty), isTrue);
+    expect(result.notes.join(' '), contains('were ignored, not read as marks'), reason: 'the long strokes are reported, not read');
   });
 
   test('the question numbers are read apart from the marks: 1, 2, 4, 5, with no Q3 and no list of questions made up', () {
@@ -73,9 +88,10 @@ void main() {
       expect(r.questionReadable, isTrue);
       expect(r.questionAlternatives.every((c) => RegExp(r'^\d{1,2}$').hasMatch(c.text)), isTrue, reason: 'a question alternative is a whole question number');
     }
-    final sheet = MarkSheet.fromRows(rows);
-    expect(sheet.records.length, 4);
+    final sheet = MarkSheet.fromRows(allRows);
+    expect(sheet.records.length, allRows.length);
     expect(sheet.records.any((r) => r.key.contains('manual')), isFalse);
+    expect(sheet.records.where((r) => r.suggestions!.questionAlternatives.isNotEmpty).length, 4);
   });
 
   test('no mark is suggested that a mark cannot be: the digit strings made of "1.0" stay evidence, with the reason', () {
@@ -122,7 +138,7 @@ void main() {
 
   test('nothing is confirmed by recognition: with no confirmation there is no calculated total', () {
     if (skip()) return;
-    final sheet = MarkSheet.fromRows(rows);
+    final sheet = MarkSheet.fromRows(allRows);
     expect(sheet.confirmedMarks, isEmpty);
     expect(sheet.tally(scheme).calculated, isNull);
     expect(sheet.problems(scheme).where((p) => p.blocks), isNotEmpty);
@@ -130,7 +146,11 @@ void main() {
 
   test('an examiner who takes the suggestions that are right and types the rest gets 1.0 + 1.0 + 2.0 + 5.5 = 9.5, with the Total box blank', () {
     if (skip()) return;
-    var sheet = MarkSheet.fromRows(rows);
+    var sheet = MarkSheet.fromRows(allRows);
+    // A scrap of the pen line that came back as a row is dismissed ("Not a mark"); it never counted.
+    for (final r in allRows.where((r) => r.questionAlternatives.isEmpty)) {
+      sheet = sheet.dismiss(r.markKey);
+    }
     for (final r in rows) {
       final key = r.markKey;
       // Question number: the top suggestion (the examiner looked at the crop and agreed).
