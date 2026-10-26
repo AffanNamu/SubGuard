@@ -9,6 +9,7 @@ import '../../core/widgets/ui_kit.dart';
 import '../../domain/ocr.dart';
 import '../../domain/recognition.dart';
 import '../../providers/providers.dart';
+import '../../services/recognition/orientation.dart';
 import '../../services/vision/quality.dart';
 
 /// How much a machine reading can be relied on, in words an examiner uses.
@@ -172,13 +173,22 @@ class PhotoViewerScreen extends ConsumerStatefulWidget {
     this.photoWidth,
     this.photoHeight,
     this.label,
+    this.turnedQuarters = 0,
   });
 
   final String relativePath;
   final String title;
+
+  /// Where the outlined part is on the photo, in the photo's own fractions
+  /// (whatever [turnedQuarters] is).
   final Region? highlight;
   final int? photoWidth;
   final int? photoHeight;
+
+  /// Show the photo turned clockwise by this many quarter-turns, so a booklet
+  /// that was photographed sideways or upside down is shown upright. The file is
+  /// never changed.
+  final int turnedQuarters;
 
   /// What the outlined part is ("Mark, row 2").
   final String? label;
@@ -218,7 +228,10 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   Widget build(BuildContext context) {
     final file = ref.watch(scanFilesProvider).resolve(widget.relativePath);
     final w = widget.photoWidth, h = widget.photoHeight;
-    final aspect = (w != null && h != null && h > 0) ? w / h : null;
+    final turns = widget.turnedQuarters % 4;
+    final photoAspect = (w != null && h != null && h > 0) ? w / h : null;
+    // Turned a quarter either way, the shown picture is as wide as the photo is high.
+    final aspect = photoAspect == null ? null : (turns.isOdd ? 1 / photoAspect : photoAspect);
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -240,7 +253,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
         if (aspect != null) {
           shown = view.width / view.height > aspect ? Size(view.height * aspect, view.height) : Size(view.width, view.width / aspect);
         }
-        final hl = widget.highlight;
+        final hl = widget.highlight == null ? null : PageOrientation.turn(widget.highlight!, turns);
         if (hl != null && aspect != null) _placeOn(hl, view, shown);
         return Stack(
           children: [
@@ -258,7 +271,10 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.file(file, fit: BoxFit.fill, cacheWidth: 2400, gaplessPlayback: true),
+                        if (turns == 0)
+                          Image.file(file, fit: BoxFit.fill, cacheWidth: 2400, gaplessPlayback: true)
+                        else
+                          RotatedBox(quarterTurns: turns, child: Image.file(file, fit: BoxFit.fill, cacheWidth: 2400, gaplessPlayback: true)),
                         if (hl != null)
                           Positioned(
                             left: hl.left * shown.width,

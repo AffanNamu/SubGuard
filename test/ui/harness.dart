@@ -28,6 +28,7 @@ import 'package:unimarkly/services/incoming/pdf_backend.dart';
 import 'package:unimarkly/services/incoming/saved_documents.dart';
 import 'package:unimarkly/services/reader/ocr_engine.dart';
 import 'package:unimarkly/services/recognition/booklet_pipeline.dart';
+import 'package:unimarkly/services/reader/layout_engine.dart';
 import 'package:unimarkly/services/recognition/model_registry.dart';
 import 'package:unimarkly/services/scan/image_source.dart';
 import 'package:unimarkly/services/scan/intake_service.dart';
@@ -157,6 +158,9 @@ class AppHarness {
     /// The text reader. Most tests use the "unavailable" one, so photos wait for
     /// the examiner; the end-to-end test gives it a real model.
     OcrEngine? ocr,
+
+    /// Replaces more of the app's services (a file picker, say) for one test.
+    List<Override> overrides = const [],
   }) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     SharedPreferences.setMockInitialValues(prefsValues);
@@ -193,7 +197,12 @@ class AppHarness {
         // No real reader in widget tests: photos wait for the examiner.
         ocrEngineProvider.overrideWithValue(ocr ?? const UnavailableOcrEngine()),
         imageSourceProvider.overrideWithValue(imageSource),
-        recognitionPipelineProvider.overrideWith((ref) async => BookletPipeline(ocr: ref.watch(ocrEngineProvider), digits: digits)),
+        recognitionPipelineProvider.overrideWith((ref) async => BookletPipeline(
+              ocr: ref.watch(ocrEngineProvider),
+              digits: digits,
+              layout: ProfileLayoutAnalyzer(ref.watch(layoutChoiceProvider).selected),
+            )),
+        ...overrides,
       ],
       child: const UniMarkLyApp(),
     ));

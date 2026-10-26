@@ -1,12 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:unimarkly/core/widgets/score_keypad.dart';
 import 'package:unimarkly/core/widgets/ui_kit.dart';
+import 'package:unimarkly/data/repositories/recognition_repository.dart';
 import 'package:unimarkly/domain/models.dart';
+import 'package:unimarkly/features/scan/recognition_widgets.dart';
+import 'package:unimarkly/services/export/labelled_export.dart';
+import 'package:unimarkly/services/vision/photo_codec.dart';
 import 'package:unimarkly/services/export/export_service.dart';
 import 'package:unimarkly/services/export/result_table.dart';
 import 'package:unimarkly/services/scan/image_source.dart';
@@ -121,6 +127,84 @@ void main() {
     });
     expect(out, contains('FWM/24U/0538'));
     expect(out, contains('9.5'));
+    await tester.runAsync(ocr.stop);
+    await h.stop(tester);
+  }, timeout: const Timeout(Duration(minutes: 8)));
+  testWidgets('a booklet photographed sideways: turned upright for reading, shown upright, its crops exported upright', (tester) async {
+    final ocr = await tester.runAsync(ProcessOcrEngine.tryStart);
+    if (ocr == null) {
+      markTestSkipped('OCR stand-in unavailable (pip install rapidocr-onnxruntime opencv-python-headless)');
+      return;
+    }
+    await h.start(tester, size: tall, tab: null, ocr: ocr, seed: () async {
+      await h.createCourse(code: 'AGR 114', regNos: ['FWM/24U/0538', 'FWM/24U/0539']);
+    });
+
+    // The same booklet, lying on its side in the photograph (its top to the right).
+    final photo = File(p.join(h.work.path, 'sideways.png'));
+    await tester.runAsync(() async => photo.writeAsBytesSync(await encodeColorPng((await loadBooklet()).turned(1))));
+    h.imageSource.next = [PickedImage(name: 'sideways.png', path: photo.path)];
+    await h.tapText(tester, 'Choose Images');
+    for (var i = 0; i < 20 && find.byType(BackButton).evaluate().isEmpty; i++) {
+      await h.settle(tester);
+    }
+    await h.waitForReading(tester, limit: const Duration(seconds: 180), untilQueueEmpty: true);
+    await h.settle(tester);
+
+    // The reading says so, with the turn stored on the run.
+    final run = await tester.runAsync(() async => RecognitionRepository(h.db).latestRun((await h.scans.scansOf((await h.scans.batches()).single.id)).single.id));
+    expect(run!.result.turnedQuarters, 3);
+    expect(run.result.layout.foundAnchors, hasLength(5));
+
+    await tester.pageBack();
+    await h.settle(tester);
+    await h.tapText(tester, 'Home');
+    await h.tapText(tester, 'Review Results');
+    await tester.tap(find.byType(GlowCard).first);
+    await h.settle(tester);
+    expect(find.textContaining('photographed on its side'), findsOneWidget);
+
+    // The machine's rows are found even though the photo was sideways, and "Show on photo"
+    // shows the photograph upright with the row outlined.
+    await h.reveal(tester, find.text('Show on photo'));
+    await tester.tap(find.text('Show on photo').first);
+    await h.settle(tester);
+    expect(tester.widget<PhotoViewerScreen>(find.byType(PhotoViewerScreen)).turnedQuarters, 3);
+    expect(find.byWidgetPredicate((w) => w is RotatedBox && w.quarterTurns == 3), findsOneWidget);
+    await tester.pageBack();
+    await h.settle(tester);
+
+    // The examiner types what the photograph shows and confirms.
+    await h.reveal(tester, find.widgetWithText(TextField, 'Registration number'));
+    await tester.enterText(find.widgetWithText(TextField, 'Registration number'), 'FWM/24U/0538');
+    await h.settle(tester);
+    await h.reveal(tester, find.text('Q-1'));
+    await h.tapText(tester, 'Q-1');
+    await tester.tap(find.descendant(of: find.byType(ScoreKeypad), matching: find.text('1')));
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await h.settle(tester);
+    await tester.tap(find.text('Confirm & next'));
+    await h.settle(tester);
+
+    // What was confirmed becomes labelled examples whose crops are upright.
+    final crops = await tester.runAsync(() async {
+      final examples = await RecognitionRepository(h.db).labelledExamples();
+      expect(examples, isNotEmpty);
+      expect(examples.every((e) => e.turnedQuarters == 3), isTrue);
+      final built = await LabelledExport.build(examples: examples, files: h.scanFiles, directory: Directory(p.join(h.work.path, 'labels')));
+      final zip = ZipDecoder().decodeBytes(built!.file.readAsBytesSync());
+      final out = <(String, int, int)>[];
+      for (final f in zip.files.where((f) => f.name.startsWith('crops/'))) {
+        final image = (await (await ui.instantiateImageCodec((f.content as List<int>) as dynamic)).getNextFrame()).image;
+        out.add((f.name, image.width, image.height));
+      }
+      return out;
+    });
+    expect(crops, isNotEmpty);
+    for (final c in crops!) {
+      expect(c.$2, greaterThan(c.$3), reason: '${c.$1} is a line or a cell of writing: wider than tall once upright (${c.$2} x ${c.$3})');
+    }
     await tester.runAsync(ocr.stop);
     await h.stop(tester);
   }, timeout: const Timeout(Duration(minutes: 8)));

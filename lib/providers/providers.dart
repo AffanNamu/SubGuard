@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/database/app_database.dart';
 import '../data/repositories/course_repository.dart';
@@ -13,10 +19,12 @@ import '../data/repositories/settings_repository.dart';
 import '../data/repositories/student_repository.dart';
 import '../domain/defaults.dart';
 import '../domain/flags.dart';
+import '../domain/layout_profile.dart';
 import '../domain/models.dart';
 import '../domain/scan.dart';
 import '../domain/scheme.dart';
 import '../domain/scoring.dart';
+import '../services/reader/layout_engine.dart';
 import '../services/reader/ocr_engine.dart';
 import '../services/reader/scan_processor.dart';
 import '../services/recognition/attention.dart';
@@ -74,7 +82,9 @@ final recognitionPipelineProvider = FutureProvider<RecognitionOrchestrator>((ref
   } on ModelException catch (e) {
     error = e.message;
   }
-  return BookletPipeline(ocr: ocr, digits: digits, digitsError: error);
+  // The layout in use is read for each photo, so choosing another applies from the next one.
+  final layout = ref.watch(layoutChoiceProvider.select((c) => c.selected));
+  return BookletPipeline(ocr: ocr, digits: digits, digitsError: error, layout: ProfileLayoutAnalyzer(layout));
 });
 
 final scanProcessorProvider = Provider((ref) => ScanProcessor(
@@ -125,6 +135,80 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
 final settingsProvider =
     NotifierProvider<SettingsNotifier, AppSettings>(SettingsNotifier.new);
+
+// ---- booklet layouts ----
+
+/// The layouts the app can read a booklet cover with: the built-in one and any the
+/// administrator added, and which one is in use.
+class LayoutChoice {
+  const LayoutChoice({this.imported = const [], this.selectedId = 'modibbo-adama-cover'});
+
+  final List<LayoutProfile> imported;
+  final String selectedId;
+
+  List<LayoutProfile> get all => [LayoutProfile.modibboAdama, ...imported];
+
+  /// The layout in use; the built-in one if the selected one is gone.
+  LayoutProfile get selected => all.firstWhere((p) => p.id == selectedId, orElse: () => LayoutProfile.modibboAdama);
+
+  bool isBuiltIn(LayoutProfile p) => p.id == LayoutProfile.modibboAdama.id;
+}
+
+class LayoutChoiceNotifier extends Notifier<LayoutChoice> {
+  @override
+  LayoutChoice build() {
+    final repo = ref.watch(settingsRepositoryProvider);
+    return LayoutChoice(imported: repo.importedLayouts(), selectedId: repo.selectedLayoutId ?? LayoutProfile.modibboAdama.id);
+  }
+
+  Future<void> _save(LayoutChoice next) async {
+    state = next;
+    await ref.read(settingsRepositoryProvider).saveLayouts(next.imported, next.selectedId);
+  }
+
+  /// Uses this layout for the photos read from now on. Photos already read keep the
+  /// record of the layout that read them.
+  Future<void> select(String id) async {
+    if (!state.all.any((p) => p.id == id)) return;
+    await _save(LayoutChoice(imported: state.imported, selectedId: id));
+  }
+
+  /// Adds the layout in [text], checked first; throws [LayoutProfileException] saying
+  /// what is wrong. A file with an id already added replaces it (a new revision); the
+  /// built-in layout's id cannot be replaced.
+  Future<LayoutProfile> add(String text) async {
+    final profile = LayoutProfile.parse(text);
+    if (profile.id == LayoutProfile.modibboAdama.id) {
+      throw const LayoutProfileException('id: "modibbo-adama-cover" is the built-in layout. Give your layout its own id.');
+    }
+    final imported = [for (final p in state.imported) if (p.id != profile.id) p, profile];
+    await _save(LayoutChoice(imported: imported, selectedId: state.selectedId));
+    return profile;
+  }
+
+  Future<void> remove(String id) async {
+    final imported = [for (final p in state.imported) if (p.id != id) p];
+    await _save(LayoutChoice(imported: imported, selectedId: state.selectedId == id ? LayoutProfile.modibboAdama.id : state.selectedId));
+  }
+}
+
+final layoutChoiceProvider = NotifierProvider<LayoutChoiceNotifier, LayoutChoice>(LayoutChoiceNotifier.new);
+
+/// Where a layout file comes from. Null when the examiner chose nothing. Tests replace it.
+final layoutFilePickerProvider = Provider<Future<({String name, String text})?> Function()>((ref) => () async {
+      final picked = await FilePicker.platform.pickFiles(type: FileType.any, withData: true); // the file's contents are checked, not its name
+      final file = picked?.files.singleOrNull;
+      final bytes = file?.bytes;
+      if (file == null || bytes == null) return null;
+      return (name: file.name, text: utf8.decode(bytes, allowMalformed: true));
+    });
+
+/// Where a layout file goes when the administrator shares one. Tests replace it.
+final layoutFileSharerProvider = Provider<Future<void> Function(String fileName, String text)>((ref) => (name, text) async {
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$name')..writeAsStringSync(text);
+      await Share.shareXFiles([XFile(file.path, mimeType: 'application/json')], subject: 'UniMarkLy booklet layout');
+    });
 
 // ---- data streams ----
 

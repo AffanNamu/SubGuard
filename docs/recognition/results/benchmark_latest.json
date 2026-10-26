@@ -1,7 +1,7 @@
 {
  "schema": 1,
- "generated": "2026-10-24T20:38:21.756459Z",
- "pipeline_version": "1.0.0",
+ "generated": "2026-10-26T04:17:17.035303Z",
+ "pipeline_version": "1.1.0",
  "environment": {
   "platform": "linux",
   "cpus": 4,
@@ -18,9 +18,9 @@
  "data": {
   "documents": 1,
   "independent_photographs": 1,
-  "runs": 11,
+  "runs": 17,
   "original_runs": 1,
-  "degraded_runs": 10,
+  "degraded_runs": 16,
   "splits": {
    "booklet-001": "dev"
   },
@@ -29,85 +29,85 @@
  "metrics": {
   "registration_number_exact_raw": {
    "right": 0,
-   "of": 11,
+   "of": 17,
    "rate": 0.0
   },
   "registration_number_read_at_all": {
    "right": 0,
-   "of": 11,
+   "of": 17,
    "rate": 0.0
   },
   "registration_number_in_candidates": {
-   "right": 3,
-   "of": 11,
-   "rate": 0.2727272727272727
+   "right": 6,
+   "of": 17,
+   "rate": 0.35294117647058826
   },
   "registration_number_top_candidate_exact_with_class_list": {
-   "right": 3,
-   "of": 11,
-   "rate": 0.2727272727272727
+   "right": 6,
+   "of": 17,
+   "rate": 0.35294117647058826
   },
   "registration_number_character_error_rate": {
-   "edits": 132,
-   "chars": 132,
+   "edits": 204,
+   "chars": 204,
    "rate": 1.0
   },
   "mark_exact_with_question_assigned": {
-   "right": 1,
-   "of": 44,
-   "rate": 0.022727272727272728
+   "right": 4,
+   "of": 68,
+   "rate": 0.058823529411764705
   },
   "mark_in_candidates_with_question": {
-   "right": 1,
-   "of": 44,
-   "rate": 0.022727272727272728
+   "right": 4,
+   "of": 68,
+   "rate": 0.058823529411764705
   },
   "mark_row_found_at_right_place": {
-   "right": 30,
-   "of": 44,
-   "rate": 0.6818181818181818
+   "right": 42,
+   "of": 68,
+   "rate": 0.6176470588235294
   },
   "mark_row_question_label_correct": {
-   "right": 19,
-   "of": 44,
-   "rate": 0.4318181818181818
+   "right": 31,
+   "of": 68,
+   "rate": 0.45588235294117646
   },
   "printed_serial_exact": {
-   "right": 9,
-   "of": 11,
-   "rate": 0.8181818181818182
+   "right": 12,
+   "of": 17,
+   "rate": 0.7058823529411765
   },
   "written_total_correct_including_blank": {
-   "right": 10,
-   "of": 11,
-   "rate": 0.9090909090909091
+   "right": 13,
+   "of": 17,
+   "rate": 0.7647058823529411
   },
   "document_exact": {
    "right": 0,
-   "of": 11,
+   "of": 17,
    "rate": 0.0
   },
   "documents_needing_review": {
-   "right": 11,
-   "of": 11,
+   "right": 17,
+   "of": 17,
    "rate": 1.0
   },
   "fields_needing_review": {
-   "right": 118,
-   "of": 128,
-   "rate": 0.921875
+   "right": 163,
+   "of": 176,
+   "rate": 0.9261363636363636
   },
   "false_acceptance": {
-   "accepted_fields_with_ground_truth": 10,
+   "accepted_fields_with_ground_truth": 13,
    "accepted_and_wrong": 0,
    "rate": 0.0
   },
   "time_per_page_ms": {
-   "median": 6505,
-   "min": 1026,
-   "max": 10448
+   "median": 2849,
+   "min": 424,
+   "max": 4335
   },
-  "peak_resident_memory_mb": 316,
+  "peak_resident_memory_mb": 314,
   "batch_reliability": {
    "inputs": 6,
    "completed": 2,
@@ -429,6 +429,174 @@
     "of": 1,
     "rate": 1.0
    }
+  },
+  "photographed top to the right (turned upright)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 4,
+    "of": 4,
+    "rate": 1.0
+   },
+   "mark_exact": {
+    "right": 1,
+    "of": 4,
+    "rate": 0.25
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "photographed top to the right (read as taken)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "photographed upside down (turned upright)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 4,
+    "of": 4,
+    "rate": 1.0
+   },
+   "mark_exact": {
+    "right": 1,
+    "of": 4,
+    "rate": 0.25
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "photographed upside down (read as taken)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "photographed top to the left (turned upright)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 4,
+    "of": 4,
+    "rate": 1.0
+   },
+   "mark_exact": {
+    "right": 1,
+    "of": 4,
+    "rate": 0.25
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
+  },
+  "photographed top to the left (read as taken)": {
+   "runs": 1,
+   "registration_number_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "mark_rows_found_at_right_place": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "mark_exact": {
+    "right": 0,
+    "of": 4,
+    "rate": 0.0
+   },
+   "document_exact": {
+    "right": 0,
+    "of": 1,
+    "rate": 0.0
+   },
+   "needing_review": {
+    "right": 1,
+    "of": 1,
+    "rate": 1.0
+   }
   }
  },
  "runs": [
@@ -442,14 +610,14 @@
     "text_small",
     "cropped"
    ],
-   "ms": 6957,
+   "ms": 3091,
    "stage_ms": {
-    "decode": 31,
-    "quality": 1133,
-    "printed_text": 1674,
-    "closeups": 3248,
-    "marks": 844,
-    "validation": 13
+    "decode": 12,
+    "quality": 379,
+    "printed_text": 751,
+    "closeups": 1593,
+    "marks": 343,
+    "validation": 8
    },
    "document_exact": false,
    "fields": {
@@ -519,13 +687,13 @@
     "text_small",
     "cropped"
    ],
-   "ms": 2886,
+   "ms": 1064,
    "stage_ms": {
-    "decode": 51,
-    "quality": 912,
-    "printed_text": 1565,
+    "decode": 26,
+    "quality": 305,
+    "printed_text": 611,
     "closeups": 2,
-    "marks": 353,
+    "marks": 118,
     "validation": 0
    },
    "document_exact": false,
@@ -597,11 +765,11 @@
     "text_small",
     "cropped"
    ],
-   "ms": 1026,
+   "ms": 424,
    "stage_ms": {
-    "decode": 34,
-    "quality": 520,
-    "printed_text": 471,
+    "decode": 14,
+    "quality": 226,
+    "printed_text": 184,
     "closeups": 0,
     "marks": 0,
     "validation": 0
@@ -675,14 +843,14 @@
     "text_small",
     "page_not_found"
    ],
-   "ms": 5709,
+   "ms": 2794,
    "stage_ms": {
-    "decode": 53,
-    "quality": 590,
-    "printed_text": 1335,
-    "closeups": 3464,
-    "marks": 260,
-    "validation": 4
+    "decode": 34,
+    "quality": 233,
+    "printed_text": 586,
+    "closeups": 1808,
+    "marks": 130,
+    "validation": 1
    },
    "document_exact": false,
    "fields": {
@@ -753,13 +921,13 @@
     "text_small",
     "cropped"
    ],
-   "ms": 2960,
+   "ms": 1145,
    "stage_ms": {
-    "decode": 44,
-    "quality": 580,
-    "printed_text": 1434,
-    "closeups": 604,
-    "marks": 295,
+    "decode": 18,
+    "quality": 249,
+    "printed_text": 575,
+    "closeups": 184,
+    "marks": 117,
     "validation": 0
    },
    "document_exact": false,
@@ -830,14 +998,14 @@
     "text_small",
     "page_not_found"
    ],
-   "ms": 6505,
+   "ms": 2849,
    "stage_ms": {
-    "decode": 50,
-    "quality": 686,
-    "printed_text": 1390,
-    "closeups": 4070,
-    "marks": 304,
-    "validation": 3
+    "decode": 17,
+    "quality": 248,
+    "printed_text": 663,
+    "closeups": 1807,
+    "marks": 110,
+    "validation": 1
    },
    "document_exact": false,
    "fields": {
@@ -907,14 +1075,14 @@
     "text_small",
     "cropped"
    ],
-   "ms": 6066,
+   "ms": 2508,
    "stage_ms": {
-    "decode": 34,
-    "quality": 360,
-    "printed_text": 1744,
-    "closeups": 3432,
-    "marks": 489,
-    "validation": 5
+    "decode": 16,
+    "quality": 166,
+    "printed_text": 577,
+    "closeups": 1604,
+    "marks": 142,
+    "validation": 1
    },
    "document_exact": false,
    "fields": {
@@ -983,15 +1151,15 @@
     "uneven_light",
     "text_small"
    ],
-   "ms": 10448,
+   "ms": 4335,
    "stage_ms": {
-    "decode": 143,
-    "quality": 1032,
-    "straighten": 1702,
-    "printed_text": 2698,
-    "closeups": 4229,
-    "marks": 633,
-    "validation": 3
+    "decode": 50,
+    "quality": 371,
+    "straighten": 751,
+    "printed_text": 1066,
+    "closeups": 1810,
+    "marks": 281,
+    "validation": 2
    },
    "document_exact": false,
    "fields": {
@@ -1060,14 +1228,14 @@
     "uneven_light",
     "text_small"
    ],
-   "ms": 9705,
+   "ms": 3718,
    "stage_ms": {
-    "decode": 125,
-    "quality": 950,
-    "printed_text": 3208,
-    "closeups": 4697,
-    "marks": 718,
-    "validation": 5
+    "decode": 44,
+    "quality": 388,
+    "printed_text": 1115,
+    "closeups": 1799,
+    "marks": 368,
+    "validation": 2
    },
    "document_exact": false,
    "fields": {
@@ -1137,15 +1305,15 @@
     "text_small",
     "tilted"
    ],
-   "ms": 9220,
+   "ms": 4209,
    "stage_ms": {
-    "decode": 93,
-    "quality": 914,
-    "straighten": 967,
-    "printed_text": 2651,
-    "closeups": 3994,
-    "marks": 595,
-    "validation": 3
+    "decode": 47,
+    "quality": 378,
+    "straighten": 597,
+    "printed_text": 785,
+    "closeups": 2195,
+    "marks": 202,
+    "validation": 1
    },
    "document_exact": false,
    "fields": {
@@ -1215,14 +1383,14 @@
     "text_small",
     "tilted"
    ],
-   "ms": 7636,
+   "ms": 3137,
    "stage_ms": {
-    "decode": 99,
-    "quality": 818,
-    "printed_text": 2334,
-    "closeups": 3782,
-    "marks": 592,
-    "validation": 8
+    "decode": 45,
+    "quality": 388,
+    "printed_text": 910,
+    "closeups": 1487,
+    "marks": 302,
+    "validation": 2
    },
    "document_exact": false,
    "fields": {
@@ -1278,6 +1446,465 @@
      "machine": null,
      "state": "recognized",
      "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "turned_1",
+   "category": "photographed top to the right (turned upright)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "text_small",
+    "cropped"
+   ],
+   "ms": 4056,
+   "stage_ms": {
+    "decode": 17,
+    "quality": 224,
+    "printed_text": 640,
+    "orientation": 1871,
+    "closeups": 1160,
+    "marks": 139,
+    "validation": 1
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "FWM/24U/0538",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": "147",
+      "row_found": true,
+      "question_read": "1",
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": "141",
+      "row_found": true,
+      "question_read": "2",
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": "2.61",
+      "row_found": true,
+      "question_read": "4",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": "5.5",
+      "row_found": true,
+      "question_read": "5",
+      "exact": true
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "turned_1_as_taken",
+   "category": "photographed top to the right (read as taken)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "text_small",
+    "cropped"
+   ],
+   "ms": 2091,
+   "stage_ms": {
+    "decode": 16,
+    "quality": 241,
+    "printed_text": 587,
+    "closeups": 1200,
+    "marks": 0,
+    "validation": 45
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "202",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": null,
+     "correct": false
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "turned_2",
+   "category": "photographed upside down (turned upright)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "text_small",
+    "cropped"
+   ],
+   "ms": 2994,
+   "stage_ms": {
+    "decode": 17,
+    "quality": 250,
+    "printed_text": 609,
+    "orientation": 827,
+    "closeups": 1151,
+    "marks": 135,
+    "validation": 1
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "FWM/24U/0538",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": "147",
+      "row_found": true,
+      "question_read": "1",
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": "141",
+      "row_found": true,
+      "question_read": "2",
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": "2.61",
+      "row_found": true,
+      "question_read": "4",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": "5.5",
+      "row_found": true,
+      "question_read": "5",
+      "exact": true
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "turned_2_as_taken",
+   "category": "photographed upside down (read as taken)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "text_small",
+    "cropped"
+   ],
+   "ms": 1177,
+   "stage_ms": {
+    "decode": 17,
+    "quality": 224,
+    "printed_text": 671,
+    "closeups": 263,
+    "marks": 0,
+    "validation": 0
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": null,
+     "correct": false
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "turned_3",
+   "category": "photographed top to the left (turned upright)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "text_small",
+    "cropped"
+   ],
+   "ms": 3191,
+   "stage_ms": {
+    "decode": 18,
+    "quality": 270,
+    "printed_text": 632,
+    "orientation": 837,
+    "closeups": 1269,
+    "marks": 160,
+    "validation": 1
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": "FWM/24U/0538",
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": "292011",
+     "state": "needs_review",
+     "exact": true
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": "147",
+      "row_found": true,
+      "question_read": "1",
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": "141",
+      "row_found": true,
+      "question_read": "2",
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": "2.61",
+      "row_found": true,
+      "question_read": "4",
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": "5.5",
+      "row_found": true,
+      "question_read": "5",
+      "exact": true
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": "recognized",
+     "correct": true
+    }
+   }
+  },
+  {
+   "doc": "booklet-001",
+   "variant": "turned_3_as_taken",
+   "category": "photographed top to the left (read as taken)",
+   "split": "dev",
+   "quality_verdict": "usable",
+   "quality_issues": [
+    "text_small",
+    "cropped"
+   ],
+   "ms": 2303,
+   "stage_ms": {
+    "decode": 16,
+    "quality": 247,
+    "printed_text": 618,
+    "closeups": 1393,
+    "marks": 0,
+    "validation": 27
+   },
+   "document_exact": false,
+   "fields": {
+    "exam_number": {
+     "truth": "FWM/24U/0538",
+     "raw": null,
+     "top_candidate": null,
+     "state": "needs_review",
+     "exact": false
+    },
+    "serial_no": {
+     "truth": "292011",
+     "machine": null,
+     "state": "unreadable",
+     "exact": false
+    },
+    "marks": [
+     {
+      "question": 1,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 2,
+      "truth": "1.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 4,
+      "truth": "2.0",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     },
+     {
+      "question": 5,
+      "truth": "5.5",
+      "machine": null,
+      "row_found": false,
+      "question_read": null,
+      "exact": false
+     }
+    ],
+    "total_written": {
+     "truth": null,
+     "machine": null,
+     "state": null,
+     "correct": false
     }
    }
   }

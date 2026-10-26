@@ -637,6 +637,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           label: label,
           photoWidth: scan.width,
           photoHeight: scan.height,
+          turnedQuarters: _run?.result.turnedQuarters ?? 0,
         ),
       ),
     );
@@ -996,7 +997,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         for (final n in notes.take(3))
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: InfoBanner(message: n, kind: n.contains('ignored') ? BannerKind.info : BannerKind.warning),
+            child: InfoBanner(
+              message: n,
+              // What the pipeline did on its own (and nothing is wrong) is information;
+              // what it could not do is a warning.
+              kind: n.contains('ignored') || n.contains('turned upright') || n.contains('was straightened') ? BannerKind.info : BannerKind.warning,
+            ),
           ),
       ],
     );

@@ -149,6 +149,7 @@ void main() {
         'Document header',
         'New course defaults',
         'Saved templates',
+        'Booklet layout',
         'Bin',
       ]) {
         await h.tapText(tester, page);

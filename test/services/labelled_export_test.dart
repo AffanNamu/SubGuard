@@ -8,7 +8,9 @@ import 'package:path/path.dart' as p;
 import 'package:unimarkly/data/repositories/recognition_repository.dart';
 import 'package:unimarkly/domain/ocr.dart';
 import 'package:unimarkly/services/export/labelled_export.dart';
+import 'package:unimarkly/services/recognition/orientation.dart';
 import 'package:unimarkly/services/scan/scan_files.dart';
+import 'package:unimarkly/services/vision/photo_codec.dart';
 
 import '../support/booklet_photo.dart';
 
@@ -29,7 +31,9 @@ void main() {
   });
   tearDown(() => work.deleteSync(recursive: true));
 
-  LabelledExample example(String field, String text, Region region, {String photo = 'b1/photo.jpg', String decision = 'accepted', String? machine}) => LabelledExample(
+  LabelledExample example(String field, String text, Region region,
+          {String photo = 'b1/photo.jpg', String decision = 'accepted', String? machine, int turned = 0}) =>
+      LabelledExample(
         scanId: 's1',
         courseId: 'c1',
         photoPath: photo,
@@ -40,6 +44,7 @@ void main() {
         decision: decision,
         reviewedAt: DateTime.utc(2026, 10, 24, 12),
         machineValue: machine,
+        turnedQuarters: turned,
       );
 
   Future<ui.Image> decode(List<int> bytes) async => (await (await ui.instantiateImageCodec(bytes as dynamic)).getNextFrame()).image;
@@ -80,6 +85,42 @@ void main() {
     final expectedW = 0.105 * 810 * (1 + 2 * LabelledExport.padding), expectedH = 0.042 * 1080 * (1 + 2 * LabelledExport.padding);
     expect(image.width, closeTo(expectedW, 3));
     expect(image.height, closeTo(expectedH, 3));
+  });
+
+  test('a booklet photographed sideways has its crops turned upright, and the file says so', () async {
+    // The photograph is stored as it was taken (the booklet on its side); the
+    // region is where the cell is on that photograph.
+    final sideways = File(p.join(work.path, 'scans', 'b1', 'side.png'));
+    final upright = await loadBooklet();
+    sideways.writeAsBytesSync(await encodeColorPng(upright.turned(1)));
+    // The cell at (0.775..0.880, 0.490..0.532) of the upright booklet, followed onto the sideways photo.
+    final region = PageOrientation.turn(const Region(0.775, 0.490, 0.880, 0.532), 1);
+
+    final result = await LabelledExport.build(
+      examples: [example('mark_q5', '5.5', region, photo: 'b1/side.png', turned: 3)],
+      files: files,
+      directory: Directory(p.join(work.path, 'out')),
+    );
+    final zip = ZipDecoder().decodeBytes(result!.file.readAsBytesSync());
+    final crop = zip.files.firstWhere((f) => f.name.startsWith('crops/'));
+    final image = await decode(crop.content as List<int>);
+    // Wider than tall, like the cell on the upright booklet (not tall and narrow like the sideways one).
+    final expectedW = 0.105 * 810 * (1 + 2 * LabelledExport.padding), expectedH = 0.042 * 1080 * (1 + 2 * LabelledExport.padding);
+    expect(image.width, closeTo(expectedW, 4));
+    expect(image.height, closeTo(expectedH, 4));
+    final labels = jsonDecode(utf8.decode(zip.findFile('labels.json')!.content as List<int>)) as Map<String, dynamic>;
+    expect((labels['examples'] as List).single['crop_turned_quarters_clockwise'], 3);
+  });
+
+  test('an upright booklet\'s crops carry no turn', () async {
+    final result = await LabelledExport.build(
+      examples: [example('mark_q5', '5.5', const Region(0.775, 0.490, 0.880, 0.532))],
+      files: files,
+      directory: Directory(p.join(work.path, 'out')),
+    );
+    final zip = ZipDecoder().decodeBytes(result!.file.readAsBytesSync());
+    final labels = jsonDecode(utf8.decode(zip.findFile('labels.json')!.content as List<int>)) as Map<String, dynamic>;
+    expect((labels['examples'] as List).single.containsKey('crop_turned_quarters_clockwise'), isFalse);
   });
 
   test('an example whose photo is gone is left out and counted, not a failure', () async {

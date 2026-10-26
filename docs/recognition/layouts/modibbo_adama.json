@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "id": "modibbo-adama-cover",
+  "name": "Modibbo Adama University exam booklet",
+  "description": "The cover with the candidate's examination number at the top and the \"For Examiner's Use Only\" marks table down the right.",
+  "revision": 1,
+  "anchors": [
+    {
+      "key": "exam_label",
+      "name": "Candidate's Examination Number",
+      "words": ["candidate"],
+      "where": {"left": {"lt": 0.45}, "top": {"lt": 0.45}}
+    },
+    {
+      "key": "examiner",
+      "name": "For Examiner's Use Only",
+      "words": ["examiner", "useonly"],
+      "where": {"centerX": {"gt": 0.5}}
+    },
+    {
+      "key": "question",
+      "name": "Question",
+      "words": ["question"],
+      "where": {"left": {"gt": 0.5}}
+    },
+    {
+      "key": "marks",
+      "name": "Marks",
+      "words": ["marks"],
+      "where": {"left": {"gt": 0.5}, "top": {"gt": 0.2}}
+    },
+    {
+      "key": "total",
+      "name": "Total",
+      "words": ["total"],
+      "where": {"left": {"gt": 0.5}, "top": {"gt": 0.6}}
+    },
+    {
+      "key": "instruction",
+      "name": "Number your answers",
+      "words": ["havebeenwritten", "answers"],
+      "where": {"left": {"lt": 0.4}, "top": {"gt": 0.75}},
+      "pick": "lowest",
+      "reported": false
+    }
+  ],
+  "relations": [
+    {"a": "question", "rule": "left_of_same_row", "b": "marks", "tolerance": 0.03},
+    {"a": "total", "rule": "below", "b": "marks"},
+    {"a": "exam_label", "rule": "above", "b": "marks"},
+    {"a": "examiner", "rule": "higher", "b": "question"}
+  ],
+  "regions": {
+    "exam_number": {
+      "variants": [
+        {
+          "needs": ["exam_label"],
+          "left": {"max": [0.3, {"ref": "exam_label.right"}]},
+          "top": {"ref": "exam_label.top", "offset": -0.03},
+          "right": 0.96,
+          "bottom": {"ref": "exam_label.bottom", "offset": -0.002}
+        }
+      ]
+    },
+    "marks": {
+      "variants": [
+        {
+          "needs": ["marks", "total"],
+          "left": {"ref": "marks.left", "offset": -0.025},
+          "top": {"ref": "marks.bottom"},
+          "right": 0.98,
+          "bottom": {"ref": "total.top", "offset": -0.004}
+        },
+        {
+          "needs": ["examiner", "total"],
+          "left": {"ref": "examiner.left"},
+          "top": {"ref": "examiner.bottom", "offset": 0.03},
+          "right": 0.98,
+          "bottom": {"ref": "total.top", "offset": -0.004}
+        }
+      ]
+    },
+    "question_column": {
+      "variants": [
+        {
+          "needs": ["question", "marks", "total"],
+          "left": {"ref": "question.left", "offset": -0.025},
+          "top": {"ref": "marks.bottom"},
+          "right": {"ref": "marks.left", "offset": -0.029},
+          "bottom": {"ref": "total.top", "offset": -0.004}
+        }
+      ]
+    },
+    "total": {
+      "variants": [
+        {
+          "needs": ["total"],
+          "left": {"ref": "total.right"},
+          "top": {"ref": "total.top", "offset": -0.02},
+          "right": 0.98,
+          "bottom": {"ref": "total.bottom", "offset": 0.03}
+        }
+      ]
+    },
+    "answered": {
+      "readsAs": "^[\\d\\s,.\\-]{1,12}$",
+      "variants": [
+        {
+          "needs": ["instruction"],
+          "left": 0.04,
+          "top": {"ref": "instruction.bottom"},
+          "right": 0.55,
+          "bottom": {"ref": "instruction.bottom", "offset": 0.1}
+        }
+      ]
+    }
+  },
+  "serial": {"pattern": "^\\d{5,8}$", "where": {"top": {"lte": 0.2}, "centerX": {"gte": 0.5}}},
+  "institution": {"word": "university", "where": {"top": {"lt": 0.1}}}
+}

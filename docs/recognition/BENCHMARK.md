@@ -3,15 +3,19 @@
 Reproduce: `tool/bench/run_benchmark.sh` (needs `pip install rapidocr-onnxruntime
 opencv-python-headless`). It writes `results/benchmark_latest.json` (every run, every
 field, every candidate) and `results/benchmark_latest.md`. The table below is that
-file as of pipeline 1.0.0, digit model 1.0.0.
+file as of pipeline 1.1.0 (orientation correction, layout profiles), digit model 1.0.0.
 
 ## Read this first
 
 * **One** independent photograph (`eval/dataset/booklet-001`), annotated by the
   engineer who built the engine, and **the pipeline was developed while looking at
-  it**. Six more runs are the same photograph with known damage applied (blur,
-  noise, under-exposure, faint ink, shadow). They test how the *stages* behave;
-  they add nothing about handwriting variety.
+  it**. Sixteen more runs are the same photograph with known changes applied: damage
+  (blur, noise, under-exposure, faint ink, shadow), placement at an angle, and turning
+  it a quarter, a half and three quarters round. They test how the *stages* behave;
+  they add nothing about handwriting variety. **The turned variants are exact (lossless)
+  turns, and the pipeline reads them exactly as it reads the upright photo, so they
+  repeat the same four marks: the pooled "marks exact" rate is the original photo's
+  1 of 4 counted four times, not a better reader.**
 * So **none of these rates estimates accuracy on examiners' handwriting.** They
   are a smoke test with the denominators shown. A rate from 1, 4 or 11 trials is not
   a rate.
@@ -21,27 +25,27 @@ file as of pipeline 1.0.0, digit model 1.0.0.
 * No target (such as "99% exact registration numbers") has been set or claimed.
   Targets need a baseline on representative labelled data, which does not exist yet.
 
-## Results (11 runs: 1 original + 10 derived)
+## Results (17 runs: 1 original + 16 derived)
 
 | metric | result |
 |---|---|
-| registration number, exact (raw reading) | 0/11 |
-| registration number, read at all | 0/11 |
-| registration number, right one among the candidates | 3/11 |
-| registration number, top candidate right (class list of 60) | 3/11 |
-| registration number, character error rate | 132 edits / 132 chars (100%): nothing valid was read |
-| marks, exact with the right question | 1/44 |
-| marks, right value among candidates with the right question | 1/44 |
-| mark rows found at the right place | 30/44 |
-| question labels read correctly | 19/44 |
-| printed booklet number, exact | 9/11 (the other two: not read; none wrong) |
-| written total correct (a blank box counts when blank) | 10/11 |
-| whole document exact | 0/11 |
-| documents needing review | 11/11 |
-| fields needing review | 118/128 |
-| **false acceptance** (accepted and wrong) | **0 of 10** accepted fields with ground truth |
-| time per page | median 6.5 s (min 1.0, max 10.4) on this machine |
-| peak resident memory | 316 MB on this machine |
+| registration number, exact (raw reading) | 0/17 |
+| registration number, read at all | 0/17 |
+| registration number, right one among the candidates | 6/17 |
+| registration number, top candidate right (class list of 60) | 6/17 |
+| registration number, character error rate | 204 edits / 204 chars (100%): nothing valid was read |
+| marks, exact with the right question | 4/68 (the original: 1/4; see the note above) |
+| marks, right value among candidates with the right question | 4/68 |
+| mark rows found at the right place | 42/68 |
+| question labels read correctly | 31/68 |
+| printed booklet number, exact | 12/17 (the other five: not read; none wrong) |
+| written total correct (a blank box counts when blank) | 13/17 |
+| whole document exact | 0/17 |
+| documents needing review | 17/17 |
+| fields needing review | 163/176 |
+| **false acceptance** (accepted and wrong) | **0 of 13** accepted fields with ground truth |
+| time per page | median 2.8 s (min 0.4, max 4.3) on this machine |
+| peak resident memory | 314 MB on this machine |
 | batch reliability | 2 read, 4 refused with a reason, 0 crashed, of 6 inputs |
 
 By picture condition (one run each; a run has four marks):
@@ -59,15 +63,31 @@ By picture condition (one run each; a run has four marks):
 | keystone, **as taken** (straightening off) | **0/4** | 0/4 |
 | rotated 12°, **straightened** | **4/4** | 0/4 |
 | rotated 12°, **as taken** | **1/4** | 0/4 |
+| photographed top to the right, **turned upright** | **4/4** | 1/4 |
+| photographed top to the right, **read as taken** (orientation off) | **0/4** | 0/4 |
+| photographed upside down, **turned upright** | **4/4** | 1/4 |
+| photographed upside down, **read as taken** | **0/4** | 0/4 |
+| photographed top to the left, **turned upright** | **4/4** | 1/4 |
+| photographed top to the left, **read as taken** | **0/4** | 0/4 |
 
 Straightening is the one stage whose benefit is measured here, and it is large for
 finding the table on a photograph taken at an angle. It costs about 1–2 s on this
 machine. It is used only when the page is found with confidence, all four corners
 are in the picture, and the page is visibly tilted or foreshortened.
 
-Where the time goes on the original (ms): decode 33, quality + page outline 832,
-printed text 1,588, close-up readings 3,340 (three OCR calls through the Python
-stand-in), marks 750, validation 18.
+Orientation correction (`ARCHITECTURE.md`, stage 3c) is the other stage whose benefit is
+measured: a booklet photographed on its side or upside down is found nowhere as taken
+(0 of 4 rows) and everywhere once turned (4 of 4, and the same values as the upright
+photo). It costs 0.8–1.9 s here, only on a photo that looks wrong; the upright photo
+pays nothing for it.
+
+Where the time goes on the original (ms): decode 12, quality + page outline 379,
+printed text 751, close-up readings 1,593 (three OCR calls through the Python
+stand-in), marks 343, validation 8. On the photo turned a quarter: orientation
+1,871 (three extra readings of the whole page; the half-turn and the other quarter
+need only two), the rest as above. These timings were
+taken on a different machine load from the earlier table in this file's history, so do not
+compare them with it; they are not phone figures either.
 
 ## What the numbers do show
 
@@ -80,13 +100,15 @@ stand-in), marks 750, validation 18.
   `uneven_light`, `page_not_found`).
 * **Handwriting is not solved.** The registration number was never read: the
   stand-in's PP-OCR reads fragments (`L0/0538`). The class list put the right number
-  among the candidates in 3 of 11 runs, with a note, never entered. Marks: 1 of 44.
-* **Finding the rows is far better than reading them**: the right place in 30 of 44
-  tries, against 1 of 44 values read exactly. That is why the app uses the engine to
+  among the candidates in 6 of 17 runs, with a note, never entered. Marks: 1 of 4 on the
+  original photo (the pooled 4 of 68 repeats it).
+* **Finding the rows is far better than reading them**: the right place in 42 of 68
+  tries (4 of 4 on every straightened or turned variant), against 4 of 68 values read
+  exactly (the same photo's 1 of 4 repeated). That is why the app uses the engine to
   place suggestions beside the right part of the photo, not to fill values in.
 * **A batch survives bad inputs**: a corrupt file, a text file, an empty file and a
   missing file were each refused with a reason, and the good photos still read.
-* The booklet number is the only thing read well, and only in 9 of 11 runs.
+* The booklet number is the only thing read well, and only in 12 of 17 runs.
 
 ## What the numbers do not show
 

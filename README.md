@@ -55,6 +55,18 @@ lands in the grid and the exports. Handwriting is **not** read automatically yet
   beside what you confirmed, are never overwritten by a later re-read, and every decision is
   stored with its time as a labelled example. **Settings → Training examples** counts them
   and, only when you say the people concerned agree, packs them into a file to share.
+- **Unconfirmed entries are kept**: what you typed on a booklet and have not confirmed comes back,
+  with a notice and a "Discard them" button, if you leave the booklet or the app closes. A draft
+  is never a result; only Confirm reaches the score grid.
+- **Sideways and upside-down photos are turned upright for reading.** The booklet's printed labels
+  must appear in the right places and the right order, so a turn is only made on evidence; the
+  photo viewer then shows the photograph upright (the file is never changed). On the one real
+  photograph, in all four orientations, the mark rows were found 4 of 4 times once turned and
+  0 of 4 as taken.
+- **Another booklet cover is another file.** Settings → Booklet layout chooses which layout photos
+  are read with, adds a layout file (checked before it is used), and shares the built-in one as a
+  starting point. See `docs/recognition/LAYOUT_PROFILES.md`. Only the Modibbo Adama cover has been
+  tested on real photographs; a new layout must be checked against photographs of its own cover.
 - Light and dark themes, with a switch in Settings.
 - Undo for deletes, and a bin for deleted courses.
 

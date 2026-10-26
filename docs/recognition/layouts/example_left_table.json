@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "id": "example-left-table",
+  "name": "Example: marks table on the left",
+  "description": "An invented cover, to show the format: the matric number printed top right and the Item / Score table down the left.",
+  "revision": 1,
+  "anchors": [
+    {"key": "matric", "name": "Matric No.", "words": ["matric"], "where": {"top": {"lt": 0.3}, "centerX": {"gt": 0.5}}},
+    {"key": "item", "name": "Item", "words": ["item"], "where": {"right": {"lt": 0.5}, "top": {"gt": 0.1}}},
+    {"key": "score", "name": "Score", "words": ["score"], "where": {"right": {"lt": 0.5}, "top": {"gt": 0.1}}},
+    {"key": "grand", "name": "Grand Total", "words": ["grandtotal"], "where": {"right": {"lt": 0.5}, "top": {"gt": 0.6}}}
+  ],
+  "relations": [
+    {"a": "item", "rule": "left_of_same_row", "b": "score", "tolerance": 0.03},
+    {"a": "grand", "rule": "below", "b": "score"},
+    {"a": "matric", "rule": "above", "b": "score"}
+  ],
+  "regions": {
+    "exam_number": {
+      "variants": [
+        {"needs": ["matric"], "left": {"ref": "matric.right"}, "top": {"ref": "matric.top", "offset": -0.02}, "right": 0.97, "bottom": {"ref": "matric.bottom", "offset": 0.005}}
+      ]
+    },
+    "marks": {
+      "variants": [
+        {"needs": ["score", "grand"], "left": {"ref": "score.left", "offset": -0.02}, "top": {"ref": "score.bottom"}, "right": 0.48, "bottom": {"ref": "grand.top", "offset": -0.004}}
+      ]
+    },
+    "question_column": {
+      "variants": [
+        {"needs": ["item", "score", "grand"], "left": {"ref": "item.left", "offset": -0.02}, "top": {"ref": "score.bottom"}, "right": {"ref": "score.left", "offset": -0.024}, "bottom": {"ref": "grand.top", "offset": -0.004}}
+      ]
+    },
+    "total": {
+      "variants": [
+        {"needs": ["grand"], "left": {"ref": "grand.right"}, "top": {"ref": "grand.top", "offset": -0.02}, "right": 0.48, "bottom": {"ref": "grand.bottom", "offset": 0.03}}
+      ]
+    }
+  },
+  "serial": {"pattern": "^\\d{6}$", "where": {"top": {"lte": 0.15}, "centerX": {"gte": 0.5}}}
+}

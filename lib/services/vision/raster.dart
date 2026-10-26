@@ -274,6 +274,29 @@ class ColorRaster {
     return ColorRaster(w, h, out);
   }
 
+  /// This picture turned clockwise by [quarters] quarter-turns (0 to 3; any
+  /// integer is taken modulo 4). Every pixel is kept exactly, so turning and
+  /// turning back is lossless.
+  ColorRaster turned(int quarters) {
+    final q = quarters % 4;
+    if (q == 0) return this;
+    final nw = q == 2 ? width : height, nh = q == 2 ? height : width;
+    // One 32-bit word per pixel, so each pixel is moved in one step.
+    final from = rgba.offsetInBytes % 4 == 0
+        ? Uint32List.view(rgba.buffer, rgba.offsetInBytes, width * height)
+        : Uint8List.fromList(rgba).buffer.asUint32List();
+    final to = Uint32List(nw * nh);
+    for (var y = 0; y < height; y++) {
+      for (var x = 0; x < width; x++) {
+        // Where the pixel at (x, y) lands in the turned picture.
+        final nx = q == 1 ? height - 1 - y : (q == 2 ? width - 1 - x : y);
+        final ny = q == 1 ? x : (q == 2 ? height - 1 - y : width - 1 - x);
+        to[ny * nw + nx] = from[y * width + x];
+      }
+    }
+    return ColorRaster(nw, nh, to.buffer.asUint8List());
+  }
+
   /// Area-averaged shrink / bilinear enlarge, per channel.
   ColorRaster resized(int newWidth, int newHeight) {
     final planes = [for (var c = 0; c < 4; c++) channel(c).resized(newWidth, newHeight)];

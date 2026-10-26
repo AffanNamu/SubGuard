@@ -16,6 +16,7 @@ import '../vision/raster.dart';
 import 'interfaces.dart';
 import 'marks_stage.dart';
 import 'model_registry.dart';
+import 'orientation.dart';
 import 'straighten.dart';
 import 'validation.dart';
 
@@ -66,6 +67,7 @@ class BookletPipeline implements RecognitionOrchestrator {
     this.policy = RecognitionPolicy.conservative,
     this.limits = const PipelineLimits(),
     this.straighten = true,
+    this.orient = true,
   });
 
   final PrintedTextRecognizer ocr;
@@ -84,6 +86,10 @@ class BookletPipeline implements RecognitionOrchestrator {
   /// Straighten a tilted or foreshortened page before reading it (see
   /// [PageStraightener.worthIt] for when). Off, the photograph is read as taken.
   final bool straighten;
+
+  /// Turn a photo taken sideways or upside down before reading it (see
+  /// [PageOrientation]). Off, the photograph is read the way up it came.
+  final bool orient;
 
   /// [classList] is the course's registration numbers (suggestions only);
   /// [validator] checks marks against the course's rules, when there is a course.
@@ -213,6 +219,27 @@ class BookletPipeline implements RecognitionOrchestrator {
 
     var reading = layout.extract(doc, classList: classList);
 
+    // ---- 3b. a photo taken sideways or upside down ----
+    // The labels the layout hangs on are found in their usual places, so a turned
+    // page finds almost none. Only then are the other three turns read, and one
+    // is kept only when it does find them.
+    var turnedQuarters = 0;
+    if (orient && ocrFailure == null && doc.lines.isNotEmpty && PageOrientation.suspect(reading, doc, source.width, source.height)) {
+      final t = await _tryTurns(source, doc, reading, classList, scratch, checkCancelled);
+      if (t.better != null) {
+        final b = t.better!;
+        source = b.source;
+        doc = b.doc;
+        reading = b.reading;
+        turnedQuarters = b.quarters;
+        notes.add(PageOrientation.describe(b.quarters));
+      } else if (t.tried > 0 && reading.foundAnchors.length < PageOrientation.minAnchors) {
+        notes.add('The photo was also tried turned the other three ways and the printed labels were not found in any of them, so it was read as taken.');
+      }
+      lap('orientation');
+      checkCancelled();
+    }
+
     // ---- 4. close-ups ----
     final engine = ocr;
     final closeups = <String, OcrDocument>{};
@@ -286,15 +313,17 @@ class BookletPipeline implements RecognitionOrchestrator {
 
     // Regions found on a straightened page are put back on the photograph, which
     // is what the examiner is shown.
-    final located = straightened
+    final moved = straightened || turnedQuarters != 0;
+    final located = moved
         ? [for (final f in withWarnings) f.region == null ? f : f.copyWith(region: source.toPhoto(f.region!))]
         : withWarnings;
-    final layoutOnPhoto = straightened ? reading.mapRegions(source.toPhoto) : reading;
+    final layoutOnPhoto = moved ? reading.mapRegions(source.toPhoto) : reading;
 
     final models = <Map<String, String>>[
       {'id': 'ocr', 'name': doc.engine == 'none' ? ocr.name : doc.engine, 'role': 'printed text; close-up readings of the exam number'},
       if (model != null) {...model.info.toJson(), 'role': 'handwritten digits in the marks table'},
-      {'id': 'unimarkly-pipeline', 'version': BookletPipelineInfo.version, 'role': 'quality, page outline, layout, mark rows'},
+      layout.info,
+      {'id': 'unimarkly-pipeline', 'version': BookletPipelineInfo.version, 'role': 'quality, page outline, mark rows'},
     ];
     if (qualityWarnings.isNotEmpty) notes.addAll(qualityWarnings.map((m) => 'Picture: $m'));
 
@@ -310,10 +339,60 @@ class BookletPipeline implements RecognitionOrchestrator {
       notes: notes,
       answeredLine: reading.questionsAnsweredText,
       straightened: straightened,
+      turnedQuarters: turnedQuarters,
     );
   }
 
   // ---- stage helpers ----
+
+  /// Reads [source] turned each other way and returns the turn that finds the
+  /// layout's printed labels, in the right order, clearly better than the photo
+  /// as taken ([PageOrientation.better]). Stops at the first turn that finds all
+  /// of them with nothing out of order. [tried] says how many turns were read.
+  Future<({({_Source source, OcrDocument doc, BookletReading reading, int quarters})? better, int tried})> _tryTurns(
+    _Source source,
+    OcrDocument doc,
+    BookletReading reading,
+    List<String> classList,
+    List<Directory> scratch,
+    void Function() checkCancelled,
+  ) async {
+    ({_Source source, OcrDocument doc, BookletReading reading, int quarters})? best;
+    var tried = 0;
+    final dir = await Directory.systemTemp.createTemp('unimarkly_turn_');
+    scratch.add(dir);
+    for (final q in PageOrientation.candidates(doc, source.width, source.height)) {
+      checkCancelled();
+      final image = source.image.turned(q);
+      final file = File('${dir.path}/turn$q.png');
+      final OcrDocument d;
+      try {
+        await file.writeAsBytes(await encodeColorPng(image));
+        d = await ocr.recognize(file, width: image.width, height: image.height).timeout(limits.ocrTimeout);
+      } catch (_) {
+        continue;
+      }
+      tried++;
+      final r = layout.extract(d, classList: classList);
+      if (PageOrientation.better(r, best?.reading ?? reading)) {
+        final before = source;
+        best = (
+          source: _Source(
+            file: file,
+            image: image,
+            width: image.width,
+            height: image.height,
+            toPhoto: (region) => before.toPhoto(PageOrientation.unturn(region, q)),
+          ),
+          doc: d,
+          reading: r,
+          quarters: q,
+        );
+      }
+      if (r.layoutRecognised && r.layoutContradictions == 0) break;
+    }
+    return (better: best, tried: tried);
+  }
 
   /// Static, and handed only plain data: a background isolate cannot be sent
   /// the pipeline itself, because it holds the platform text reader.

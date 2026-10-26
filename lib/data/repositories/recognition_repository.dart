@@ -86,6 +86,7 @@ class LabelledExample {
     required this.decision,
     required this.reviewedAt,
     this.machineValue,
+    this.turnedQuarters = 0,
   });
 
   final String scanId;
@@ -102,6 +103,11 @@ class LabelledExample {
   final String decision;
   final String? machineValue;
   final DateTime reviewedAt;
+
+  /// The photo was taken sideways or upside down and was read turned this many
+  /// quarter-turns clockwise. [region] is on the photo as it was taken; a crop of
+  /// it has to be turned by this much to be upright.
+  final int turnedQuarters;
 }
 
 /// Stores what the recognition pipeline found (kept exactly as produced) and
@@ -194,12 +200,14 @@ class RecognitionRepository {
           (courseId == null ? const Constant(true) : _db.scans.courseId.equals(courseId)))
       ..orderBy([OrderingTerm.asc(_db.fieldReviews.reviewedAt)]);
     final latest = <String, LabelledExample>{};
+    final turns = <String, int>{};
     for (final row in await query.get()) {
       final r = row.readTable(_db.fieldReviews);
       final s = row.readTable(_db.scans);
       final region = Region.decode(r.region);
       final photo = s.photoPath;
       if (region == null || photo == null) continue;
+      turns[r.scanId] ??= (await latestRun(r.scanId))?.result.turnedQuarters ?? 0;
       latest['${r.scanId}/${r.fieldKey}'] = LabelledExample(
         scanId: r.scanId,
         courseId: s.courseId,
@@ -211,6 +219,7 @@ class RecognitionRepository {
         decision: r.decision,
         machineValue: r.machineValue,
         reviewedAt: r.reviewedAt,
+        turnedQuarters: turns[r.scanId] ?? 0,
       );
     }
     return latest.values.toList();

@@ -9,6 +9,7 @@ import 'package:unimarkly/features/home/batch_card.dart';
 import 'package:unimarkly/features/scan/recognition_widgets.dart';
 import 'package:unimarkly/features/scan/scan_widgets.dart';
 import 'package:unimarkly/services/recognition/interfaces.dart';
+import 'package:unimarkly/services/recognition/orientation.dart';
 import 'package:unimarkly/services/recognition/validation.dart';
 import 'package:unimarkly/services/vision/quality.dart';
 import 'package:unimarkly/domain/models.dart';
@@ -215,6 +216,7 @@ void main() {
     List<ExtractedField> fields, {
     QualityReport? quality,
     List<ValidationFinding> findings = const [],
+    int turnedQuarters = 0,
   }) async {
     final scan = (await h.scans.batches()).first;
     final item = (await h.scans.scansOf(scan.id)).single;
@@ -240,6 +242,7 @@ void main() {
         models: const [],
         timingsMs: const {'decode': 1},
         printed: const OcrDocument(engine: 'test', lines: []),
+        turnedQuarters: turnedQuarters,
       ),
     );
   }
@@ -367,6 +370,40 @@ void main() {
     await h.tapText(tester, 'Show on photo');
     expect(find.byType(PhotoViewerScreen), findsOneWidget);
     expect(find.textContaining('Outlined: mark in row 1'), findsOneWidget);
+    await h.stop(tester);
+  });
+
+  testWidgets('a booklet photographed sideways is shown upright, with the outline where the field is on the turned picture', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      // Read turned three quarters clockwise (its top was on the right); the row is
+      // on the photo as the camera took it, in the right-hand part of the picture.
+      await seedRun([markRow(1, value: '4.5', question: '3')], turnedQuarters: 3);
+    });
+    await openFirstReview(tester);
+    await h.tapText(tester, 'Show on photo');
+    final viewer = tester.widget<PhotoViewerScreen>(find.byType(PhotoViewerScreen));
+    expect(viewer.turnedQuarters, 3);
+    expect(find.byWidgetPredicate((w) => w is RotatedBox && w.quarterTurns == 3), findsOneWidget);
+    // The outline is drawn where the field is on the turned picture.
+    final row = markRow(1, value: '4.5').region!;
+    final on = PageOrientation.turn(row, 3);
+    final outline = tester.widget<Positioned>(find.ancestor(of: find.bySemanticsLabel('Highlighted: mark in row 1'), matching: find.byType(Positioned)).first);
+    final stack = tester.getSize(find.byType(RotatedBox).evaluate().isEmpty ? find.byType(Stack).first : find.ancestor(of: find.byType(RotatedBox), matching: find.byType(Stack)).first);
+    expect(outline.left! / stack.width, closeTo(on.left, 1e-6));
+    expect(outline.top! / stack.height, closeTo(on.top, 1e-6));
+    await h.stop(tester);
+  });
+
+  testWidgets('a photo that was not turned is shown as it is', (tester) async {
+    await h.start(tester, size: tall, tab: null, seed: () async {
+      await seed();
+      await seedRun([markRow(1, value: '4.5', question: '3')]);
+    });
+    await openFirstReview(tester);
+    await h.tapText(tester, 'Show on photo');
+    expect(tester.widget<PhotoViewerScreen>(find.byType(PhotoViewerScreen)).turnedQuarters, 0);
+    expect(find.byType(RotatedBox), findsNothing);
     await h.stop(tester);
   });
 

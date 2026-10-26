@@ -9,6 +9,7 @@ import '../incoming/saved_documents_screen.dart';
 import 'bin_screen.dart';
 import 'defaults_screen.dart';
 import 'header_settings_screen.dart';
+import 'layout_screen.dart';
 import 'templates_screen.dart';
 import 'training_examples_screen.dart';
 
@@ -138,6 +139,17 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: NavTile(
+                icon: Icons.grid_view_rounded,
+                color: c.tileGreen,
+                title: 'Booklet layout',
+                subtitle: ref.watch(layoutChoiceProvider).selected.name,
+                onTap: () => open(const LayoutScreen()),
               ),
             ),
             const SectionHeading('Results'),

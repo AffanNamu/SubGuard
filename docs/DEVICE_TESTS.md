@@ -40,6 +40,8 @@ support: record its model, RAM and Android version) and a recent iPhone. Use ful
 | R7 | Photograph one booklet badly (blur, dark, glare, far away) | the quality notice names the fault and says what to do | | |
 | R8 | Try `PaddleOcrConfig.handwrittenRows()` for the close-ups | whether the exam number is read better than with the current config | | |
 | R9 | Rotate the phone and use font scale 1.3 on the review screen | nothing cut off; "Show on photo" works with pinch zoom | | |
+| R10 | Photograph one booklet lying on its side, and one upside down (a phone that does not set the rotation flag, or a booklet turned on the desk) | the app turns it upright (a note says so); the photo viewer shows it upright; extra seconds per page | | |
+| R11 | Type an exam number and two marks on a booklet, kill the app, reopen the booklet | the entries come back with a notice; "Discard them" clears them; nothing reached the score grid before Confirm | | |
 
 Report each row with the photos (if authorised) and the phone model. Rows R6 and R8 are what decide the
 next step in `docs/recognition/MODEL_SELECTION.md`.

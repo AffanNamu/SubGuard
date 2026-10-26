@@ -10,6 +10,7 @@ import 'package:unimarkly/domain/reg_no.dart';
 import 'package:unimarkly/services/recognition/booklet_pipeline.dart';
 import 'package:unimarkly/services/recognition/interfaces.dart';
 import 'package:unimarkly/services/recognition/model_registry.dart';
+import 'package:unimarkly/services/recognition/orientation.dart';
 import 'package:unimarkly/services/vision/photo_codec.dart';
 
 import 'package:unimarkly/services/vision/geometry.dart';
@@ -40,6 +41,7 @@ void main() {
     final digits = await ModelRegistry.loadDigits();
     final pipeline = BookletPipeline(ocr: ocr, digits: digits);
     final asTaken = BookletPipeline(ocr: ocr, digits: digits, straighten: false);
+    final notTurned = BookletPipeline(ocr: ocr, digits: digits, straighten: false, orient: false);
     final docs = _loadDataset();
     final work = Directory.systemTemp.createTempSync('unimarkly_bench_');
     addTearDown(() {
@@ -91,10 +93,21 @@ void main() {
           variants.add(_Variant(a.$1, f.path, '${a.$1} (straightened)', mapBox: map));
           variants.add(_Variant('${a.$1}_as_taken', f.path, '${a.$1} (as taken)', mapBox: map, straighten: false));
         }
+        // The booklet photographed on its side or upside down: the pixels are turned
+        // exactly, the annotated boxes follow, so the ground truth stays exact.
+        const sides = ['', 'top to the right', 'upside down', 'top to the left'];
+        for (var q = 1; q < 4; q++) {
+          final f = File(p.join(work.path, '${doc.id}_turned$q.png'));
+          await f.writeAsBytes(await encodeColorPng(original.turned(q)));
+          Region map(Region b) => PageOrientation.turn(b, q);
+          variants.add(_Variant('turned_$q', f.path, 'photographed ${sides[q]} (turned upright)', mapBox: map));
+          variants.add(_Variant('turned_${q}_as_taken', f.path, 'photographed ${sides[q]} (read as taken)', mapBox: map, straighten: false, orient: false));
+        }
       }
       for (final v in variants) {
         final sw = Stopwatch()..start();
-        final result = await (v.straighten ? pipeline : asTaken).run(File(v.path), classList: doc.classList);
+        final used = !v.orient ? notTurned : (v.straighten ? pipeline : asTaken);
+        final result = await used.run(File(v.path), classList: doc.classList);
         sw.stop();
         peakRss = math.max(peakRss, ProcessInfo.maxRss);
         runs.add(_Run(doc, v.name, v.category, result, sw.elapsedMilliseconds, mapBox: v.mapBox));
@@ -177,12 +190,15 @@ List<_Doc> _loadDataset() {
 // ---- scoring ----
 
 class _Variant {
-  _Variant(this.name, this.path, this.category, {this.mapBox, this.straighten = true});
+  _Variant(this.name, this.path, this.category, {this.mapBox, this.straighten = true, this.orient = true});
   final String name, path, category;
 
   /// Where an annotated box (fractions of the original) is on this picture.
   final Region Function(Region)? mapBox;
   final bool straighten;
+
+  /// Whether the pipeline may turn a sideways or upside-down photo.
+  final bool orient;
 }
 
 class _Run {

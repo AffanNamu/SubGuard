@@ -70,7 +70,9 @@ class LabelledExport {
           skipped++;
           continue;
         }
-        final png = await encodeColorPng(decoded.image.crop(left, top, right, bottom));
+        // A booklet photographed sideways is cropped as it was taken, then turned
+        // so the writing in the picture is upright.
+        final png = await encodeColorPng(decoded.image.crop(left, top, right, bottom).turned(e.turnedQuarters));
         n++;
         final name = 'crops/${n.toString().padLeft(5, '0')}_${e.fieldKey}.png';
         archive.addFile(ArchiveFile(name, png.length, png));
@@ -82,6 +84,7 @@ class LabelledExport {
           'decision': e.decision,
           'machine_value': e.machineValue,
           'region_on_photo': [r.left, r.top, r.right, r.bottom],
+          if (e.turnedQuarters % 4 != 0) 'crop_turned_quarters_clockwise': e.turnedQuarters % 4,
           'confirmed_at': e.reviewedAt.toUtc().toIso8601String(),
         });
       }
@@ -99,6 +102,7 @@ class LabelledExport {
 Created ${stamp.toIso8601String()}
 
 crops/            a picture of each piece of handwriting, cut from the original photograph
+                  (turned upright when the booklet was photographed sideways or upside down)
 labels.json       for each: the text the examiner confirmed, what the machine had read,
                   what the examiner decided (accepted, suggestion, edited, entered) and when
 

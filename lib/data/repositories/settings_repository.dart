@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../domain/layout_profile.dart';
 import '../../services/export/result_table.dart';
 import '../../services/scan/image_source.dart';
 
@@ -65,6 +66,8 @@ class SettingsRepository {
   static const _seenWelcome = 'seen_welcome';
   static const _photoQuality = 'photo_quality';
   static const _readAutomatically = 'read_automatically';
+  static const _layouts = 'layout_profiles';
+  static const _layoutId = 'layout_profile_id';
 
   AppSettings load() => AppSettings(
         themeMode: switch (_prefs.getString(_theme)) {
@@ -85,6 +88,28 @@ class SettingsRepository {
         photoQuality: PhotoQuality.fromName(_prefs.getString(_photoQuality)),
         readAutomatically: _prefs.getBool(_readAutomatically) ?? true,
       );
+
+  /// Layout files the administrator added, as they were checked when added. A stored
+  /// file that no longer passes (an older or damaged copy) is left out.
+  List<LayoutProfile> importedLayouts() {
+    final out = <LayoutProfile>[];
+    for (final text in _prefs.getStringList(_layouts) ?? const <String>[]) {
+      try {
+        out.add(LayoutProfile.parse(text));
+      } on LayoutProfileException {
+        continue;
+      }
+    }
+    return out;
+  }
+
+  /// The id of the layout used for reading, or null for the built-in one.
+  String? get selectedLayoutId => _prefs.getString(_layoutId);
+
+  Future<void> saveLayouts(List<LayoutProfile> imported, String selectedId) async {
+    await _prefs.setStringList(_layouts, [for (final p in imported) p.encode()]);
+    await _prefs.setString(_layoutId, selectedId);
+  }
 
   Future<void> save(AppSettings s) async {
     await _prefs.setString(_theme, switch (s.themeMode) {

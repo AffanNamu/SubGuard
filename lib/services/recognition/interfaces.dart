@@ -24,7 +24,7 @@ export '../vision/quality.dart' show DocumentQualityAnalyzer;
 /// | picture quality               | [DocumentQualityAnalyzer]  | `QualityAnalyzer`     |
 /// | page outline                  | [DocumentBoundaryDetector] | `PageDetector`        |
 /// | printed text                  | [PrintedTextRecognizer]    | `OcrEngine` (PaddleOCR on the phone) |
-/// | layout and field regions      | [LayoutAnalyzer]           | `BookletExtractor`    |
+/// | layout and field regions      | [LayoutAnalyzer]           | `ProfileLayoutAnalyzer` (a layout profile) |
 /// | handwritten marks             | [HandwritingRecognizer]    | `MarkReader` + digit network |
 /// | checks on the result          | `ExaminationValidator`     | `SchemeExaminationValidator` |
 /// | when a reading may be trusted | [FieldConfidencePolicy]    | `RecognitionPolicy`   |
@@ -50,6 +50,7 @@ class RecognitionResult {
     this.notes = const [],
     this.answeredLine,
     this.straightened = false,
+    this.turnedQuarters = 0,
     this.pipelineVersion = BookletPipelineInfo.version,
   });
 
@@ -78,6 +79,11 @@ class RecognitionResult {
   /// the original photograph either way; the printed text's boxes are on the
   /// straightened page when this is true.
   final bool straightened;
+
+  /// The photo was turned clockwise by this many quarter-turns (0 to 3) before
+  /// it was read, because it was taken sideways or upside down. Regions are on
+  /// the original photograph either way.
+  final int turnedQuarters;
   final String pipelineVersion;
 
   ExtractedField? field(String key) {
@@ -102,6 +108,7 @@ class RecognitionResult {
         'notes': notes,
         'answeredLine': answeredLine,
         'straightened': straightened,
+        'turnedQuarters': turnedQuarters,
       };
 
   static RecognitionResult fromJson(Map<String, dynamic> j, {OcrDocument printed = OcrDocument.empty}) => RecognitionResult(
@@ -117,6 +124,7 @@ class RecognitionResult {
         notes: [for (final n in (j['notes'] as List? ?? const [])) n as String],
         answeredLine: j['answeredLine'] as String?,
         straightened: j['straightened'] as bool? ?? false,
+        turnedQuarters: (j['turnedQuarters'] as num?)?.toInt() ?? 0,
       );
 }
 
@@ -154,5 +162,5 @@ class BookletPipelineInfo {
 
   /// Bump when a stage changes in a way that can change results, so a stored
   /// result says which version produced it.
-  static const version = '1.0.0';
+  static const version = '1.1.0';
 }

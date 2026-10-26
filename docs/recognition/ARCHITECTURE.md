@@ -21,14 +21,48 @@ stages on one photograph. Every stage is an interface
 | 2 | Quality assessment | blur, noise, exposure, ink contrast, shadow, glare, text size, tilt, perspective, page cropped — each with a plain message and an instruction ("retake…") | `DocumentQualityAnalyzer` → `QualityAnalyzer` |
 | 3 | Page outline | 2-means paper mask → hull → four corners; confidence and "fully visible" | `DocumentBoundaryDetector` → `PageDetector` |
 | 3b | Straightening | when the page is found with confidence, all four corners are in the picture, and it is visibly tilted (≥ 2°) or foreshortened (≥ 6°), it is warped to a rectangle and everything after reads the straightened page; regions are mapped back onto the original photograph | `PageStraightener` (`straighten.dart`) |
+| 3c | Orientation | when the labels are not found, are found in the wrong order, or most text runs up or down the picture, the photo is read again turned each other way and a turn is kept only if it finds the labels, in order, clearly better; regions are mapped back onto the photograph as it was taken | `PageOrientation` (`orientation.dart`) |
 | 4 | Printed text | whole-photo text with boxes | `PrintedTextRecognizer` (= `OcrEngine`) → PaddleOCR PP-OCRv6 on the phone |
-| 5 | Layout | where the exam number, marks table, total and answered line are, found from the printed labels (so tilt and zoom matter less) | `LayoutAnalyzer` → `BookletExtractor` |
+| 5 | Layout | where the exam number, marks table, total and answered line are, found from the printed labels (so tilt and zoom matter less); the cover is described by a layout profile, so another cover is another file (`LAYOUT_PROFILES.md`) | `LayoutAnalyzer` → `ProfileLayoutAnalyzer` (`BookletExtractor` = the built-in Modibbo Adama profile) |
 | 6 | Close-ups | the printed booklet number and the handwritten exam number re-read at higher magnification, in more than one picture variant | `RegionOcrEngine` |
 | 7 | Marks table | one ink picture over the whole table (brightness shape, red-pen colour gate); strike-throughs and underlines removed (Hough transform); rows found from the ink; each mark and question label read character by character | `HandwritingRecognizer` → `MarkReader` + digit network |
 | 8 | Validation | marks against question maxima, the mark step, the part maximum; the written total against the sum; the "questions answered" line; duplicate or unreadable rows | `ExaminationValidator` → `SchemeExaminationValidator` |
 | 9 | Field states | each field is `recognized`, `needs_review`, `unreadable` or `failed` | `FieldConfidencePolicy` → `RecognitionPolicy` |
 
-Not done: the orientation of a page photographed sideways or upside down is not corrected (a phone's rotation flag is honoured when the photo is decoded), and a page cropped by the frame is read as it is, not straightened.
+Not done: a page cropped by the frame is read as it is, not straightened. A phone's own rotation flag is honoured when the photo is decoded; orientation (3c) is for photos whose pixels really are turned.
+
+### Sideways and upside-down photos (3c)
+
+Finding a label "somewhere in the left half" proves little: on the real booklet
+photograph turned a quarter, the label test still found 4 of 5 labels. So the layout
+also checks where the labels sit *relative to each other* (Question left of Marks on
+the same row, Total below them, the exam-number label above the table, "For Examiner's
+Use Only" above the headings). `BookletReading.layoutScore` counts labels found and
+relations that hold, and counts a relation that fails twice against.
+
+On the real photograph, in the four orientations:
+
+| photographed | labels found | relations holding / failing | score | text running up or down |
+|---|---|---|---|---|
+| upright | 5 of 5 | 6 / 0 | 11 | 0% |
+| top to the right | 4 of 5 | 2 / 1 | 4 | 100% |
+| upside down | 2 of 5 | 0 / 0 | 2 | 0% |
+| top to the left | 3 of 5 | 1 / 0 | 4 | 100% |
+
+The photo is read again, turned, only when it is *suspect*: fewer than 3 labels, any
+relation failing, or at least half of the text lines running up or down the picture. An
+upright photo (including a cropped one that lost a label) costs no extra reading. A
+turn is kept only when it finds at least 3 labels, none out of order, and scores at
+least 2 more than the photo as taken. Turns are tried in the likelier order (sideways
+first when the text runs up or down, otherwise the half-turn first) and stop at the
+first that finds everything. At most three extra readings of the whole page; if none
+qualifies the photo is read as taken and, when too few labels were found, the notes say
+so. A turned page is not "recognized" sooner: all policies are unchanged.
+
+The stored result keeps `turnedQuarters`; regions are on the photograph as it was
+taken. The review screen's photo viewer shows the photograph turned upright (the file is
+never changed) and the training-examples export crops are turned upright, with
+`crop_turned_quarters_clockwise` in `labels.json`.
 
 Heavy stages (2, 3, 3b, 7) run in background isolates; the platform text reader is
 called through its own channel. Nothing blocks the UI thread. Photos are read one
